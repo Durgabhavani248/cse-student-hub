@@ -2,21 +2,22 @@ import express from "express";
 import cors from "cors";
 import * as dotenv from "dotenv";
 dotenv.config();
-import { Low } from "lowdb";
-import { JSONFile } from "lowdb/node";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
 const app = express();
-
 app.use(cors());
 app.use(express.json());
 
+// MongoDB Connect
+mongoose.connect(process.env.MONGO_URI, { family: 4 })
+  .then(() => console.log("MongoDB Connected ✅"))
+  .catch(err => console.log("MongoDB Error:", err));
+
+// Cloudinary Config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -25,23 +26,11 @@ cloudinary.config({
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: "cse-hub-notes",
-    allowed_formats: ["jpg", "jpeg", "png", "pdf"]
-  }
+  params: { folder: "cse-hub-notes", allowed_formats: ["jpg", "jpeg", "png", "pdf"] }
 });
-
 const upload = multer({ storage });
 
-const file = join(__dirname, "db.json");
-const adapter = new JSONFile(file);
-const defaultData = { notices: [], notes: [], doubts: [], timetables: {} };
-const db = new Low(adapter, defaultData);
-
-await db.read();
-if (!db.data.doubts) { db.data.doubts = []; await db.write(); }
-if (!db.data.timetables) { db.data.timetables = {}; await db.write(); }
-
+// Auth Middleware
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "Unauthorized" });
@@ -53,11 +42,24 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+// Schemas
+const noticeSchema = new mongoose.Schema({ title: String, description: String, createdAt: { type: Date, default: Date.now } });
+const noteSchema = new mongoose.Schema({ title: String, subject: String, semester: String, imageUrl: String, createdAt: { type: Date, default: Date.now } });
+const doubtSchema = new mongoose.Schema({ name: String, question: String, answer: { type: String, default: null }, createdAt: { type: Date, default: Date.now } });
+const timetableSchema = new mongoose.Schema({ section: String, timings: Array, schedule: Object });
+
+const Notice = mongoose.model("Notice", noticeSchema);
+const Note = mongoose.model("Note", noteSchema);
+const Doubt = mongoose.model("Doubt", doubtSchema);
+const Timetable = mongoose.model("Timetable", timetableSchema);
+
+// HOME
 app.get("/", (req, res) => res.send("Server running 🚀"));
 
+// LOGIN
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
- if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     const token = jwt.sign({ username }, process.env.JWT_SECRET, { expiresIn: "1d" });
     res.json({ token });
   } else {
@@ -65,92 +67,76 @@ app.post("/api/login", (req, res) => {
   }
 });
 
+// NOTICES
 app.get("/api/notices", async (req, res) => {
-  await db.read();
-  res.json(db.data.notices);
+  const notices = await Notice.find().sort({ createdAt: -1 });
+  res.json(notices);
 });
-
 app.post("/api/notices", authMiddleware, async (req, res) => {
-  const { title, description } = req.body;
-  const notice = { id: Date.now().toString(), title, description, createdAt: new Date() };
-  db.data.notices.unshift(notice);
-  await db.write();
+  const notice = new Notice(req.body);
+  await notice.save();
   res.json(notice);
 });
-
 app.delete("/api/notices/:id", authMiddleware, async (req, res) => {
-  db.data.notices = db.data.notices.filter(n => n.id !== req.params.id);
-  await db.write();
+  await Notice.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
 });
 
+// NOTES
 app.get("/api/notes", async (req, res) => {
-  await db.read();
-  res.json(db.data.notes);
+  const notes = await Note.find().sort({ createdAt: -1 });
+  res.json(notes);
 });
-
 app.post("/api/notes", authMiddleware, upload.single("image"), async (req, res) => {
   const { subject, semester, title } = req.body;
-  const note = { id: Date.now().toString(), title, subject, semester, imageUrl: req.file.path, createdAt: new Date() };
-  db.data.notes.unshift(note);
-  await db.write();
+  const note = new Note({ title, subject, semester, imageUrl: req.file.path });
+  await note.save();
   res.json(note);
 });
-
 app.delete("/api/notes/:id", authMiddleware, async (req, res) => {
-  db.data.notes = db.data.notes.filter(n => n.id !== req.params.id);
-  await db.write();
+  await Note.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
 });
 
+// DOUBTS
 app.get("/api/doubts", async (req, res) => {
-  await db.read();
-  res.json(db.data.doubts);
+  const doubts = await Doubt.find().sort({ createdAt: -1 });
+  res.json(doubts);
 });
-
 app.post("/api/doubts", async (req, res) => {
-  const { question, name } = req.body;
-  const doubt = { id: Date.now().toString(), name, question, answer: null, createdAt: new Date() };
-  db.data.doubts.unshift(doubt);
-  await db.write();
+  const doubt = new Doubt(req.body);
+  await doubt.save();
   res.json(doubt);
 });
-
 app.put("/api/doubts/:id/answer", authMiddleware, async (req, res) => {
-  const { answer } = req.body;
-  const doubt = db.data.doubts.find(d => d.id === req.params.id);
-  if (doubt) { doubt.answer = answer; await db.write(); }
+  const doubt = await Doubt.findByIdAndUpdate(req.params.id, { answer: req.body.answer }, { new: true });
   res.json(doubt);
 });
-
 app.delete("/api/doubts/:id", authMiddleware, async (req, res) => {
-  db.data.doubts = db.data.doubts.filter(d => d.id !== req.params.id);
-  await db.write();
+  await Doubt.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
 });
 
-// TIMETABLE APIs
+// TIMETABLES
+app.get("/api/timetables", async (req, res) => {
+  const timetables = await Timetable.find();
+  res.json(timetables.map(t => t.section));
+});
 app.get("/api/timetable/:section", async (req, res) => {
-  await db.read();
-  const timetable = db.data.timetables[req.params.section] || null;
+  const timetable = await Timetable.findOne({ section: req.params.section });
   res.json(timetable);
 });
-
-app.get("/api/timetables", async (req, res) => {
-  await db.read();
-  res.json(Object.keys(db.data.timetables));
-});
-
 app.post("/api/timetable/:section", authMiddleware, async (req, res) => {
   const { timings, schedule } = req.body;
-  db.data.timetables[req.params.section] = { timings, schedule };
-  await db.write();
-  res.json({ message: "Timetable saved!" });
+  await Timetable.findOneAndUpdate(
+    { section: req.params.section },
+    { section: req.params.section, timings, schedule },
+    { upsert: true, new: true }
+  );
+  res.json({ message: "Saved!" });
 });
-
 app.delete("/api/timetable/:section", authMiddleware, async (req, res) => {
-  delete db.data.timetables[req.params.section];
-  await db.write();
+  await Timetable.findOneAndDelete({ section: req.params.section });
   res.json({ message: "Deleted" });
 });
 

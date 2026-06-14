@@ -5,7 +5,7 @@ function Search() {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3001/api/notes")
+    fetch("https://cse-student-hub.onrender.com/api/notes")
       .then(res => res.json())
       .then(data => setNotes(data));
   }, []);
