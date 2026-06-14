@@ -9,23 +9,23 @@ import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
-import { createRequire } from "module";
-
-const require = createRequire(import.meta.url);
-const serviceAccount = require("./serviceAccountKey.json");
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Firebase Admin Init
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({
   credential: cert(serviceAccount)
 });
 
+// MongoDB Connect
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log("MongoDB Error:", err));
 
+// Cloudinary Config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
