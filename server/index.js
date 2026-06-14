@@ -7,6 +7,7 @@ import jwt from "jsonwebtoken";
 import { v2 as cloudinary } from "cloudinary";
 import { CloudinaryStorage } from "multer-storage-cloudinary";
 import multer from "multer";
+import webpush from "web-push";
 
 const app = express();
 app.use(cors());
@@ -30,6 +31,13 @@ const storage = new CloudinaryStorage({
 });
 const upload = multer({ storage });
 
+// Web Push Config
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
 // Auth Middleware
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -47,11 +55,13 @@ const noticeSchema = new mongoose.Schema({ title: String, description: String, c
 const noteSchema = new mongoose.Schema({ title: String, subject: String, semester: String, imageUrl: String, createdAt: { type: Date, default: Date.now } });
 const doubtSchema = new mongoose.Schema({ name: String, question: String, answer: { type: String, default: null }, createdAt: { type: Date, default: Date.now } });
 const timetableSchema = new mongoose.Schema({ section: String, timings: Array, schedule: Object });
+const subscriptionSchema = new mongoose.Schema({ endpoint: String, keys: Object, createdAt: { type: Date, default: Date.now } });
 
 const Notice = mongoose.model("Notice", noticeSchema);
 const Note = mongoose.model("Note", noteSchema);
 const Doubt = mongoose.model("Doubt", doubtSchema);
 const Timetable = mongoose.model("Timetable", timetableSchema);
+const Subscription = mongoose.model("Subscription", subscriptionSchema);
 
 // HOME
 app.get("/", (req, res) => res.send("Server running 🚀"));
@@ -67,6 +77,22 @@ app.post("/api/login", (req, res) => {
   }
 });
 
+// VAPID PUBLIC KEY
+app.get("/api/vapid-key", (req, res) => {
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// SUBSCRIBE
+app.post("/api/subscribe", async (req, res) => {
+  const { endpoint, keys } = req.body;
+  const existing = await Subscription.findOne({ endpoint });
+  if (!existing) {
+    const sub = new Subscription({ endpoint, keys });
+    await sub.save();
+  }
+  res.json({ message: "Subscribed!" });
+});
+
 // NOTICES
 app.get("/api/notices", async (req, res) => {
   const notices = await Notice.find().sort({ createdAt: -1 });
@@ -75,6 +101,20 @@ app.get("/api/notices", async (req, res) => {
 app.post("/api/notices", authMiddleware, async (req, res) => {
   const notice = new Notice(req.body);
   await notice.save();
+
+  // Send push notification to all subscribers
+  const subscriptions = await Subscription.find();
+  const payload = JSON.stringify({
+    title: "📢 New Notice!",
+    body: notice.title,
+    url: "/"
+  });
+
+  subscriptions.forEach(sub => {
+    webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload)
+      .catch(err => console.log("Push error:", err));
+  });
+
   res.json(notice);
 });
 app.delete("/api/notices/:id", authMiddleware, async (req, res) => {

@@ -29,7 +29,7 @@ const DEFAULT_TIMINGS = [
   { label: "Lunch", start: "12:00", end: "13:10", type: "lunch" },
   { label: "Period 4", start: "13:10", end: "14:10", type: "class" },
   { label: "Period 5", start: "14:10", end: "15:10", type: "class" },
-  { label: "Break", start: "15:10", end: "15:25", type: "break" },
+  { label: "Break 2", start: "15:10", end: "15:25", type: "break" },
   { label: "Period 6", start: "15:25", end: "16:30", type: "class" },
 ];
 
@@ -57,6 +57,19 @@ function Timetable({ isAdmin, studentSection, api }) {
     }
   }, [studentSection]);
 
+  const updateTiming = (i, field, value) => {
+    const updated = [...timings];
+    updated[i] = { ...updated[i], [field]: value };
+    setTimings(updated);
+  };
+
+  const updateSchedule = (day, i, value) => {
+    const updated = { ...scheduleInput };
+    updated[day] = [...updated[day]];
+    updated[day][i] = value;
+    setScheduleInput(updated);
+  };
+
   const saveTimetable = () => {
     if (!newSection) { alert("Section enter cheyyi!"); return; }
     const token = localStorage.getItem("token");
@@ -64,7 +77,7 @@ function Timetable({ isAdmin, studentSection, api }) {
     const classPeriods = timings.filter(t => t.type === "class");
     const fullSchedule = {};
     DAYS.forEach(day => {
-      fullSchedule[day] = timings.map((t, i) => {
+      fullSchedule[day] = timings.map((t) => {
         if (t.type !== "class") return t.type.toUpperCase();
         const classIndex = classPeriods.indexOf(t);
         return scheduleInput[day][classIndex] || "";
@@ -97,8 +110,13 @@ function Timetable({ isAdmin, studentSection, api }) {
   const nextSubject = nextPeriod && todaySchedule[currentIndex + 1];
 
   const inputStyle = {
-    padding: "8px 12px", borderRadius: "8px", border: "1px solid #7209b7",
-    background: "#0f0f0f", color: "#fff", fontSize: "13px", outline: "none",
+    padding: "8px 12px",
+    borderRadius: "8px",
+    border: "1px solid #7209b7",
+    background: "#0f0f0f",
+    color: "#fff",
+    fontSize: "13px",
+    outline: "none",
     boxSizing: "border-box"
   };
 
@@ -106,14 +124,23 @@ function Timetable({ isAdmin, studentSection, api }) {
     <div>
       {isAdmin && (
         <div style={{ marginBottom: "24px" }}>
-          <button onClick={() => setShowAdd(!showAdd)} style={{ padding: "10px 24px", background: "linear-gradient(90deg, #7209b7, #f72585)", color: "#fff", border: "none", borderRadius: "20px", cursor: "pointer", fontWeight: "bold", marginBottom: "16px" }}>
+          <button
+            onClick={() => setShowAdd(!showAdd)}
+            style={{ padding: "10px 24px", background: "linear-gradient(90deg, #7209b7, #f72585)", color: "#fff", border: "none", borderRadius: "20px", cursor: "pointer", fontWeight: "bold", marginBottom: "16px" }}
+          >
             {showAdd ? "Cancel ✕" : "➕ Add/Edit Timetable"}
           </button>
 
           {showAdd && (
             <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: "1px solid #7209b7", borderRadius: "16px", padding: "24px" }}>
               <h3 style={{ color: "#f72585", marginTop: 0 }}>📅 Add Timetable</h3>
-              <input placeholder="Section (e.g. 7)" value={newSection} onChange={e => setNewSection(e.target.value)} style={{ ...inputStyle, width: "200px", marginBottom: "20px" }} />
+
+              <input
+                placeholder="Section (e.g. 7)"
+                value={newSection}
+                onChange={e => setNewSection(e.target.value)}
+                style={{ ...inputStyle, width: "200px", marginBottom: "20px" }}
+              />
 
               <h4 style={{ color: "#4cc9f0", marginBottom: "12px" }}>⏰ Edit Timings:</h4>
               <div style={{ overflowX: "auto", marginBottom: "20px" }}>
@@ -130,7 +157,157 @@ function Timetable({ isAdmin, studentSection, api }) {
                     {timings.map((t, i) => (
                       <tr key={i}>
                         <td style={{ padding: "4px" }}>
-                          <input value={t.label} onChange={e => { const u = [...timings]; u[i] = { ...u[i], label: e.target.value }; setTimings(u); }} style={{ ...inputStyle, width: "100px" }} />
+                          <input
+                            value={t.label}
+                            onChange={e => updateTiming(i, "label", e.target.value)}
+                            style={{ ...inputStyle, width: "100px" }}
+                          />
                         </td>
                         <td style={{ padding: "4px" }}>
-                          <input type="time"
+                          <input
+                            type="text"
+                            placeholder="09:20"
+                            value={t.start}
+                            onChange={e => updateTiming(i, "start", e.target.value)}
+                            style={{ ...inputStyle, width: "80px" }}
+                          />
+                        </td>
+                        <td style={{ padding: "4px" }}>
+                          <input
+                            type="text"
+                            placeholder="10:10"
+                            value={t.end}
+                            onChange={e => updateTiming(i, "end", e.target.value)}
+                            style={{ ...inputStyle, width: "80px" }}
+                          />
+                        </td>
+                        <td style={{ padding: "4px", color: t.type === "class" ? "#06d6a0" : t.type === "break" ? "#f72585" : "#ffd166" }}>
+                          {t.type}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <h4 style={{ color: "#4cc9f0", marginBottom: "12px" }}>📚 Subjects:</h4>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ borderCollapse: "collapse", fontSize: "13px" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ color: "#4cc9f0", padding: "8px", textAlign: "left" }}>Day</th>
+                      {["P1","P2","P3","P4","P5","P6"].map(p => (
+                        <th key={p} style={{ color: "#4cc9f0", padding: "8px" }}>{p}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DAYS.map(day => (
+                      <tr key={day}>
+                        <td style={{ color: "#fff", padding: "4px 8px", fontWeight: "bold" }}>{day}</td>
+                        {[0,1,2,3,4,5].map(i => (
+                          <td key={i} style={{ padding: "4px" }}>
+                            <input
+                              value={scheduleInput[day][i]}
+                              onChange={e => updateSchedule(day, i, e.target.value)}
+                              style={{ ...inputStyle, width: "80px" }}
+                              placeholder="Subject"
+                            />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <button
+                onClick={saveTimetable}
+                style={{ marginTop: "16px", width: "100%", padding: "12px", background: "linear-gradient(90deg, #7209b7, #f72585)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }}
+              >
+                Save Timetable ✅
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {timetable ? (
+        <>
+          <div style={{ background: "linear-gradient(135deg, #f72585, #7209b7)", borderRadius: "20px", padding: "24px", marginBottom: "24px", boxShadow: "0 8px 32px #f7258544" }}>
+            <p style={{ margin: "0 0 4px 0", color: "#ffffffaa", fontSize: "13px" }}>🕐 {now.toLocaleTimeString()}</p>
+            <h2 style={{ margin: "0 0 8px 0", color: "#fff", fontSize: "18px" }}>
+              Section {studentSection} — {DAY_NAMES[today] || "Weekend 😴"}
+            </h2>
+
+            {currentPeriod && currentPeriod.type === "class" ? (
+              <div>
+                <p style={{ margin: "0 0 4px 0", color: "#ffffffbb", fontSize: "14px" }}>📚 Current Class</p>
+                <h1 style={{ margin: "0 0 4px 0", color: "#fff", fontSize: "32px" }}>{todaySchedule[currentIndex] || "—"}</h1>
+                <p style={{ margin: 0, color: "#ffffffbb", fontSize: "13px" }}>{currentPeriod.start} - {currentPeriod.end}</p>
+              </div>
+            ) : currentPeriod?.type === "break" ? (
+              <h1 style={{ margin: 0, color: "#fff", fontSize: "28px" }}>☕ Break Time!</h1>
+            ) : currentPeriod?.type === "lunch" ? (
+              <h1 style={{ margin: 0, color: "#fff", fontSize: "28px" }}>🍱 Lunch Break!</h1>
+            ) : (
+              <h1 style={{ margin: 0, color: "#fff", fontSize: "28px" }}>No Class Now 😴</h1>
+            )}
+
+            {nextPeriod?.type === "class" && nextSubject && (
+              <p style={{ margin: "12px 0 0 0", color: "#ffffffbb", fontSize: "13px" }}>
+                ⏭️ Next: <strong style={{ color: "#fff" }}>{nextSubject}</strong> at {nextPeriod.start}
+              </p>
+            )}
+          </div>
+
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+            {DAYS.map(d => (
+              <button
+                key={d}
+                onClick={() => setActiveDay(d)}
+                style={{ padding: "6px 16px", borderRadius: "20px", border: today === d ? "2px solid #4cc9f0" : "none", background: activeDay === d ? "linear-gradient(90deg, #f72585, #7209b7)" : "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: activeDay === d ? "bold" : "normal" }}
+              >
+                {d}
+              </button>
+            ))}
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {(timetable.timings || []).map((t, i) => {
+              const subject = timetable.schedule?.[activeDay]?.[i];
+              const isNow = today === activeDay && currentIndex === i;
+
+              if (t.type !== "class") return (
+                <div key={i} style={{ background: "#ffffff11", borderRadius: "10px", padding: "8px 16px", textAlign: "center", color: "#888", fontSize: "13px" }}>
+                  {t.type === "lunch" ? "🍱 Lunch Break" : "☕ Break"} ({t.start} - {t.end})
+                </div>
+              );
+
+              return (
+                <div
+                  key={i}
+                  style={{ background: isNow ? "linear-gradient(135deg, #f72585, #7209b7)" : "linear-gradient(135deg, #1a1a2e, #16213e)", border: isNow ? "none" : "1px solid #ffffff22", borderRadius: "12px", padding: "14px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: isNow ? "0 4px 20px #f7258544" : "none" }}
+                >
+                  <div>
+                    <p style={{ margin: 0, color: isNow ? "#ffffffaa" : "#888", fontSize: "12px" }}>{t.label} • {t.start} - {t.end}</p>
+                    <h3 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "16px" }}>{subject || "—"}</h3>
+                  </div>
+                  {isNow && <span style={{ background: "#ffffff33", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "12px" }}>NOW ✅</span>}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
+          <p style={{ fontSize: "48px" }}>📅</p>
+          <p>Section {studentSection} timetable not added yet!</p>
+          {isAdmin && <p style={{ color: "#f72585" }}>Admin panel lo add cheyyi ↑</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Timetable;
