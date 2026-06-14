@@ -16,7 +16,7 @@ function App() {
   const [sectionInput, setSectionInput] = useState("");
 
   const fetchNotices = () => {
-    fetch("http://localhost:3001/api/notices")
+    fetch("https://cse-student-hub.onrender.com/api/notices")
       .then(res => res.json())
       .then(data => setNotices(data))
       .catch(err => console.error(err));
@@ -44,7 +44,7 @@ function App() {
 
   const deleteNotice = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`http://localhost:3001/api/notices/${id}`, {
+    fetch(`https://cse-student-hub.onrender.com/api/notices/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchNotices());

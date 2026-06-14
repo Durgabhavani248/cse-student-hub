@@ -8,7 +8,7 @@ function Doubts({ isAdmin }) {
   const [filter, setFilter] = useState("unanswered");
 
   const fetchDoubts = () => {
-    fetch("http://localhost:3001/api/doubts")
+    fetch("https://cse-student-hub.onrender.com/api/doubts")
       .then(res => res.json())
       .then(data => setDoubts(data));
   };
@@ -22,7 +22,7 @@ function Doubts({ isAdmin }) {
       alert("Name and question enter cheyyi!");
       return;
     }
-    fetch("http://localhost:3001/api/doubts", {
+    fetch("https://cse-student-hub.onrender.com/api/doubts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, name })
@@ -37,7 +37,7 @@ function Doubts({ isAdmin }) {
 
   const addAnswer = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`http://localhost:3001/api/doubts/${id}/answer`, {
+    fetch(`https://cse-student-hub.onrender.com/api/doubts/${id}/answer`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -54,7 +54,7 @@ function Doubts({ isAdmin }) {
 
   const deleteDoubt = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`http://localhost:3001/api/doubts/${id}`, {
+    fetch(`https://cse-student-hub.onrender.com/api/doubts/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchDoubts());

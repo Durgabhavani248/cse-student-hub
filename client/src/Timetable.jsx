@@ -51,7 +51,7 @@ function Timetable({ isAdmin, studentSection }) {
 
   useEffect(() => {
     if (studentSection) {
-      fetch(`http://localhost:3001/api/timetable/${studentSection}`)
+      fetch(`https://cse-student-hub.onrender.com/api/timetable/${studentSection}`)
         .then(res => res.json())
         .then(data => setTimetable(data));
     }
@@ -71,7 +71,7 @@ function Timetable({ isAdmin, studentSection }) {
       });
     });
 
-    fetch(`http://localhost:3001/api/timetable/${newSection}`, {
+    fetch(`https://cse-student-hub.onrender.com/api/timetable/${newSection}`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ timings, schedule: fullSchedule })
@@ -81,7 +81,7 @@ function Timetable({ isAdmin, studentSection }) {
         alert(`Section ${newSection} timetable saved! ✅`);
         setShowAdd(false);
         if (studentSection === newSection) {
-          fetch(`http://localhost:3001/api/timetable/${newSection}`)
+          fetch(`https://cse-student-hub.onrender.com/api/timetable/${newSection}`)
             .then(res => res.json())
             .then(data => setTimetable(data));
         }

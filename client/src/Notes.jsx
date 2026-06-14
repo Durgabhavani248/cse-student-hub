@@ -10,7 +10,7 @@ function Notes({ isAdmin }) {
   const [loading, setLoading] = useState(false);
 
   const fetchNotes = () => {
-    fetch("http://localhost:3001/api/notes")
+    fetch("https://cse-student-hub.onrender.com/api/notes")
       .then(res => res.json())
       .then(data => setNotes(data));
   };
@@ -35,7 +35,7 @@ function Notes({ isAdmin }) {
       formData.append("semester", semester);
       formData.append("image", images[i]);
 
-      await fetch("http://localhost:3001/api/notes", {
+      await fetch("https://cse-student-hub.onrender.com/api/notes", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -51,7 +51,7 @@ function Notes({ isAdmin }) {
 
   const deleteNote = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`http://localhost:3001/api/notes/${id}`, {
+    fetch(`https://cse-student-hub.onrender.com/api/notes/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchNotes());

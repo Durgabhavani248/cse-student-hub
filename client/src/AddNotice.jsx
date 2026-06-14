@@ -26,7 +26,7 @@ function AddNotice({ onAdd }) {
     const token = localStorage.getItem("token");
     console.log("Token:", token);
 
-    fetch("http://localhost:3001/api/notices", {
+    fetch("https://cse-student-hub.onrender.com/api/notices", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
