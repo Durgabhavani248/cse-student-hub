@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 
-function Search() {
+function Search({ api }) {
   const [notes, setNotes] = useState([]);
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    fetch("https://cse-student-hub.onrender.com/api/notes")
+    fetch(`${api}/api/notes`)
       .then(res => res.json())
       .then(data => setNotes(data));
   }, []);
@@ -17,7 +17,6 @@ function Search() {
 
   return (
     <div>
-      {/* Search Bar */}
       <div style={{ marginBottom: "24px" }}>
         <input
           placeholder="🔍 Search notes by title or subject..."
@@ -37,7 +36,6 @@ function Search() {
         />
       </div>
 
-      {/* Results */}
       {query === "" ? (
         <div style={{ textAlign: "center", padding: "40px", color: "#888" }}>
           <p style={{ fontSize: "48px" }}>🔍</p>
@@ -53,7 +51,7 @@ function Search() {
           <p style={{ color: "#4cc9f0", marginBottom: "16px" }}>{filtered.length} results found!</p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "16px" }}>
             {filtered.map(n => (
-              <div key={n.id} style={{ background: "#1a1a2e", borderRadius: "16px", overflow: "hidden", border: "1px solid #4361ee", boxShadow: "0 4px 20px #4361ee33" }}>
+              <div key={n._id} style={{ background: "#1a1a2e", borderRadius: "16px", overflow: "hidden", border: "1px solid #4361ee", boxShadow: "0 4px 20px #4361ee33" }}>
                 <img src={n.imageUrl} alt={n.title} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
                 <div style={{ padding: "12px" }}>
                   <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#fff" }}>{n.title}</h3>

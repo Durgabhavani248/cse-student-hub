@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function Doubts({ isAdmin }) {
+function Doubts({ isAdmin, api }) {
   const [doubts, setDoubts] = useState([]);
   const [question, setQuestion] = useState("");
   const [name, setName] = useState("");
@@ -8,7 +8,7 @@ function Doubts({ isAdmin }) {
   const [filter, setFilter] = useState("unanswered");
 
   const fetchDoubts = () => {
-    fetch("https://cse-student-hub.onrender.com/api/doubts")
+    fetch(`${api}/api/doubts`)
       .then(res => res.json())
       .then(data => setDoubts(data));
   };
@@ -22,7 +22,7 @@ function Doubts({ isAdmin }) {
       alert("Name and question enter cheyyi!");
       return;
     }
-    fetch("https://cse-student-hub.onrender.com/api/doubts", {
+    fetch(`${api}/api/doubts`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, name })
@@ -37,7 +37,7 @@ function Doubts({ isAdmin }) {
 
   const addAnswer = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`https://cse-student-hub.onrender.com/api/doubts/${id}/answer`, {
+    fetch(`${api}/api/doubts/${id}/answer`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -54,7 +54,7 @@ function Doubts({ isAdmin }) {
 
   const deleteDoubt = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`https://cse-student-hub.onrender.com/api/doubts/${id}`, {
+    fetch(`${api}/api/doubts/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchDoubts());
@@ -81,7 +81,6 @@ function Doubts({ isAdmin }) {
 
   return (
     <div>
-      {/* Ask Doubt */}
       <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: "1px solid #06d6a0", borderRadius: "16px", padding: "24px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 4px 20px #06d6a033" }}>
         <h2 style={{ margin: "0 0 16px 0", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>❓ Ask a Doubt</h2>
         <input placeholder="Your Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
@@ -91,7 +90,6 @@ function Doubts({ isAdmin }) {
         </button>
       </div>
 
-      {/* Filter */}
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
         {["all", "unanswered", "answered"].map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: "20px", border: "none", background: filter === f ? "linear-gradient(90deg, #06d6a0, #4cc9f0)" : "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: filter === f ? "bold" : "normal" }}>
@@ -100,17 +98,16 @@ function Doubts({ isAdmin }) {
         ))}
       </div>
 
-      {/* Doubts List */}
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {filtered.map(d => (
-          <div key={d.id} style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: `1px solid ${d.answer ? "#06d6a0" : "#f72585"}`, borderRadius: "16px", padding: "20px", boxShadow: `0 4px 20px ${d.answer ? "#06d6a033" : "#f7258533"}` }}>
+          <div key={d._id} style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: `1px solid ${d.answer ? "#06d6a0" : "#f72585"}`, borderRadius: "16px", padding: "20px", boxShadow: `0 4px 20px ${d.answer ? "#06d6a033" : "#f7258533"}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
                 <p style={{ margin: "0 0 4px 0", color: "#4cc9f0", fontSize: "13px" }}>🙋 {d.name}</p>
                 <p style={{ margin: "0 0 12px 0", color: "#fff", fontSize: "15px" }}>{d.question}</p>
               </div>
               {isAdmin && (
-                <button onClick={() => deleteDoubt(d.id)} style={{ background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
+                <button onClick={() => deleteDoubt(d._id)} style={{ background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
                   Delete
                 </button>
               )}
@@ -126,12 +123,12 @@ function Doubts({ isAdmin }) {
                 <div style={{ marginTop: "12px" }}>
                   <textarea
                     placeholder="Answer icheyyi..."
-                    value={answerText[d.id] || ""}
-                    onChange={e => setAnswerText({ ...answerText, [d.id]: e.target.value })}
+                    value={answerText[d._id] || ""}
+                    onChange={e => setAnswerText({ ...answerText, [d._id]: e.target.value })}
                     rows={2}
                     style={{ ...inputStyle, marginBottom: "8px" }}
                   />
-                  <button onClick={() => addAnswer(d.id)} style={{ padding: "8px 20px", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "bold" }}>
+                  <button onClick={() => addAnswer(d._id)} style={{ padding: "8px 20px", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "bold" }}>
                     Answer ✅
                   </button>
                 </div>

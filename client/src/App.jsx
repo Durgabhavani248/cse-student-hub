@@ -6,6 +6,81 @@ import Doubts from "./Doubts";
 import Timetable from "./Timetable";
 import Search from "./Search";
 
+const API = "https://cse-student-hub.onrender.com";
+
+function CurrentClassCard({ studentSection, api }) {
+  const [timetable, setTimetable] = useState(null);
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (studentSection) {
+      fetch(`${api}/api/timetable/${studentSection}`)
+        .then(res => res.json())
+        .then(data => setTimetable(data));
+    }
+  }, [studentSection]);
+
+  if (!timetable) return null;
+
+  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  const today = days[now.getDay()];
+  const current = now.getHours() * 60 + now.getMinutes();
+
+  let currentClass = null;
+  let nextClass = null;
+  let currentPeriod = null;
+  let nextPeriod = null;
+
+  if (timetable.timings) {
+    for (let i = 0; i < timetable.timings.length; i++) {
+      const t = timetable.timings[i];
+      const [sh, sm] = t.start.split(":").map(Number);
+      const [eh, em] = t.end.split(":").map(Number);
+      if (current >= sh * 60 + sm && current < eh * 60 + em) {
+        currentPeriod = t;
+        currentClass = timetable.schedule?.[today]?.[i];
+        if (i + 1 < timetable.timings.length) {
+          nextPeriod = timetable.timings[i + 1];
+          nextClass = timetable.schedule?.[today]?.[i + 1];
+        }
+        break;
+      }
+    }
+  }
+
+  return (
+    <div style={{ background: "linear-gradient(135deg, #f72585, #7209b7)", borderRadius: "16px", padding: "16px 20px", marginBottom: "24px", boxShadow: "0 4px 20px #f7258544", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+      <div>
+        <p style={{ margin: 0, color: "#ffffffaa", fontSize: "12px" }}>🕐 {now.toLocaleTimeString()} | Section {studentSection}</p>
+        {currentPeriod?.type === "class" && currentClass ? (
+          <>
+            <h2 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "20px" }}>📚 {currentClass}</h2>
+            <p style={{ margin: "2px 0 0 0", color: "#ffffffbb", fontSize: "12px" }}>{currentPeriod.start} - {currentPeriod.end}</p>
+          </>
+        ) : currentPeriod?.type === "break" ? (
+          <h2 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "20px" }}>☕ Break Time!</h2>
+        ) : currentPeriod?.type === "lunch" ? (
+          <h2 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "20px" }}>🍱 Lunch Break!</h2>
+        ) : (
+          <h2 style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "20px" }}>No Class Now 😴</h2>
+        )}
+      </div>
+      {nextPeriod?.type === "class" && nextClass && (
+        <div style={{ background: "#ffffff22", borderRadius: "12px", padding: "10px 16px", textAlign: "center" }}>
+          <p style={{ margin: 0, color: "#ffffffaa", fontSize: "11px" }}>⏭️ Next Class</p>
+          <p style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "16px", fontWeight: "bold" }}>{nextClass}</p>
+          <p style={{ margin: "2px 0 0 0", color: "#ffffffbb", fontSize: "11px" }}>{nextPeriod.start}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [notices, setNotices] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -16,10 +91,33 @@ function App() {
   const [sectionInput, setSectionInput] = useState("");
 
   const fetchNotices = () => {
-    fetch("https://cse-student-hub.onrender.com/api/notices")
+    fetch(`${API}/api/notices`)
       .then(res => res.json())
       .then(data => setNotices(data))
       .catch(err => console.error(err));
+  };
+
+  const subscribeToNotifications = async () => {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const res = await fetch(`${API}/api/vapid-key`);
+      const { publicKey } = await res.json();
+
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: publicKey
+      });
+
+      await fetch(`${API}/api/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(subscription)
+      });
+
+      console.log("Push subscribed ✅");
+    } catch (err) {
+      console.log("Push subscription error:", err);
+    }
   };
 
   useEffect(() => {
@@ -28,6 +126,14 @@ function App() {
     if (token) setIsAdmin(true);
     const savedInfo = localStorage.getItem("studentInfo");
     if (savedInfo) setStudentInfo(JSON.parse(savedInfo));
+
+    if ("Notification" in window && "serviceWorker" in navigator) {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          subscribeToNotifications();
+        }
+      });
+    }
   }, []);
 
   const handleLogin = () => { setIsAdmin(true); setShowLogin(false); };
@@ -44,7 +150,7 @@ function App() {
 
   const deleteNotice = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`https://cse-student-hub.onrender.com/api/notices/${id}`, {
+    fetch(`${API}/api/notices/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchNotices());
@@ -135,6 +241,9 @@ function App() {
 
         {activePage === "notices" && (
           <div>
+            {/* Current Class Card */}
+            <CurrentClassCard studentSection={studentInfo?.section} api={API} />
+
             {isAdmin && <AddNotice onAdd={addNotice} />}
             <h2 style={{ color: "#4cc9f0", borderBottom: "2px solid #4cc9f0", paddingBottom: "8px", display: "inline-block" }}>📢 Notices</h2>
             {notices.length === 0 && <p style={{ color: "#888" }}>No notices yet!</p>}
@@ -143,13 +252,13 @@ function App() {
                 const colors = ["#f72585", "#7209b7", "#4361ee", "#4cc9f0", "#06d6a0"];
                 const color = colors[index % colors.length];
                 return (
-                  <div key={n.id} style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: `1px solid ${color}`, borderRadius: "16px", padding: "20px", boxShadow: `0 4px 20px ${color}33`, position: "relative", overflow: "hidden" }}>
+                  <div key={n._id} style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: `1px solid ${color}`, borderRadius: "16px", padding: "20px", boxShadow: `0 4px 20px ${color}33`, position: "relative", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "4px", background: color }} />
                     <h3 style={{ margin: "8px 0", color: "#fff" }}>{n.title}</h3>
                     <p style={{ color: "#aaa", fontSize: "14px", margin: "0 0 12px 0" }}>{n.description}</p>
                     <small style={{ color: "#555" }}>📅 {n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</small>
                     {isAdmin && (
-                      <button onClick={() => deleteNotice(n.id)} style={{ float: "right", background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
+                      <button onClick={() => deleteNotice(n._id)} style={{ float: "right", background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
                         Delete
                       </button>
                     )}
@@ -160,10 +269,10 @@ function App() {
           </div>
         )}
 
-        {activePage === "notes" && <Notes isAdmin={isAdmin} />}
-        {activePage === "doubts" && <Doubts isAdmin={isAdmin} />}
-        {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} />}
-        {activePage === "search" && <Search />}
+        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} />}
+        {activePage === "doubts" && <Doubts isAdmin={isAdmin} api={API} />}
+        {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
+        {activePage === "search" && <Search api={API} />}
       </div>
     </div>
   );

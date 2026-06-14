@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function Notes({ isAdmin }) {
+function Notes({ isAdmin, api }) {
   const [notes, setNotes] = useState([]);
   const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("");
@@ -10,7 +10,7 @@ function Notes({ isAdmin }) {
   const [loading, setLoading] = useState(false);
 
   const fetchNotes = () => {
-    fetch("https://cse-student-hub.onrender.com/api/notes")
+    fetch(`${api}/api/notes`)
       .then(res => res.json())
       .then(data => setNotes(data));
   };
@@ -35,7 +35,7 @@ function Notes({ isAdmin }) {
       formData.append("semester", semester);
       formData.append("image", images[i]);
 
-      await fetch("https://cse-student-hub.onrender.com/api/notes", {
+      await fetch(`${api}/api/notes`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData
@@ -51,7 +51,7 @@ function Notes({ isAdmin }) {
 
   const deleteNote = (id) => {
     const token = localStorage.getItem("token");
-    fetch(`https://cse-student-hub.onrender.com/api/notes/${id}`, {
+    fetch(`${api}/api/notes/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchNotes());
@@ -83,20 +83,12 @@ function Notes({ isAdmin }) {
           <select value={semester} onChange={e => setSemester(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
             {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>Semester {s}</option>)}
           </select>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={e => setImages(Array.from(e.target.files))}
-            style={{ ...inputStyle, padding: "8px" }}
-          />
+          <input type="file" accept="image/*" multiple onChange={e => setImages(Array.from(e.target.files))} style={{ ...inputStyle, padding: "8px" }} />
           {images.length > 0 && (
-            <p style={{ color: "#4cc9f0", fontSize: "13px", marginBottom: "12px" }}>
-              {images.length} image(s) selected ✅
-            </p>
+            <p style={{ color: "#4cc9f0", fontSize: "13px", marginBottom: "12px" }}>{images.length} image(s) selected ✅</p>
           )}
           <button onClick={addNotes} disabled={loading} style={{ width: "100%", padding: "12px", background: "linear-gradient(90deg, #4361ee, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }}>
-            {loading ? `Uploading... ⏳` : "Upload Notes 📚"}
+            {loading ? "Uploading... ⏳" : "Upload Notes 📚"}
           </button>
         </div>
       )}
@@ -111,13 +103,13 @@ function Notes({ isAdmin }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "16px" }}>
         {filtered.map(n => (
-          <div key={n.id} style={{ background: "#1a1a2e", borderRadius: "16px", overflow: "hidden", border: "1px solid #4361ee", boxShadow: "0 4px 20px #4361ee33" }}>
+          <div key={n._id} style={{ background: "#1a1a2e", borderRadius: "16px", overflow: "hidden", border: "1px solid #4361ee", boxShadow: "0 4px 20px #4361ee33" }}>
             <img src={n.imageUrl} alt={n.title} style={{ width: "100%", height: "200px", objectFit: "cover" }} />
             <div style={{ padding: "12px" }}>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#fff" }}>{n.title}</h3>
               <p style={{ margin: 0, fontSize: "12px", color: "#4cc9f0" }}>📖 {n.subject} | Sem {n.semester}</p>
               {isAdmin && (
-                <button onClick={() => deleteNote(n.id)} style={{ marginTop: "8px", background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
+                <button onClick={() => deleteNote(n._id)} style={{ marginTop: "8px", background: "#f72585", color: "#fff", border: "none", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
                   Delete
                 </button>
               )}
