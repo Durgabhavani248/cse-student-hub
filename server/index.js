@@ -60,6 +60,17 @@ const Note = mongoose.model("Note", noteSchema);
 const Doubt = mongoose.model("Doubt", doubtSchema);
 const Timetable = mongoose.model("Timetable", timetableSchema);
 const FCMToken = mongoose.model("FCMToken", fcmTokenSchema);
+const studentSchema = new mongoose.Schema({
+  name: String,
+  rollNo: {
+    type: String,
+    unique: true
+  },
+  section: String,
+  password: String
+});
+
+const Student = mongoose.model("Student", studentSchema);
 
 app.get("/", (req, res) => res.send("Server running 🚀"));
 
@@ -71,6 +82,37 @@ app.post("/api/login", (req, res) => {
   } else {
     res.status(401).json({ message: "Invalid credentials" });
   }
+});
+app.post("/api/student-login", async (req, res) => {
+  const { rollNo, section, password } = req.body;
+
+  const student = await Student.findOne({ rollNo });
+
+  if (!student) {
+    return res.status(401).json({
+      message: "Roll Number not found"
+    });
+  }
+
+  if (student.section !== section) {
+    return res.status(401).json({
+      message: "Invalid Section"
+    });
+  }
+
+  if (student.password !== password) {
+    return res.status(401).json({
+      message: "Wrong Password"
+    });
+  }
+
+  res.json({
+    student: {
+      name: student.name,
+      rollNo: student.rollNo,
+      section: student.section
+    }
+  });
 });
 
 app.post("/api/fcm-subscribe", async (req, res) => {
