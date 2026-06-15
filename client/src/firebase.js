@@ -7,8 +7,7 @@ const firebaseConfig = {
   projectId: "nri-cse-hub",
   storageBucket: "nri-cse-hub.firebasestorage.app",
   messagingSenderId: "217692003992",
-  appId: "1:217692003992:web:1fd087ac4d905bb83e7aed",
-  measurementId: "G-LHGYL4S4WS"
+  appId: "1:217692003992:web:1fd087ac4d905bb83e7aed"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -19,7 +18,8 @@ export const requestPermission = async (api) => {
     const permission = await Notification.requestPermission();
     if (permission === "granted") {
       const token = await getToken(messaging, {
-        vapidKey: "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw"
+        vapidKey: "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw",
+        serviceWorkerRegistration: await navigator.serviceWorker.getRegistration()
       });
 
       if (token) {
@@ -28,7 +28,9 @@ export const requestPermission = async (api) => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token })
         });
-        console.log("FCM Token registered ✅");
+        console.log("FCM Token registered ✅", token);
+      } else {
+        console.log("No FCM token received");
       }
     }
   } catch (err) {

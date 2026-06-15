@@ -5,6 +5,7 @@ import Notes from "./Notes";
 import Doubts from "./Doubts";
 import Timetable from "./Timetable";
 import Search from "./Search";
+import { requestPermission } from "./firebase";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -97,43 +98,13 @@ function App() {
       .catch(err => console.error(err));
   };
 
-  const subscribeToNotifications = async () => {
-    try {
-      const reg = await navigator.serviceWorker.ready;
-      const res = await fetch(`${API}/api/vapid-key`);
-      const { publicKey } = await res.json();
-
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: publicKey
-      });
-
-      await fetch(`${API}/api/subscribe`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(subscription)
-      });
-
-      console.log("Push subscribed ✅");
-    } catch (err) {
-      console.log("Push subscription error:", err);
-    }
-  };
-
   useEffect(() => {
     fetchNotices();
     const token = localStorage.getItem("token");
     if (token) setIsAdmin(true);
     const savedInfo = localStorage.getItem("studentInfo");
     if (savedInfo) setStudentInfo(JSON.parse(savedInfo));
-
-    if ("Notification" in window && "serviceWorker" in navigator) {
-      Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-          subscribeToNotifications();
-        }
-      });
-    }
+    requestPermission(API);
   }, []);
 
   const handleLogin = () => { setIsAdmin(true); setShowLogin(false); };
@@ -205,7 +176,6 @@ function App() {
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)", color: "#fff", fontFamily: "Segoe UI, sans-serif" }}>
 
-      {/* Navbar */}
       <div style={{ background: "linear-gradient(90deg, #f72585, #7209b7, #3a0ca3, #4361ee, #4cc9f0)", padding: "16px 32px", display: "flex", justifyContent: "space-between", alignItems: "center", boxShadow: "0 4px 20px rgba(0,0,0,0.4)" }}>
         <div>
           <h1 style={{ margin: 0, color: "#fff", fontSize: "20px", fontWeight: "bold" }}>🎓 NRI University</h1>
@@ -227,7 +197,6 @@ function App() {
         </div>
       </div>
 
-      {/* Nav Tabs */}
       <div style={{ display: "flex", gap: "4px", padding: "12px 32px", background: "#0f0f0f88", borderBottom: "1px solid #ffffff22", overflowX: "auto" }}>
         <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
         <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
@@ -241,9 +210,7 @@ function App() {
 
         {activePage === "notices" && (
           <div>
-            {/* Current Class Card */}
             <CurrentClassCard studentSection={studentInfo?.section} api={API} />
-
             {isAdmin && <AddNotice onAdd={addNotice} />}
             <h2 style={{ color: "#4cc9f0", borderBottom: "2px solid #4cc9f0", paddingBottom: "8px", display: "inline-block" }}>📢 Notices</h2>
             {notices.length === 0 && <p style={{ color: "#888" }}>No notices yet!</p>}
