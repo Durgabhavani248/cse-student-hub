@@ -4,7 +4,8 @@ import Login from "./Login";
 import Notes from "./Notes";
 import Timetable from "./Timetable";
 import Search from "./Search";
-import { requestPermission } from "./firebase";
+import StudentLogin from "./StudentLogin";
+import ChangePassword from "./ChangePassword";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -81,11 +82,10 @@ function CurrentClassCard({ studentSection, api }) {
 function App() {
   const [notices, setNotices] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showLogin, setShowLogin] = useState(false);
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [activePage, setActivePage] = useState("notices");
   const [studentInfo, setStudentInfo] = useState(null);
-  const [nameInput, setNameInput] = useState("");
-  const [sectionInput, setSectionInput] = useState("");
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   const fetchNotices = () => {
     fetch(`${API}/api/notices`)
@@ -96,21 +96,39 @@ function App() {
 
   useEffect(() => {
     fetchNotices();
-    const token = localStorage.getItem("token");
-    if (token) setIsAdmin(true);
+    // Check admin token
+    const adminToken = localStorage.getItem("token");
+    if (adminToken) setIsAdmin(true);
+    // Check student token
     const savedInfo = localStorage.getItem("studentInfo");
-    if (savedInfo) setStudentInfo(JSON.parse(savedInfo));
-    requestPermission(API);
+    const studentToken = localStorage.getItem("studentToken");
+    if (savedInfo && studentToken) {
+      const info = JSON.parse(savedInfo);
+      setStudentInfo(info);
+      if (info.isFirstLogin) setShowChangePassword(true);
+    }
   }, []);
 
-  const handleLogin = () => { setIsAdmin(true); setShowLogin(false); };
-  const handleLogout = () => { localStorage.removeItem("token"); setIsAdmin(false); };
+  const handleAdminLogin = () => { setIsAdmin(true); setShowAdminLogin(false); };
+  const handleAdminLogout = () => { localStorage.removeItem("token"); setIsAdmin(false); };
 
-  const saveStudentInfo = () => {
-    if (!nameInput || !sectionInput) { alert("Name and section enter cheyyi!"); return; }
-    const info = { name: nameInput, section: sectionInput };
+  const handleStudentLogin = (user) => {
+    setStudentInfo(user);
+    if (user.isFirstLogin) setShowChangePassword(true);
+  };
+
+  const handlePasswordChanged = () => {
+    setShowChangePassword(false);
+    const info = JSON.parse(localStorage.getItem("studentInfo"));
+    info.isFirstLogin = false;
     localStorage.setItem("studentInfo", JSON.stringify(info));
-    setStudentInfo(info);
+    setStudentInfo({ ...info, isFirstLogin: false });
+  };
+
+  const handleStudentLogout = () => {
+    localStorage.removeItem("studentToken");
+    localStorage.removeItem("studentInfo");
+    setStudentInfo(null);
   };
 
   const addNotice = (notice) => setNotices([notice, ...notices]);
@@ -136,40 +154,32 @@ function App() {
     transition: "all 0.2s"
   });
 
+  // Show student login if not logged in
   if (!studentInfo && !isAdmin) {
     return (
-      <div style={{ minHeight: "100vh", background: "#f5f5f5", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "Segoe UI, sans-serif" }}>
-        <div style={{ background: "#fff", borderRadius: "20px", padding: "40px", maxWidth: "420px", width: "90%", boxShadow: "0 8px 40px rgba(0,0,0,0.12)", textAlign: "center" }}>
-          <img src="/icon-192.png" alt="NRI Logo" style={{ width: "80px", marginBottom: "16px" }} />
-          <h1 style={{ color: "#F15A29", fontSize: "18px", fontWeight: "700", margin: "0 0 4px 0" }}>Dr. RVR & DR. CS Raju</h1>
-          <h2 style={{ color: "#1a1a1a", fontSize: "16px", fontWeight: "600", margin: "0 0 4px 0" }}>NRI Institute of Technology</h2>
-          <p style={{ color: "#666", fontSize: "13px", marginBottom: "32px" }}>CSE Student Hub</p>
-
-          <input
-            placeholder="Your Name"
-            value={nameInput}
-            onChange={e => setNameInput(e.target.value)}
-            style={{ width: "100%", padding: "12px 16px", borderRadius: "10px", border: "1.5px solid #e0e0e0", background: "#fff", color: "#1a1a1a", fontSize: "15px", marginBottom: "12px", outline: "none", boxSizing: "border-box" }}
-          />
-          <select
-            value={sectionInput}
-            onChange={e => setSectionInput(e.target.value)}
-            style={{ width: "100%", padding: "12px 16px", borderRadius: "10px", border: "1.5px solid #e0e0e0", background: "#fff", color: sectionInput ? "#1a1a1a" : "#999", fontSize: "15px", marginBottom: "24px", outline: "none", boxSizing: "border-box", cursor: "pointer" }}
-          >
-            <option value="">Select Your Section</option>
-            {["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"].map(s => (
-              <option key={s} value={s}>Section {s}</option>
-            ))}
-          </select>
-          <button onClick={saveStudentInfo} style={{ width: "100%", padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}>
-            Get Started →
-          </button>
-          <p onClick={() => { setStudentInfo({ name: "Admin", section: "7" }); setShowLogin(true); }} style={{ color: "#999", fontSize: "12px", marginTop: "16px", cursor: "pointer" }}>
-            Admin Login
-          </p>
-        </div>
+      <div>
+        <StudentLogin onLogin={handleStudentLogin} api={API} />
+        <p
+          onClick={() => setShowAdminLogin(true)}
+          style={{ textAlign: "center", color: "#999", fontSize: "12px", cursor: "pointer", marginTop: "-20px" }}
+        >
+          Admin? Click here
+        </p>
+        {showAdminLogin && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", maxWidth: "400px", width: "90%" }}>
+              <Login onLogin={() => { setIsAdmin(true); setShowAdminLogin(false); setStudentInfo({ name: "Admin", section: "7" }); }} />
+              <button onClick={() => setShowAdminLogin(false)} style={{ width: "100%", padding: "10px", background: "#f5f5f5", border: "none", borderRadius: "8px", cursor: "pointer", marginTop: "8px" }}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
     );
+  }
+
+  // Show change password if first login
+  if (showChangePassword) {
+    return <ChangePassword onSuccess={handlePasswordChanged} api={API} />;
   }
 
   return (
@@ -181,22 +191,21 @@ function App() {
           <img src="/icon-192.png" alt="NRI" style={{ width: "40px", height: "40px", borderRadius: "8px" }} />
           <div>
             <h1 style={{ margin: 0, color: "#F15A29", fontSize: "16px", fontWeight: "700" }}>NRI Institute of Technology</h1>
-            <p style={{ margin: 0, color: "#666", fontSize: "11px" }}>Hi {studentInfo?.name} | Section {studentInfo?.section}</p>
+            <p style={{ margin: 0, color: "#666", fontSize: "11px" }}>
+              {isAdmin ? "Admin Panel" : `${studentInfo?.name} | Roll: ${studentInfo?.rollNo} | Sec: ${studentInfo?.section}`}
+            </p>
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {isAdmin ? (
-            <button onClick={handleLogout} style={{ background: "#fff", color: "#F15A29", border: "1.5px solid #F15A29", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
+            <button onClick={handleAdminLogout} style={{ background: "#fff", color: "#F15A29", border: "1.5px solid #F15A29", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
               Logout
             </button>
           ) : (
-            <button onClick={() => setShowLogin(!showLogin)} style={{ background: "#F15A29", color: "#fff", border: "none", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
-              Admin Login
+            <button onClick={handleStudentLogout} style={{ background: "#fff", color: "#F15A29", border: "1.5px solid #F15A29", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
+              Logout
             </button>
           )}
-          <button onClick={() => { localStorage.removeItem("studentInfo"); setStudentInfo(null); }} style={{ background: "transparent", color: "#999", border: "1px solid #e0e0e0", padding: "8px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "12px" }}>
-            Switch
-          </button>
         </div>
       </div>
 
@@ -206,10 +215,10 @@ function App() {
         <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
         <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>🗓️ Timetable</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
+        {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
 
       <div style={{ padding: "24px 32px", maxWidth: "1200px", margin: "0 auto" }}>
-        {showLogin && <Login onLogin={handleLogin} />}
 
         {activePage === "notices" && (
           <div>
@@ -240,10 +249,55 @@ function App() {
           </div>
         )}
 
-        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} />}
+        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentInfo?.section} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "search" && <Search api={API} />}
+        {activePage === "admin" && isAdmin && (
+          <div>
+            <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>⚙️ Admin Panel</h2>
+            <AdminPanel api={API} />
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function AdminPanel({ api }) {
+  const [file, setFile] = useState(null);
+  const [message, setMessage] = useState("");
+
+  const uploadStudents = () => {
+    if (!file) { alert("Excel file select cheyyi!"); return; }
+    const token = localStorage.getItem("token");
+    const formData = new FormData();
+    formData.append("file", file);
+
+    fetch(`${api}/api/admin/upload-students`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    })
+      .then(res => res.json())
+      .then(data => setMessage(data.message));
+  };
+
+  return (
+    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px" }}>
+      <h3 style={{ color: "#F15A29", marginTop: 0 }}>👥 Upload Students Excel</h3>
+      <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
+        Excel format: <strong>rollNo, name, section, year</strong>
+      </p>
+      <input
+        type="file"
+        accept=".xlsx,.xls"
+        onChange={e => setFile(e.target.files[0])}
+        style={{ marginBottom: "12px", width: "100%" }}
+      />
+      <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
+        Upload Students 📤
+      </button>
+      {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>✅ {message}</p>}
     </div>
   );
 }
