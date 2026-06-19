@@ -25,6 +25,7 @@ try {
 } catch (err) {
   console.log("Firebase init skipped:", err.message);
 }
+
 // MongoDB Connect
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
   .then(() => console.log("MongoDB Connected ✅"))
@@ -140,7 +141,7 @@ app.post("/api/login", (req, res) => {
 // STUDENT LOGIN
 app.post("/api/student/login", async (req, res) => {
   const { rollNo, password } = req.body;
-  const user = await User.findOne({ rollNo });
+  const user = await User.findOne({ rollNo: rollNo.toUpperCase().trim() });
   if (!user) return res.status(404).json({ message: "Roll number not found!" });
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) return res.status(401).json({ message: "Wrong password!" });
@@ -163,15 +164,25 @@ app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"
   const data = XLSX.utils.sheet_to_json(sheet);
 
   let count = 0;
+  let skipped = 0;
   for (const row of data) {
-    const existing = await User.findOne({ rollNo: row.rollNo });
+    const rollNo = String(row.rollNo || row["ROLL NO"] || row["Roll No"] || row["RollNo"] || "").trim().toUpperCase();
+    const name = row.name || row["NAME"] || row["Name"] || "";
+    const section = String(row.section || row["SECTION"] || row["Section"] || "").trim();
+    const year = String(row.year || row["YEAR"] || row["Year"] || "2").trim();
+
+    if (!rollNo) continue;
+
+    const existing = await User.findOne({ rollNo });
     if (!existing) {
       const hashed = await bcrypt.hash(process.env.DEFAULT_PASSWORD || "nri@2024", 10);
-      await new User({ rollNo: row.rollNo, name: row.name, section: String(row.section), year: String(row.year), password: hashed }).save();
+      await new User({ rollNo, name, section, year, password: hashed }).save();
       count++;
+    } else {
+      skipped++;
     }
   }
-  res.json({ message: `${count} students added!` });
+  res.json({ message: `${count} students added! (${skipped} already existed)` });
 });
 
 // FCM Subscribe
