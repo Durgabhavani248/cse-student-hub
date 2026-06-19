@@ -16,7 +16,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Firebase Admin Init
 try {
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
@@ -26,12 +25,10 @@ try {
   console.log("Firebase init skipped:", err.message);
 }
 
-// MongoDB Connect
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
   .then(() => console.log("MongoDB Connected ✅"))
   .catch(err => console.log("MongoDB Error:", err));
 
-// Cloudinary Config
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -49,7 +46,6 @@ const fileStorage = new CloudinaryStorage({
 const upload = multer({ storage: fileStorage });
 const xlsxUpload = multer({ storage: multer.memoryStorage() });
 
-// Auth Middleware
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
   if (!token) return res.status(401).json({ message: "Unauthorized" });
@@ -75,7 +71,6 @@ const adminMiddleware = (req, res, next) => {
   }
 };
 
-// Schemas
 const userSchema = new mongoose.Schema({
   rollNo: { type: String, unique: true },
   name: String,
@@ -124,10 +119,8 @@ const StudyMaterial = mongoose.model("StudyMaterial", studyMaterialSchema);
 const Timetable = mongoose.model("Timetable", timetableSchema);
 const FCMToken = mongoose.model("FCMToken", fcmTokenSchema);
 
-// HOME
 app.get("/", (req, res) => res.send("NRI Hub Server 🚀"));
 
-// ADMIN LOGIN
 app.post("/api/login", (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
@@ -138,62 +131,91 @@ app.post("/api/login", (req, res) => {
   }
 });
 
-// STUDENT LOGIN
 app.post("/api/student/login", async (req, res) => {
-  const { rollNo, password } = req.body;
-  const user = await User.findOne({ rollNo: rollNo.toUpperCase().trim() });
-  if (!user) return res.status(404).json({ message: "Roll number not found!" });
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(401).json({ message: "Wrong password!" });
-  const token = jwt.sign({ rollNo: user.rollNo, role: "student", section: user.section }, process.env.JWT_SECRET, { expiresIn: "7d" });
-  res.json({ token, role: "student", user: { rollNo: user.rollNo, name: user.name, section: user.section, year: user.year, isFirstLogin: user.isFirstLogin } });
-});
-
-// STUDENT CHANGE PASSWORD
-app.post("/api/student/change-password", authMiddleware, async (req, res) => {
-  const { newPassword } = req.body;
-  const hashed = await bcrypt.hash(newPassword, 10);
-  await User.findOneAndUpdate({ rollNo: req.user.rollNo }, { password: hashed, isFirstLogin: false });
-  res.json({ message: "Password changed!" });
-});
-
-// UPLOAD STUDENTS EXCEL
-app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
-  const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const data = XLSX.utils.sheet_to_json(sheet);
-
-  let count = 0;
-  let skipped = 0;
-  for (const row of data) {
-    const rollNo = String(row.rollNo || row["ROLL NO"] || row["Roll No"] || row["RollNo"] || "").trim().toUpperCase();
-    const name = row.name || row["NAME"] || row["Name"] || "";
-    const section = String(row.section || row["SECTION"] || row["Section"] || "").trim();
-    const year = String(row.year || row["YEAR"] || row["Year"] || "2").trim();
-
-    if (!rollNo) continue;
-
-    const existing = await User.findOne({ rollNo });
-    if (!existing) {
-      const hashed = await bcrypt.hash(process.env.DEFAULT_PASSWORD || "nri@2024", 10);
-      await new User({ rollNo, name, section, year, password: hashed }).save();
-      count++;
-    } else {
-      skipped++;
-    }
+  try {
+    const { rollNo, password } = req.body;
+    const user = await User.findOne({ rollNo: rollNo.toUpperCase().trim() });
+    if (!user) return res.status(404).json({ message: "Roll number not found!" });
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Wrong password!" });
+    const token = jwt.sign({ rollNo: user.rollNo, role: "student", section: user.section }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    res.json({ token, role: "student", user: { rollNo: user.rollNo, name: user.name, section: user.section, year: user.year, isFirstLogin: user.isFirstLogin } });
+  } catch (err) {
+    res.status(500).json({ message: "Server error: " + err.message });
   }
-  res.json({ message: `${count} students added! (${skipped} already existed)` });
 });
 
-// FCM Subscribe
+app.post("/api/student/change-password", authMiddleware, async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await User.findOneAndUpdate({ rollNo: req.user.rollNo }, { password: hashed, isFirstLogin: false });
+    res.json({ message: "Password changed!" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error: " + err.message });
+  }
+});
+
+app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
+  try {
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    let count = 0;
+    let skipped = 0;
+
+    for (const row of data) {
+      const keys = Object.keys(row);
+      const getValue = (possibleNames) => {
+        for (const name of possibleNames) {
+          const matchKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+          if (matchKey && row[matchKey] !== undefined && row[matchKey] !== "") return row[matchKey];
+        }
+        return null;
+      };
+
+      const rollNo = String(getValue(["rollNo", "ROLL NO", "Roll No", "RollNo", "roll no"]) || "").trim().toUpperCase();
+      const name = getValue(["name", "NAME", "Name"]) || "";
+      const section = String(getValue(["section", "SECTION", "Section"]) || "").trim();
+      const year = String(getValue(["year", "YEAR", "Year"]) || "2").trim();
+
+      if (!rollNo) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        const existing = await User.findOne({ rollNo });
+        if (!existing) {
+          const hashed = await bcrypt.hash(process.env.DEFAULT_PASSWORD || "nri@2024", 10);
+          await new User({ rollNo, name, section, year, password: hashed }).save();
+          count++;
+        } else {
+          skipped++;
+        }
+      } catch (innerErr) {
+        skipped++;
+      }
+    }
+    res.json({ message: `${count} students added! (${skipped} skipped/existed)` });
+  } catch (err) {
+    console.error("Excel upload error:", err);
+    res.status(500).json({ message: "Error: " + err.message });
+  }
+});
+
 app.post("/api/fcm-subscribe", async (req, res) => {
-  const { token } = req.body;
-  const existing = await FCMToken.findOne({ token });
-  if (!existing) await new FCMToken({ token }).save();
-  res.json({ message: "Subscribed!" });
+  try {
+    const { token } = req.body;
+    const existing = await FCMToken.findOne({ token });
+    if (!existing) await new FCMToken({ token }).save();
+    res.json({ message: "Subscribed!" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-// NOTICES
 app.get("/api/notices", async (req, res) => {
   const notices = await Notice.find().sort({ createdAt: -1 });
   res.json(notices);
@@ -201,11 +223,13 @@ app.get("/api/notices", async (req, res) => {
 app.post("/api/notices", adminMiddleware, async (req, res) => {
   const notice = new Notice(req.body);
   await notice.save();
-  const tokens = await FCMToken.find();
-  if (tokens.length > 0) {
-    const message = { notification: { title: "📢 New Notice!", body: notice.title }, tokens: tokens.map(t => t.token) };
-    getMessaging().sendEachForMulticast(message).catch(err => console.log("FCM Error:", err));
-  }
+  try {
+    const tokens = await FCMToken.find();
+    if (tokens.length > 0) {
+      const message = { notification: { title: "📢 New Notice!", body: notice.title }, tokens: tokens.map(t => t.token) };
+      getMessaging().sendEachForMulticast(message).catch(err => console.log("FCM Error:", err));
+    }
+  } catch (e) {}
   res.json(notice);
 });
 app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
@@ -213,7 +237,6 @@ app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
   res.json({ message: "Deleted" });
 });
 
-// NOTES
 app.get("/api/notes", async (req, res) => {
   const { section } = req.query;
   const notes = await Note.find(section ? { section } : {}).sort({ createdAt: -1 });
@@ -230,7 +253,6 @@ app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
   res.json({ message: "Deleted" });
 });
 
-// ASSIGNMENTS
 app.get("/api/assignments", async (req, res) => {
   const assignments = await Assignment.find().sort({ createdAt: -1 });
   res.json(assignments);
@@ -246,7 +268,6 @@ app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
   res.json({ message: "Deleted" });
 });
 
-// PREVIOUS PAPERS
 app.get("/api/papers", async (req, res) => {
   const papers = await Paper.find().sort({ createdAt: -1 });
   res.json(papers);
@@ -262,7 +283,6 @@ app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
   res.json({ message: "Deleted" });
 });
 
-// STUDY MATERIALS
 app.get("/api/materials", async (req, res) => {
   const materials = await StudyMaterial.find().sort({ createdAt: -1 });
   res.json(materials);
@@ -278,7 +298,6 @@ app.delete("/api/materials/:id", adminMiddleware, async (req, res) => {
   res.json({ message: "Deleted" });
 });
 
-// TIMETABLES
 app.get("/api/timetables", async (req, res) => {
   const timetables = await Timetable.find();
   res.json(timetables.map(t => t.section));
