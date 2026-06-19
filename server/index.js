@@ -11,6 +11,7 @@ import multer from "multer";
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import * as XLSX from "xlsx";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const app = express();
 app.use(cors());
@@ -45,6 +46,8 @@ const fileStorage = new CloudinaryStorage({
 });
 const upload = multer({ storage: fileStorage });
 const xlsxUpload = multer({ storage: multer.memoryStorage() });
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const authMiddleware = (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
@@ -213,6 +216,25 @@ app.post("/api/fcm-subscribe", async (req, res) => {
     res.json({ message: "Subscribed!" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+// AI CHATBOT
+app.post("/api/chat", async (req, res) => {
+  try {
+    const { message } = req.body;
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `You are a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Answer the student's question clearly and concisely. If it's a technical/academic question (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful educational answer with examples if useful. Keep answers focused and not too long. You can respond in Telugu-English mix (Tenglish) if the question is asked that way, otherwise respond in clear English.
+
+Student's question: ${message}`;
+
+    const result = await model.generateContent(prompt);
+    const reply = result.response.text();
+    res.json({ reply });
+  } catch (err) {
+    console.error("Chat error:", err);
+    res.status(500).json({ reply: "Sorry, AI assistant temporarily unavailable. Try again later!" });
   }
 });
 

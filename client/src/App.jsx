@@ -6,6 +6,7 @@ import Timetable from "./Timetable";
 import Search from "./Search";
 import StudentLogin from "./StudentLogin";
 import ChangePassword from "./ChangePassword";
+import Chatbot from "./Chatbot";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -96,10 +97,8 @@ function App() {
 
   useEffect(() => {
     fetchNotices();
-    // Check admin token
     const adminToken = localStorage.getItem("token");
     if (adminToken) setIsAdmin(true);
-    // Check student token
     const savedInfo = localStorage.getItem("studentInfo");
     const studentToken = localStorage.getItem("studentToken");
     if (savedInfo && studentToken) {
@@ -109,7 +108,6 @@ function App() {
     }
   }, []);
 
-  const handleAdminLogin = () => { setIsAdmin(true); setShowAdminLogin(false); };
   const handleAdminLogout = () => { localStorage.removeItem("token"); setIsAdmin(false); };
 
   const handleStudentLogin = (user) => {
@@ -154,7 +152,6 @@ function App() {
     transition: "all 0.2s"
   });
 
-  // Show student login if not logged in
   if (!studentInfo && !isAdmin) {
     return (
       <div>
@@ -177,7 +174,6 @@ function App() {
     );
   }
 
-  // Show change password if first login
   if (showChangePassword) {
     return <ChangePassword onSuccess={handlePasswordChanged} api={API} />;
   }
@@ -185,7 +181,6 @@ function App() {
   return (
     <div style={{ minHeight: "100vh", background: "#f5f5f5", fontFamily: "Segoe UI, sans-serif" }}>
 
-      {/* Navbar */}
       <div style={{ background: "#fff", borderBottom: "1px solid #e0e0e0", padding: "0 32px", display: "flex", justifyContent: "space-between", alignItems: "center", height: "64px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
           <img src="/icon-192.png" alt="NRI" style={{ width: "40px", height: "40px", borderRadius: "8px" }} />
@@ -209,11 +204,11 @@ function App() {
         </div>
       </div>
 
-      {/* Nav Tabs */}
       <div style={{ background: "#fff", borderBottom: "1px solid #e0e0e0", padding: "0 32px", display: "flex", gap: "4px", overflowX: "auto" }}>
         <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
         <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
         <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>🗓️ Timetable</button>
+        <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
@@ -251,6 +246,7 @@ function App() {
 
         {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentInfo?.section} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
+        {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
         {activePage === "admin" && isAdmin && (
           <div>
