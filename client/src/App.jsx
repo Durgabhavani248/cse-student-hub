@@ -7,6 +7,9 @@ import Search from "./Search";
 import StudentLogin from "./StudentLogin";
 import ChangePassword from "./ChangePassword";
 import Chatbot from "./Chatbot";
+import Assignments from "./Assignments";
+import Papers from "./Papers";
+import StudyMaterials from "./StudyMaterials";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -140,14 +143,14 @@ function App() {
   };
 
   const navBtnStyle = (page) => ({
-    padding: "10px 20px",
+    padding: "10px 16px",
     borderRadius: "8px",
     border: "none",
     background: activePage === page ? "#F15A29" : "transparent",
     color: activePage === page ? "#fff" : "#666",
     cursor: "pointer",
     fontWeight: activePage === page ? "600" : "400",
-    fontSize: "14px",
+    fontSize: "13px",
     whiteSpace: "nowrap",
     transition: "all 0.2s"
   });
@@ -204,9 +207,12 @@ function App() {
         </div>
       </div>
 
-      <div style={{ background: "#fff", borderBottom: "1px solid #e0e0e0", padding: "0 32px", display: "flex", gap: "4px", overflowX: "auto" }}>
+      <div style={{ background: "#fff", borderBottom: "1px solid #e0e0e0", padding: "0 16px", display: "flex", gap: "2px", overflowX: "auto" }}>
         <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
         <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
+        <button style={navBtnStyle("assignments")} onClick={() => setActivePage("assignments")}>📝 Assignments</button>
+        <button style={navBtnStyle("papers")} onClick={() => setActivePage("papers")}>📄 Papers</button>
+        <button style={navBtnStyle("materials")} onClick={() => setActivePage("materials")}>📖 Materials</button>
         <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>🗓️ Timetable</button>
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
@@ -245,6 +251,9 @@ function App() {
         )}
 
         {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentInfo?.section} />}
+        {activePage === "assignments" && <Assignments isAdmin={isAdmin} api={API} />}
+        {activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
+        {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
