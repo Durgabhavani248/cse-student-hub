@@ -220,22 +220,28 @@ app.post("/api/fcm-subscribe", async (req, res) => {
   }
 });
 
+// AI CHATBOT with retry logic
 app.post("/api/chat", async (req, res) => {
-  try {
-    const { message } = req.body;
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const prompt = `You are a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Answer the student's question clearly and concisely. If it's a technical/academic question (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful educational answer with examples if useful. Keep answers focused and not too long. You can respond in Telugu-English mix (Tenglish) if the question is asked that way, otherwise respond in clear English.
+  const { message } = req.body;
+  const prompt = `You are a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Answer the student's question clearly and concisely. If it's a technical/academic question (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful educational answer with examples if useful. Keep answers focused and not too long. You can respond in Telugu-English mix (Tenglish) if the question is asked that way, otherwise respond in clear English.
 
 Student's question: ${message}`;
 
-    const result = await model.generateContent(prompt);
-    const reply = result.response.text();
-    res.json({ reply });
-  } catch (err) {
-    console.error("Chat error:", err);
-    res.status(500).json({ reply: "Sorry, AI assistant temporarily unavailable. Try again later!" });
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+      const result = await model.generateContent(prompt);
+      const reply = result.response.text();
+      return res.json({ reply });
+    } catch (err) {
+      lastError = err;
+      console.log(`Chat attempt ${attempt} failed:`, err.message);
+      if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
+    }
   }
+  console.error("Chat error after retries:", lastError);
+  res.status(500).json({ reply: "Sorry, I'm having trouble connecting right now. Please try asking again in a moment!" });
 });
 
 app.get("/api/notices", async (req, res) => {

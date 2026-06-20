@@ -8,23 +8,22 @@ function AddNotice({ onAdd }) {
     width: "100%",
     padding: "12px 16px",
     borderRadius: "10px",
-    border: "1px solid #4361ee",
-    background: "#0f0f0f",
-    color: "#fff",
+    border: "1.5px solid #e0e0e0",
+    background: "#fff",
+    color: "#1a1a1a",
     fontSize: "15px",
-    marginBottom: "14px",
+    marginBottom: "12px",
     outline: "none",
     boxSizing: "border-box"
   };
 
   const addNotice = () => {
     if (!title || !description) {
-      alert("Title and description enter cheyyi!");
+      alert("Please enter title and description!");
       return;
     }
 
     const token = localStorage.getItem("token");
-    console.log("Token:", token);
 
     fetch("https://cse-student-hub.onrender.com/api/notices", {
       method: "POST",
@@ -34,12 +33,8 @@ function AddNotice({ onAdd }) {
       },
       body: JSON.stringify({ title, description })
     })
-      .then(res => {
-        console.log("Response status:", res.status);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log("Response data:", data);
         onAdd(data);
         setTitle("");
         setDescription("");
@@ -48,8 +43,8 @@ function AddNotice({ onAdd }) {
   };
 
   return (
-    <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: "1px solid #4361ee", borderRadius: "16px", padding: "28px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 4px 20px #4361ee33" }}>
-      <h2 style={{ margin: "0 0 20px 0", background: "linear-gradient(90deg, #4361ee, #4cc9f0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>➕ Add Notice</h2>
+    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "28px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
+      <h2 style={{ margin: "0 0 20px 0", color: "#F15A29", fontSize: "18px", fontWeight: "700" }}>Add Notice</h2>
       <input
         placeholder="Notice Title"
         value={title}
@@ -63,8 +58,8 @@ function AddNotice({ onAdd }) {
         rows={4}
         style={{ ...inputStyle, resize: "vertical" }}
       />
-      <button onClick={addNotice} style={{ width: "100%", padding: "12px", background: "linear-gradient(90deg, #4361ee, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }}>
-        Add Notice 📢
+      <button onClick={addNotice} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}>
+        Add Notice
       </button>
     </div>
   );
