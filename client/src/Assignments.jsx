@@ -47,6 +47,8 @@ function Assignments({ isAdmin, api }) {
     }).then(() => fetchItems());
   };
 
+  const getViewUrl = (fileUrl) => `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+
   const inputStyle = {
     width: "100%", padding: "10px 14px", borderRadius: "10px",
     border: "1.5px solid #e0e0e0", background: "#fff", color: "#1a1a1a",
@@ -86,7 +88,7 @@ function Assignments({ isAdmin, api }) {
             )}
             <div style={{ display: "flex", gap: "8px" }}>
               {a.fileUrl && (
-                <a href={a.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 Download PDF</a>
+                <a href={getViewUrl(a.fileUrl)} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
               )}
               {isAdmin && (
                 <button onClick={() => deleteItem(a._id)} style={{ marginLeft: "auto", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>

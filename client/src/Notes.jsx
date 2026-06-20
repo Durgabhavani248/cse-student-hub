@@ -60,6 +60,13 @@ function Notes({ isAdmin, api, studentSection }) {
     }).then(() => fetchNotes());
   };
 
+  const getViewUrl = (fileUrl, fileType) => {
+    if (fileType?.includes("pdf")) {
+      return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
+    }
+    return fileUrl;
+  };
+
   const subjects = ["All", ...new Set(notes.map(n => n.subject))];
   const filtered = filter === "All" ? notes : notes.filter(n => n.subject === filter);
 
@@ -103,7 +110,7 @@ function Notes({ isAdmin, api, studentSection }) {
 
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
         {subjects.map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: "6px 16px", borderRadius: "20px", border: "none", background: filter === s ? "#F15A29" : "#fff", color: filter === s ? "#fff" : "#666", cursor: "pointer", fontWeight: filter === s ? "600" : "400", border: filter === s ? "none" : "1px solid #e0e0e0" }}>
+          <button key={s} onClick={() => setFilter(s)} style={{ padding: "6px 16px", borderRadius: "20px", border: filter === s ? "none" : "1px solid #e0e0e0", background: filter === s ? "#F15A29" : "#fff", color: filter === s ? "#fff" : "#666", cursor: "pointer", fontWeight: filter === s ? "600" : "400" }}>
             {s}
           </button>
         ))}
@@ -120,7 +127,7 @@ function Notes({ isAdmin, api, studentSection }) {
             <div style={{ padding: "12px" }}>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#1a1a1a" }}>{n.title}</h3>
               <p style={{ margin: 0, fontSize: "12px", color: "#F15A29" }}>📖 {n.subject} | Sem {n.semester} | Sec {n.section}</p>
-              <a href={n.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: "8px", color: "#2196F3", fontSize: "12px", textDecoration: "none" }}>
+              <a href={getViewUrl(n.fileUrl, n.fileType)} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: "8px", color: "#2196F3", fontSize: "12px", textDecoration: "none" }}>
                 {n.fileType?.includes("pdf") ? "📥 View PDF" : "🔍 View Image"}
               </a>
               {isAdmin && (
