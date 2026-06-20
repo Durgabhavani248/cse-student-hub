@@ -223,7 +223,7 @@ app.post("/api/fcm-subscribe", async (req, res) => {
 app.post("/api/chat", async (req, res) => {
   try {
     const { message } = req.body;
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `You are a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Answer the student's question clearly and concisely. If it's a technical/academic question (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful educational answer with examples if useful. Keep answers focused and not too long. You can respond in Telugu-English mix (Tenglish) if the question is asked that way, otherwise respond in clear English.
 
