@@ -88,7 +88,7 @@ function Assignments({ isAdmin, api }) {
             )}
             <div style={{ display: "flex", gap: "8px" }}>
               {a.fileUrl && (
-                <a href={getViewUrl(a.fileUrl)} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
+                <a href={a.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
               )}
               {isAdmin && (
                 <button onClick={() => deleteItem(a._id)} style={{ marginLeft: "auto", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>

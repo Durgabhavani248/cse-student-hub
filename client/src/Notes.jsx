@@ -26,10 +26,8 @@ function Notes({ isAdmin, api, studentSection }) {
       alert("Subject, section and files select cheyyi!");
       return;
     }
-
     const token = localStorage.getItem("token");
     setLoading(true);
-
     for (let i = 0; i < files.length; i++) {
       const formData = new FormData();
       formData.append("title", title || `${subject} - ${i + 1}`);
@@ -37,14 +35,12 @@ function Notes({ isAdmin, api, studentSection }) {
       formData.append("semester", semester);
       formData.append("section", section);
       formData.append("file", files[i]);
-
       await fetch(`${api}/api/notes`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData
       }).then(res => res.json());
     }
-
     fetchNotes();
     setTitle("");
     setSubject("");
@@ -58,13 +54,6 @@ function Notes({ isAdmin, api, studentSection }) {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
     }).then(() => fetchNotes());
-  };
-
-  const getViewUrl = (fileUrl, fileType) => {
-    if (fileType?.includes("pdf")) {
-      return `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-    }
-    return fileUrl;
   };
 
   const subjects = ["All", ...new Set(notes.map(n => n.subject))];
@@ -127,7 +116,7 @@ function Notes({ isAdmin, api, studentSection }) {
             <div style={{ padding: "12px" }}>
               <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#1a1a1a" }}>{n.title}</h3>
               <p style={{ margin: 0, fontSize: "12px", color: "#F15A29" }}>📖 {n.subject} | Sem {n.semester} | Sec {n.section}</p>
-              <a href={getViewUrl(n.fileUrl, n.fileType)} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: "8px", color: "#2196F3", fontSize: "12px", textDecoration: "none" }}>
+              <a href={n.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: "8px", color: "#2196F3", fontSize: "12px", textDecoration: "none" }}>
                 {n.fileType?.includes("pdf") ? "📥 View PDF" : "🔍 View Image"}
               </a>
               {isAdmin && (

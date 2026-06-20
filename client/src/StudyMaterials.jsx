@@ -90,7 +90,7 @@ function StudyMaterials({ isAdmin, api }) {
             <h3 style={{ margin: "0 0 4px 0", color: "#1a1a1a", fontSize: "16px" }}>📖 {m.title}</h3>
             <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: "13px" }}>{m.subject} | Sem {m.semester}</p>
             <div style={{ display: "flex", gap: "8px" }}>
-              <a href={getViewUrl(m.fileUrl)} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
+              <a href={m.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
               {isAdmin && (
                 <button onClick={() => deleteItem(m._id)} style={{ marginLeft: "auto", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
                   Delete
