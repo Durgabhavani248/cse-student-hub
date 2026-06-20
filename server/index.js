@@ -41,7 +41,7 @@ const fileStorage = new CloudinaryStorage({
   params: (req, file) => ({
     folder: "nri-hub",
     allowed_formats: ["jpg", "jpeg", "png", "pdf"],
-    resource_type: file.mimetype === "application/pdf" ? "raw" : "image"
+    resource_type: "image"
   })
 });
 const upload = multer({ storage: fileStorage });
@@ -161,6 +161,7 @@ app.post("/api/student/change-password", authMiddleware, async (req, res) => {
 
 app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
   try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded!" });
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(sheet);
@@ -219,7 +220,6 @@ app.post("/api/fcm-subscribe", async (req, res) => {
   }
 });
 
-// AI CHATBOT
 app.post("/api/chat", async (req, res) => {
   try {
     const { message } = req.body;
