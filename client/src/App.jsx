@@ -11,6 +11,7 @@ import Assignments from "./Assignments";
 import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
+import { requestPermission } from "./firebase";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -109,6 +110,7 @@ function App() {
       const info = JSON.parse(savedInfo);
       setStudentInfo(info);
       if (info.isFirstLogin) setShowChangePassword(true);
+      else requestPermission(API);
     }
   }, []);
 
@@ -116,7 +118,11 @@ function App() {
 
   const handleStudentLogin = (user) => {
     setStudentInfo(user);
-    if (user.isFirstLogin) setShowChangePassword(true);
+    if (user.isFirstLogin) {
+      setShowChangePassword(true);
+    } else {
+      requestPermission(API);
+    }
   };
 
   const handlePasswordChanged = () => {
@@ -125,6 +131,7 @@ function App() {
     info.isFirstLogin = false;
     localStorage.setItem("studentInfo", JSON.stringify(info));
     setStudentInfo({ ...info, isFirstLogin: false });
+    requestPermission(API);
   };
 
   const handleStudentLogout = () => {
