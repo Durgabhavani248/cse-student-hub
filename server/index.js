@@ -223,7 +223,7 @@ app.post("/api/fcm-subscribe", async (req, res) => {
 // AI CHATBOT with retry logic
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
-  const prompt = `You are a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Answer the student's question clearly and concisely. If it's a technical/academic question (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful educational answer with examples if useful. Keep answers focused and not too long. You can respond in Telugu-English mix (Tenglish) if the question is asked that way, otherwise respond in clear English.
+  const prompt = `You are NRI Hub AI Assistant, a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Always respond in clear English by default. Only respond in Telugu if the student explicitly writes their question in Telugu script or specifically requests a Telugu answer. For technical/academic questions (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful, clear, educational answer with examples where useful. Keep answers focused and not too long.
 
 Student's question: ${message}`;
 
