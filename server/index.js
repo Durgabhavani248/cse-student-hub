@@ -81,6 +81,8 @@ const userSchema = new mongoose.Schema({
   year: String,
   password: String,
   isFirstLogin: { type: Boolean, default: true },
+  loginCount: { type: Number, default: 0 },
+  lastLogin: Date,
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -141,6 +143,11 @@ app.post("/api/student/login", async (req, res) => {
     if (!user) return res.status(404).json({ message: "Roll number not found!" });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Wrong password!" });
+
+    user.loginCount = (user.loginCount || 0) + 1;
+    user.lastLogin = new Date();
+    await user.save();
+
     const token = jwt.sign({ rollNo: user.rollNo, role: "student", section: user.section }, process.env.JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, role: "student", user: { rollNo: user.rollNo, name: user.name, section: user.section, year: user.year, isFirstLogin: user.isFirstLogin } });
   } catch (err) {
@@ -209,6 +216,47 @@ app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"
   }
 });
 
+app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
+  try {
+    const totalStudents = await User.countDocuments();
+    const totalNotices = await Notice.countDocuments();
+    const totalNotes = await Note.countDocuments();
+    const totalAssignments = await Assignment.countDocuments();
+    const totalPapers = await Paper.countDocuments();
+    const totalMaterials = await StudyMaterial.countDocuments();
+    const totalSubscriptions = await FCMToken.countDocuments();
+
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const activeToday = await User.countDocuments({ lastLogin: { $gte: oneDayAgo } });
+
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const activeThisWeek = await User.countDocuments({ lastLogin: { $gte: sevenDaysAgo } });
+
+    const everLoggedIn = await User.countDocuments({ loginCount: { $gt: 0 } });
+
+    const sectionCounts = await User.aggregate([
+      { $group: { _id: "$section", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      totalStudents,
+      totalNotices,
+      totalNotes,
+      totalAssignments,
+      totalPapers,
+      totalMaterials,
+      totalSubscriptions,
+      activeToday,
+      activeThisWeek,
+      everLoggedIn,
+      sectionCounts
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error: " + err.message });
+  }
+});
+
 app.post("/api/fcm-subscribe", async (req, res) => {
   try {
     const { token } = req.body;
@@ -220,7 +268,6 @@ app.post("/api/fcm-subscribe", async (req, res) => {
   }
 });
 
-// AI CHATBOT with retry logic
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
   const prompt = `You are NRI Hub AI Assistant, a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Always respond in clear English by default. Only respond in Telugu if the student explicitly writes their question in Telugu script or specifically requests a Telugu answer. For technical/academic questions (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful, clear, educational answer with examples where useful. Keep answers focused and not too long.

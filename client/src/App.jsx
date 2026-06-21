@@ -274,6 +274,20 @@ function App() {
 function AdminPanel({ api }) {
   const [file, setFile] = useState(null);
   const [message, setMessage] = useState("");
+  const [stats, setStats] = useState(null);
+
+  const fetchStats = () => {
+    const token = localStorage.getItem("token");
+    fetch(`${api}/api/admin/stats`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setStats(data));
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
 
   const uploadStudents = () => {
     if (!file) { alert("Please select an Excel file!"); return; }
@@ -287,25 +301,70 @@ function AdminPanel({ api }) {
       body: formData
     })
       .then(res => res.json())
-      .then(data => setMessage(data.message));
+      .then(data => {
+        setMessage(data.message);
+        fetchStats();
+      });
   };
 
+  const statCard = (label, value, color) => (
+    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "16px 20px", flex: 1, minWidth: "140px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+      <p style={{ margin: 0, color: "#999", fontSize: "12px" }}>{label}</p>
+      <h2 style={{ margin: "4px 0 0 0", color: color || "#1a1a1a", fontSize: "28px", fontWeight: "700" }}>{value ?? "—"}</h2>
+    </div>
+  );
+
   return (
-    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px" }}>
-      <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Students Excel</h3>
-      <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
-        Excel format: <strong>rollNo, name, section, year</strong>
-      </p>
-      <input
-        type="file"
-        accept=".xlsx,.xls"
-        onChange={e => setFile(e.target.files[0])}
-        style={{ marginBottom: "12px", width: "100%" }}
-      />
-      <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
-        Upload Students
-      </button>
-      {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>{message}</p>}
+    <div>
+      {stats && (
+        <div style={{ marginBottom: "24px" }}>
+          <h3 style={{ color: "#1a1a1a", marginBottom: "12px" }}>Overview</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+            {statCard("Total Students", stats.totalStudents, "#F15A29")}
+            {statCard("Logged In (Ever)", stats.everLoggedIn, "#2196F3")}
+            {statCard("Active Today", stats.activeToday, "#4CAF50")}
+            {statCard("Active This Week", stats.activeThisWeek, "#9C27B0")}
+            {statCard("Push Subscriptions", stats.totalSubscriptions, "#FF9800")}
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
+            {statCard("Notices", stats.totalNotices)}
+            {statCard("Notes", stats.totalNotes)}
+            {statCard("Assignments", stats.totalAssignments)}
+            {statCard("Papers", stats.totalPapers)}
+            {statCard("Study Materials", stats.totalMaterials)}
+          </div>
+
+          {stats.sectionCounts?.length > 0 && (
+            <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+              <h4 style={{ margin: "0 0 12px 0", color: "#1a1a1a" }}>Students by Section</h4>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {stats.sectionCounts.map(s => (
+                  <div key={s._id} style={{ background: "#fff0ee", color: "#F15A29", padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
+                    Sec {s._id}: {s.count}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px" }}>
+        <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Students Excel</h3>
+        <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
+          Excel format: <strong>rollNo, name, section, year</strong>
+        </p>
+        <input
+          type="file"
+          accept=".xlsx,.xls"
+          onChange={e => setFile(e.target.files[0])}
+          style={{ marginBottom: "12px", width: "100%" }}
+        />
+        <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
+          Upload Students
+        </button>
+        {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>{message}</p>}
+      </div>
     </div>
   );
 }
