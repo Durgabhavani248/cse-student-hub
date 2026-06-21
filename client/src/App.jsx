@@ -10,6 +10,7 @@ import Chatbot from "./Chatbot";
 import Assignments from "./Assignments";
 import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
+import Profile from "./Profile";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -58,23 +59,23 @@ function CurrentClassCard({ studentSection, api }) {
   return (
     <div style={{ background: "linear-gradient(135deg, #F15A29, #d44a1e)", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px", boxShadow: "0 4px 20px rgba(241,90,41,0.3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
       <div>
-        <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>🕐 {now.toLocaleTimeString()} | Section {studentSection}</p>
+        <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>{now.toLocaleTimeString()} | Section {studentSection}</p>
         {currentPeriod?.type === "class" && currentClass ? (
           <>
-            <h2 style={{ margin: "6px 0 4px 0", color: "#fff", fontSize: "22px", fontWeight: "700" }}>📚 {currentClass}</h2>
+            <h2 style={{ margin: "6px 0 4px 0", color: "#fff", fontSize: "22px", fontWeight: "700" }}>{currentClass}</h2>
             <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "13px" }}>{currentPeriod.start} - {currentPeriod.end}</p>
           </>
         ) : currentPeriod?.type === "break" ? (
-          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>☕ Break Time!</h2>
+          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>Break Time</h2>
         ) : currentPeriod?.type === "lunch" ? (
-          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>🍱 Lunch Break!</h2>
+          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>Lunch Break</h2>
         ) : (
-          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>No Class Now 😴</h2>
+          <h2 style={{ margin: "6px 0 0 0", color: "#fff", fontSize: "22px" }}>No Class Now</h2>
         )}
       </div>
       {nextPeriod?.type === "class" && nextClass && (
         <div style={{ background: "rgba(255,255,255,0.2)", borderRadius: "12px", padding: "12px 20px", textAlign: "center" }}>
-          <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>⏭️ Next Class</p>
+          <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>Next Class</p>
           <p style={{ margin: "4px 0 2px 0", color: "#fff", fontSize: "18px", fontWeight: "700" }}>{nextClass}</p>
           <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>{nextPeriod.start}</p>
         </div>
@@ -216,6 +217,7 @@ function App() {
         <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>🗓️ Timetable</button>
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
+        <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
 
@@ -225,7 +227,7 @@ function App() {
           <div>
             <CurrentClassCard studentSection={studentInfo?.section} api={API} />
             {isAdmin && <AddNotice onAdd={addNotice} />}
-            <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>📢 Notices</h2>
+            <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Notices</h2>
             {notices.length === 0 && <p style={{ color: "#999" }}>No notices yet!</p>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
               {notices.map((n, index) => {
@@ -236,7 +238,7 @@ function App() {
                     <h3 style={{ margin: "0 0 8px 0", color: "#1a1a1a", fontSize: "16px" }}>{n.title}</h3>
                     <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px 0" }}>{n.description}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <small style={{ color: "#999", fontSize: "12px" }}>📅 {n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</small>
+                      <small style={{ color: "#999", fontSize: "12px" }}>{n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</small>
                       {isAdmin && (
                         <button onClick={() => deleteNotice(n._id)} style={{ background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
                           Delete
@@ -257,9 +259,10 @@ function App() {
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
+        {activePage === "profile" && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
         {activePage === "admin" && isAdmin && (
           <div>
-            <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>⚙️ Admin Panel</h2>
+            <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Admin Panel</h2>
             <AdminPanel api={API} />
           </div>
         )}
@@ -273,7 +276,7 @@ function AdminPanel({ api }) {
   const [message, setMessage] = useState("");
 
   const uploadStudents = () => {
-    if (!file) { alert("Excel file select cheyyi!"); return; }
+    if (!file) { alert("Please select an Excel file!"); return; }
     const token = localStorage.getItem("token");
     const formData = new FormData();
     formData.append("file", file);
@@ -289,7 +292,7 @@ function AdminPanel({ api }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px" }}>
-      <h3 style={{ color: "#F15A29", marginTop: 0 }}>👥 Upload Students Excel</h3>
+      <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Students Excel</h3>
       <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
         Excel format: <strong>rollNo, name, section, year</strong>
       </p>
@@ -300,9 +303,9 @@ function AdminPanel({ api }) {
         style={{ marginBottom: "12px", width: "100%" }}
       />
       <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
-        Upload Students 📤
+        Upload Students
       </button>
-      {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>✅ {message}</p>}
+      {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>{message}</p>}
     </div>
   );
 }
