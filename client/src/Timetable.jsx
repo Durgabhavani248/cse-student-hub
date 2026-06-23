@@ -39,6 +39,7 @@ function Timetable({ isAdmin, studentSection, api }) {
   const [timetable, setTimetable] = useState(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newSection, setNewSection] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
   const [timings, setTimings] = useState(DEFAULT_TIMINGS);
   const [scheduleInput, setScheduleInput] = useState(
     Object.fromEntries(DAYS.map(d => [d, Array(6).fill("")]))
@@ -50,13 +51,14 @@ function Timetable({ isAdmin, studentSection, api }) {
   }, []);
 
   useEffect(() => {
-    if (studentSection) {
-      fetch(`${api}/api/timetable/${studentSection}`)
-        .then(res => res.json())
-        .then(data => setTimetable(data));
-    }
-  }, [studentSection]);
+  const section = isAdmin ? selectedSection : studentSection;
 
+  if (section) {
+    fetch(`${api}/api/timetable/${section}`)
+      .then(res => res.json())
+      .then(data => setTimetable(data));
+  }
+}, [studentSection, selectedSection, isAdmin]);
   const updateTiming = (i, field, value) => {
     const updated = [...timings];
     updated[i] = { ...updated[i], [field]: value };
@@ -135,12 +137,22 @@ function Timetable({ isAdmin, studentSection, api }) {
             <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
               <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add Timetable</h3>
 
-              <input
-                placeholder="Section (e.g. 7)"
-                value={newSection}
-                onChange={e => setNewSection(e.target.value)}
-                style={{ ...inputStyle, width: "200px", marginBottom: "20px" }}
-              />
+              <select
+  value={selectedSection}
+  onChange={(e) => {
+    setSelectedSection(e.target.value);
+    setNewSection(e.target.value);
+  }}
+  style={{ ...inputStyle, width: "200px", marginBottom: "20px" }}
+>
+  <option value="">Select Section</option>
+
+  {Array.from({ length: 24 }, (_, i) => (
+    <option key={i + 1} value={String(i + 1)}>
+      Section {i + 1}
+    </option>
+  ))}
+</select>
 
               <h4 style={{ color: "#1a1a1a", marginBottom: "12px" }}>Edit Timings:</h4>
               <div style={{ overflowX: "auto", marginBottom: "20px" }}>

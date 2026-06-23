@@ -165,6 +165,39 @@ app.post("/api/student/change-password", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error: " + err.message });
   }
 });
+app.post("/api/student/forgot-password", async (req, res) => {
+  try {
+    const { rollNo, name, section, newPassword } = req.body;
+
+    const user = await User.findOne({
+      rollNo: rollNo.toUpperCase().trim(),
+      name: name.trim(),
+      section: section.trim()
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Student details not matched!"
+      });
+    }
+
+    const hashed = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashed;
+    user.isFirstLogin = false;
+
+    await user.save();
+
+    res.json({
+      message: "Password reset successful!"
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: "Server error: " + err.message
+    });
+  }
+});
 
 app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
   try {

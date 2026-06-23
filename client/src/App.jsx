@@ -176,7 +176,11 @@ function App() {
         {showAdminLogin && (
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", maxWidth: "400px", width: "90%" }}>
-              <Login onLogin={() => { setIsAdmin(true); setShowAdminLogin(false); setStudentInfo({ name: "Admin", section: "7" }); }} />
+             <Login onLogin={() => {
+  setIsAdmin(true);
+  setShowAdminLogin(false);
+  setStudentInfo({ name: "Admin", section: "" });
+}} />
               <button onClick={() => setShowAdminLogin(false)} style={{ width: "100%", padding: "10px", background: "#f5f5f5", border: "none", borderRadius: "8px", cursor: "pointer", marginTop: "8px" }}>Cancel</button>
             </div>
           </div>

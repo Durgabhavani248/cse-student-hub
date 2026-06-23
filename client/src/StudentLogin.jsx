@@ -70,6 +70,16 @@ function StudentLogin({ onLogin, api }) {
         >
           {loading ? "Logging in..." : "Login →"}
         </button>
+        <p
+  style={{
+    color: "#F15A29",
+    cursor: "pointer",
+    fontSize: "13px",
+    marginBottom: "12px"
+  }}
+>
+  Forgot Password?
+</p>
 
         <p style={{ color: "#999", fontSize: "12px" }}>
           Default password: <strong>nri@2024</strong>
