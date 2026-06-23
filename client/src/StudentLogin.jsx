@@ -5,6 +5,11 @@ function StudentLogin({ onLogin, api }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgot, setShowForgot] = useState(false);
+const [fpRollNo, setFpRollNo] = useState("");
+const [fpName, setFpName] = useState("");
+const [fpSection, setFpSection] = useState("");
+const [fpPassword, setFpPassword] = useState("");
 
   const handleLogin = () => {
     if (!rollNo || !password) { alert("Roll number and password enter cheyyi!"); return; }
@@ -27,6 +32,38 @@ function StudentLogin({ onLogin, api }) {
       })
       .catch(() => { setLoading(false); setError("Server error!"); });
   };
+  const handleForgotPassword = () => {
+  if (!fpRollNo || !fpName || !fpSection || !fpPassword) {
+    alert("Fill all fields!");
+    return;
+  }
+
+  fetch(`${api}/api/student/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      rollNo: fpRollNo,
+      name: fpName,
+      section: fpSection,
+      newPassword: fpPassword
+    })
+  })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message);
+
+      if (data.message === "Password reset successful!") {
+        setShowForgot(false);
+        setFpRollNo("");
+        setFpName("");
+        setFpSection("");
+        setFpPassword("");
+      }
+    })
+    .catch(() => alert("Server error!"));
+};
 
   const inputStyle = {
     width: "100%",
@@ -71,6 +108,7 @@ function StudentLogin({ onLogin, api }) {
           {loading ? "Logging in..." : "Login →"}
         </button>
         <p
+  onClick={() => setShowForgot(true)}
   style={{
     color: "#F15A29",
     cursor: "pointer",
@@ -80,7 +118,66 @@ function StudentLogin({ onLogin, api }) {
 >
   Forgot Password?
 </p>
+       
+{showForgot && (
+  <div
+    style={{
+      background: "#fff7f3",
+      padding: "15px",
+      borderRadius: "10px",
+      marginBottom: "15px",
+      border: "1px solid #ffd9cc"
+    }}
+  >
+    <h3 style={{ color: "#F15A29", marginBottom: "10px" }}>
+      Reset Password
+    </h3>
 
+    <input
+      placeholder="Roll Number"
+      value={fpRollNo}
+      onChange={(e) => setFpRollNo(e.target.value.toUpperCase())}
+      style={inputStyle}
+    />
+
+    <input
+      placeholder="Name"
+      value={fpName}
+      onChange={(e) => setFpName(e.target.value)}
+      style={inputStyle}
+    />
+
+    <input
+      placeholder="Section"
+      value={fpSection}
+      onChange={(e) => setFpSection(e.target.value)}
+      style={inputStyle}
+    />
+
+    <input
+      type="password"
+      placeholder="New Password"
+      value={fpPassword}
+      onChange={(e) => setFpPassword(e.target.value)}
+      style={inputStyle}
+    />
+
+    <button
+      onClick={handleForgotPassword}
+      style={{
+        width: "100%",
+        padding: "12px",
+        background: "#F15A29",
+        color: "#fff",
+        border: "none",
+        borderRadius: "10px",
+        cursor: "pointer"
+      }}
+    >
+      Reset Password
+    </button>
+  </div>
+)}
         <p style={{ color: "#999", fontSize: "12px" }}>
           Default password: <strong>nri@2024</strong>
         </p>
