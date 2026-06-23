@@ -260,10 +260,17 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
 app.post("/api/fcm-subscribe", async (req, res) => {
   try {
     const { token } = req.body;
+    console.log("FCM subscribe request, token starts with:", token?.substring(0, 20));
     const existing = await FCMToken.findOne({ token });
-    if (!existing) await new FCMToken({ token }).save();
+    if (!existing) {
+      await new FCMToken({ token }).save();
+      console.log("New FCM token saved ✅");
+    } else {
+      console.log("FCM token already exists");
+    }
     res.json({ message: "Subscribed!" });
   } catch (err) {
+    console.log("FCM subscribe error:", err.message);
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -300,11 +307,22 @@ app.post("/api/notices", adminMiddleware, async (req, res) => {
   await notice.save();
   try {
     const tokens = await FCMToken.find();
+    console.log("FCM tokens found:", tokens.length);
     if (tokens.length > 0) {
       const message = { notification: { title: "📢 New Notice!", body: notice.title }, tokens: tokens.map(t => t.token) };
-      getMessaging().sendEachForMulticast(message).catch(err => console.log("FCM Error:", err));
+      const response = await getMessaging().sendEachForMulticast(message);
+      console.log("FCM response success count:", response.successCount, "failure count:", response.failureCount);
+      if (response.failureCount > 0) {
+        response.responses.forEach((r, i) => {
+          if (!r.success) console.log("FCM failure detail:", JSON.stringify(r.error));
+        });
+      }
+    } else {
+      console.log("No FCM tokens to send to!");
     }
-  } catch (e) {}
+  } catch (e) {
+    console.log("FCM send error:", e.message);
+  }
   res.json(notice);
 });
 app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
