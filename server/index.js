@@ -346,7 +346,7 @@ const message = {
   data: {
     title: "📢 New Notice!",
     body: notice.title,
-    url: "https://nri-cse-hub.netlify.app/"
+    url: "https://cse-student-hub.vercel.app/"
   },
   tokens: tokens.map(t => t.token)
 };
