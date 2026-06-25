@@ -30,17 +30,24 @@ export const googleLogin = async () => {
 
 export const requestPermission = async (api) => {
   try {
-    const permission = await Notification.requestPermission();
+    console.log("STEP 1");
+
+const permission = await Notification.requestPermission();
+
+console.log("Permission =", permission);
 
     if (permission === "granted") {
+      console.log("STEP 2");
       const token = await getToken(messaging, {
         vapidKey:
           "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw",
         serviceWorkerRegistration:
           await navigator.serviceWorker.getRegistration()
+      
       });
 
       if (token) {
+        console.log("STEP 3 SAVING TOKEN");
         await fetch(`${api}/api/fcm-subscribe`, {
           method: "POST",
           headers: {
