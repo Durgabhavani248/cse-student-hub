@@ -13,9 +13,19 @@ firebase.initializeApp({
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(payload => {
-  const { title, body } = payload.notification;
+  const title =
+    payload.data?.title || "NRI Hub";
+
+  const body =
+    payload.data?.body || "";
+
+  const url =
+    payload.data?.url ||
+    "https://nri-cse-hub.netlify.app/";
+
   self.registration.showNotification(title, {
     body,
-    icon: "/icon-192.png"
+    icon: "/icon-192.png",
+    data: { url }
   });
 });

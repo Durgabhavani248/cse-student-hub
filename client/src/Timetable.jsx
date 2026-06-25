@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const DAY_NAMES = { MON: "Monday", TUE: "Tuesday", WED: "Wednesday", THU: "Thursday", FRI: "Friday", SAT: "Saturday" };
 
@@ -34,6 +33,7 @@ const DEFAULT_TIMINGS = [
 ];
 
 function Timetable({ isAdmin, studentSection, api }) {
+  const [editingItem, setEditingItem] = useState(null);
   const [now, setNow] = useState(new Date());
   const [activeDay, setActiveDay] = useState(getTodayDay());
   const [timetable, setTimetable] = useState(null);
@@ -304,6 +304,23 @@ function Timetable({ isAdmin, studentSection, api }) {
                   <div>
                     <p style={{ margin: 0, color: isNow ? "rgba(255,255,255,0.8)" : "#999", fontSize: "12px" }}>{t.label} • {t.start} - {t.end}</p>
                     <h3 style={{ margin: "4px 0 0 0", color: isNow ? "#fff" : "#1a1a1a", fontSize: "16px" }}>{subject || "—"}</h3>
+                    {isAdmin && (
+  <button
+    onClick={() => setEditingItem({ day: activeDay, index: i, subject })}
+    style={{
+      marginLeft: "10px",
+      padding: "4px 10px",
+      fontSize: "12px",
+      borderRadius: "6px",
+      border: "1px solid #F15A29",
+      background: "#fff",
+      color: "#F15A29",
+      cursor: "pointer"
+    }}
+  >
+    Edit
+  </button>
+)}
                   </div>
                   {isNow && <span style={{ background: "rgba(255,255,255,0.3)", color: "#fff", padding: "4px 12px", borderRadius: "20px", fontSize: "12px" }}>NOW</span>}
                 </div>
@@ -318,6 +335,82 @@ function Timetable({ isAdmin, studentSection, api }) {
           {isAdmin && <p style={{ color: "#F15A29" }}>Add it from the admin panel above</p>}
         </div>
       )}
+      {editingItem && (
+  <div style={{
+    position: "fixed",
+    top: "30%",
+    left: "35%",
+    background: "#fff",
+    padding: "20px",
+    borderRadius: "12px",
+    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+    zIndex: 9999
+  }}>
+    <h3>Edit Subject</h3>
+
+    <input
+      value={editingItem.subject}
+      onChange={(e) =>
+        setEditingItem({ ...editingItem, subject: e.target.value })
+      }
+      style={{
+        padding: "8px",
+        marginBottom: "10px",
+        width: "100%"
+      }}
+    />
+
+    <div style={{ display: "flex", gap: "10px" }}>
+      <button
+     onClick={() => {
+  const updated = { ...timetable };
+
+  const day = editingItem.day;
+  const index = editingItem.index;
+  const subject = editingItem.subject;
+
+  if (updated.schedule?.[day]) {
+    const daySchedule = [...updated.schedule[day]];
+
+    daySchedule[index] = subject;
+
+    updated.schedule = {
+      ...updated.schedule,
+      [day]: daySchedule,
+    };
+  }
+
+  setTimetable(updated);
+  setEditingItem(null);
+}}  
+  
+
+  
+        style={{
+          background: "#F15A29",
+          color: "#fff",
+          padding: "8px 12px",
+          border: "none",
+          borderRadius: "6px"
+        }}
+      >
+        Save
+      </button>
+
+      <button
+        onClick={() => setEditingItem(null)}
+        style={{
+          background: "#ccc",
+          padding: "8px 12px",
+          border: "none",
+          borderRadius: "6px"
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
     </div>
   );
 }

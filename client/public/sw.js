@@ -1,4 +1,4 @@
-const CACHE_NAME = "nri-hub-v2";
+const CACHE_NAME = "nri-hub-v3";
 
 self.addEventListener("install", event => {
   self.skipWaiting();
@@ -23,19 +23,32 @@ self.addEventListener("fetch", event => {
 // Push Notification
 self.addEventListener("push", event => {
   const data = event.data.json();
+
+  const title = data.title || "NRI Hub";
+
+  const body = data.body || "";
+
+  const url =
+    data.url ||
+    "https://nri-cse-hub.netlify.app/";
+
   event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
+    self.registration.showNotification(title, {
+      body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      data: { url: data.url }
+      data: { url }
     })
   );
 });
-
 self.addEventListener("notificationclick", event => {
   event.notification.close();
+
+  const url =
+    event.notification.data?.url ||
+    "https://nri-cse-hub.netlify.app/";
+
   event.waitUntil(
-    clients.openWindow(event.notification.data.url)
+    clients.openWindow(url)
   );
 });

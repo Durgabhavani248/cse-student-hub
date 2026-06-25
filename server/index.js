@@ -342,7 +342,14 @@ app.post("/api/notices", adminMiddleware, async (req, res) => {
     const tokens = await FCMToken.find();
     console.log("FCM tokens found:", tokens.length);
     if (tokens.length > 0) {
-      const message = { notification: { title: "📢 New Notice!", body: notice.title }, tokens: tokens.map(t => t.token) };
+const message = {
+  data: {
+    title: "📢 New Notice!",
+    body: notice.title,
+    url: "https://nri-cse-hub.netlify.app/"
+  },
+  tokens: tokens.map(t => t.token)
+};
       const response = await getMessaging().sendEachForMulticast(message);
       console.log("FCM response success count:", response.successCount, "failure count:", response.failureCount);
       if (response.failureCount > 0) {
