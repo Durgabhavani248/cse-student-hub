@@ -454,3 +454,7 @@ app.delete("/api/timetable/:section", adminMiddleware, async (req, res) => {
 });
 
 app.listen(3001, () => console.log("Server running on 3001 🚀"));
+app.get("/api/fcm-count", async (req, res) => {
+  const count = await FCMToken.countDocuments();
+  res.json({ count });
+});
