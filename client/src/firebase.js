@@ -38,14 +38,19 @@ console.log("Permission =", permission);
 
     if (permission === "granted") {
       console.log("STEP 2");
-      const token = await getToken(messaging, {
-        vapidKey:
-          "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw",
-        serviceWorkerRegistration:
-          await navigator.serviceWorker.getRegistration()
-      
-      });
+    console.log("START TOKEN");
 
+const registration = await navigator.serviceWorker.getRegistration();
+
+console.log("SW =", registration);
+
+const token = await getToken(messaging, {
+  vapidKey:
+    "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw",
+  serviceWorkerRegistration: registration
+});
+
+console.log("TOKEN =", token);
       if (token) {
         console.log("STEP 3 SAVING TOKEN");
         await fetch(`${api}/api/fcm-subscribe`, {
