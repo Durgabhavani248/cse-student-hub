@@ -15,6 +15,8 @@ import { requestPermission } from "./firebase";
 import AttendanceMark from "./AttendanceMark";
 import StudentPanel from "./StudentPanel";
 import HODReport from "./HODReport";
+import StudentAttendanceView from "./StudentAttendanceView";
+import Notifications from "./Notifications";
 const API = "https://cse-student-hub.onrender.com";
 
 function CurrentClassCard({ studentSection, api }) {
@@ -236,6 +238,8 @@ function App() {
         </button>
         {isAdmin && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📈 HOD Report</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
+        {!isAdmin && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>📊 My Attendance</button>}
+{!isAdmin && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
       </div>
 
       <div style={{ padding: "24px 32px", maxWidth: "1200px", margin: "0 auto" }}>
@@ -286,6 +290,8 @@ function App() {
             )}
           </div>
         )}
+        {activePage === "my-attendance" && !isAdmin && <StudentAttendanceView studentInfo={studentInfo} />}
+{activePage === "notifications" && !isAdmin && <Notifications studentInfo={studentInfo} />}
         {activePage === "hod-report" && isAdmin && <HODReport />}
         {activePage === "admin" && isAdmin && (
           <div>
