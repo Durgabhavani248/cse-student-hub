@@ -80,7 +80,22 @@ export default function AdminAttendance() {
       alert("❌ Error saving attendance: " + err.message);
     }
   };
+const deleteAttendance = async () => {
+  const confirmed = window.confirm("Are you sure you want to delete this attendance record? This cannot be undone!");
+  
+  if (!confirmed) return;
 
+  try {
+    await axios.delete(
+      `${API}/api/attendance/mark/${section}/${date}/${subject}`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    alert("✅ Attendance deleted successfully!");
+    setStudents([]);
+  } catch (err) {
+    alert("❌ Error deleting attendance: " + err.message);
+  }
+};
   const presentCount = students.filter(s => s.status === "present").length;
   const absentCount = students.filter(s => s.status === "absent").length;
 
@@ -170,11 +185,24 @@ export default function AdminAttendance() {
         </div>
       )}
 
-      <div className="save-section">
-        <button className="btn-save" onClick={saveAttendance} disabled={students.length === 0}>
-          💾 Save Attendance
-        </button>
-      </div>
-    </div>
-  );
+     <div className="save-section">
+  <button
+    className="btn-save"
+    onClick={saveAttendance}
+    disabled={students.length === 0}
+  >
+    💾 Save Attendance
+  </button>
+
+  <button
+    className="btn-delete"
+    onClick={deleteAttendance}
+    disabled={students.length === 0}
+  >
+    🗑️ Delete Attendance
+  </button>
+</div>
+
+</div>
+);
 }
