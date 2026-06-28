@@ -185,7 +185,99 @@ app.post("/api/student/forgot-password", async (req, res) => {
     res.status(500).json({message: "Server error: " + err.message});
   }
 });
+// ============== PUSH NOTIFICATIONS ==============
+// Subscribe student to push notifications
+app.post("/api/notifications/subscribe", async (req, res) => {
+  try {
+    const { token, rollNo, name } = req.body;
 
+    // Save FCM token to database
+    await User.findOneAndUpdate(
+      { rollNo },
+      { fcmToken: token, lastNotificationTime: new Date() },
+      { upsert: true }
+    );
+
+    res.json({ success: true, message: "Subscribed to notifications" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Send notification to specific student
+app.post("/api/notifications/send", adminMiddleware, async (req, res) => {
+  try {
+    const { rollNo, title, body, type } = req.body;
+
+    const user = await User.findOne({ rollNo });
+    if (!user || !user.fcmToken) {
+      return res.status(404).json({ message: "User not found or no FCM token" });
+    }
+
+    // Import admin SDK
+    const admin = require("firebase-admin");
+    
+    const message = {
+      notification: {
+        title,
+        body
+      },
+      webpush: {
+        notification: {
+          title,
+          body,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          requireInteraction: true
+        }
+      },
+      token: user.fcmToken
+    };
+
+    await admin.messaging().send(message);
+    
+    res.json({ success: true, message: "Notification sent" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Broadcast notification to all students in section
+app.post("/api/notifications/broadcast", adminMiddleware, async (req, res) => {
+  try {
+    const { section, title, body, type } = req.body;
+
+    const users = await User.find({ section, fcmToken: { $exists: true } });
+    
+    if (users.length === 0) {
+      return res.json({ message: "No users to notify" });
+    }
+
+    const admin = require("firebase-admin");
+    const tokens = users.map(u => u.fcmToken);
+
+    for (let token of tokens) {
+      await admin.messaging().send({
+        notification: { title, body },
+        webpush: {
+          notification: {
+            title,
+            body,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            requireInteraction: true
+          }
+        },
+        token
+      });
+    }
+
+    res.json({ success: true, message: `Sent to ${users.length} users` });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+// ============== END NOTIFICATIONS ==============
 // ✅ FIXED UPLOAD - ENSURES SECTION IS STRING
 app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
   try {

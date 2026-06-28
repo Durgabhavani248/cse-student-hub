@@ -233,15 +233,13 @@ function App() {
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-        <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>
-          📊 Attendance
-        </button>
-        {isAdmin && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📈 HOD Report</button>}
-        {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
+        {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📊 Mark Attendance</button>}
         {!isAdmin && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>📊 My Attendance</button>}
-{!isAdmin && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
+        {isAdmin && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📈 HOD Report</button>}
+        {!isAdmin && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
+        {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
-
+        
       <div style={{ padding: "24px 32px", maxWidth: "1200px", margin: "0 auto" }}>
 
         {activePage === "notices" && (
@@ -281,16 +279,9 @@ function App() {
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
         {activePage === "profile" && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
-        {activePage === "attendance" && (
-          <div>
-            {isAdmin ? (
-              <AttendanceMark />
-            ) : (
-              <StudentPanel />
-            )}
-          </div>
-        )}
+        
         {activePage === "my-attendance" && !isAdmin && <StudentAttendanceView studentInfo={studentInfo} />}
+{isAdmin && activePage === "attendance" && <AttendanceMark />}
 {activePage === "notifications" && !isAdmin && <Notifications studentInfo={studentInfo} />}
         {activePage === "hod-report" && isAdmin && <HODReport />}
         {activePage === "admin" && isAdmin && (

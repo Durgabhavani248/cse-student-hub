@@ -1,23 +1,23 @@
 {
-  "name": "CSE Student Hub",
-  "short_name": "CSE Hub",
-  "description": "Student hub for notes, timetable, notices and updates",
+  "name": "NRI Institute Student Hub",
+  "short_name": "NRI Hub",
+  "description": "Student portal for NRI Institute of Technology",
   "start_url": "/",
-  "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0f172a",
-  "orientation": "portrait",
+  "theme_color": "#F15A29",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

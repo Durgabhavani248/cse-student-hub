@@ -1,76 +1,84 @@
-import { initializeApp } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
-import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBrHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
+  apiKey: "AIzaSyDEWQHws9UPDoXat4ge7H8BiysQgRyPtOA",
   authDomain: "nri-cse-hub.firebaseapp.com",
   projectId: "nri-cse-hub",
-  storageBucket: "nri-cse-hub.firebasestorage.app",
-  messagingSenderId: "217692003992",
-  appId: "1:217692003992:web:1fd087ac4d905bb83e7aed"
+  storageBucket: "nri-cse-hub.appspot.com",
+  messagingSenderId: "595280271547",
+  appId: "1:595280271547:web:2f4e8e4f5e8f4a8e8f4a8e"
 };
 
 const app = initializeApp(firebaseConfig);
-
 const messaging = getMessaging(app);
 
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-
-export const googleLogin = async () => {
-  const result = await signInWithPopup(auth, provider);
-
-  return {
-    name: result.user.displayName,
-    email: result.user.email,
-    photo: result.user.photoURL
-  };
-};
-
-export const requestPermission = async (api) => {
+export const requestPermission = async (API) => {
   try {
-    console.log("STEP 1");
-
-const permission = await Notification.requestPermission();
-
-console.log("Permission =", permission);
-
-    if (permission === "granted") {
-    console.log("START TOKEN");
-
-const registration = await navigator.serviceWorker.getRegistration();
-
-console.log("SW =", registration);
-
-const token = await getToken(messaging, {
-  vapidKey:
-    "BAGlz4OsK9Fi90MpdFPQI1HRXn8VXSM9CHnx2d_Q0VL0-Wr2gAWGwkGR-SKLbZTtYcOWPgr-GQOCixcmRm0GDbw",
-  serviceWorkerRegistration: registration
-});
-
-console.log("TOKEN =", token);
-      if (token) {
-        console.log("STEP 3 SAVING TOKEN");
-        await fetch(`${api}/api/fcm-subscribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ token })
-        });
-
-        console.log("FCM Token registered ✅", token);
-      }
+    console.log('Requesting notification permission...');
+    
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      console.log('Service Worker registered');
     }
-  } catch (err) {
-    console.log("FCM error:", err);
+
+    // Request permission
+    const permission = await Notification.requestPermission();
+    
+    if (permission === 'granted') {
+      console.log('Notification permission granted');
+      
+      // Get FCM token
+      const token = await getToken(messaging, {
+        vapidPublicKey: "BHbsYMqNjlGJZMFf5OHkUoGpNHTI-momRRB3OGAIkFVjcSZFPU8dVXZ2mOdq1Gk8hSeUEl8Mpn0L-KQ0OKJeicw"
+      });
+
+      console.log('FCM Token:', token);
+
+      // Save token to backend
+      if (token) {
+        try {
+          const studentInfo = JSON.parse(localStorage.getItem("studentInfo"));
+          await fetch(`${API}/api/notifications/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              token,
+              rollNo: studentInfo?.rollNo,
+              name: studentInfo?.name
+            })
+          });
+          console.log('Token saved to backend');
+        } catch (err) {
+          console.error('Error saving token:', err);
+        }
+      }
+
+      // Listen for foreground messages (app open)
+      onMessage(messaging, (payload) => {
+        console.log('Foreground message:', payload);
+        
+        // Show notification even when app is open
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready.then((registration) => {
+            registration.showNotification(
+              payload.notification.title,
+              {
+                body: payload.notification.body,
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                tag: 'nri-notification',
+                requireInteraction: true
+              }
+            );
+          });
+        }
+      });
+    } else {
+      console.log('Notification permission denied');
+    }
+  } catch (error) {
+    console.error('Error:', error);
   }
 };
-
-export const onMessageListener = () =>
-  new Promise((resolve) => {
-    onMessage(messaging, (payload) => resolve(payload));
-  });
-
-export { auth, provider };
