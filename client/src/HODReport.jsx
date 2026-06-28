@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./HODReport.css";
 
-const API = "http://localhost:3001";
+const API = "https://cse-student-hub.onrender.com";
 
 export default function HODReport() {
   const [sections, setSections] = useState([]);

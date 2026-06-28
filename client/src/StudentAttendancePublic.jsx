@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import "./StudentAttendancePublic.css";
 
-const API = "http://localhost:3001";
+const API = "https://cse-student-hub.onrender.com";
 
 export default function StudentAttendancePublic() {
   const [rollNo, setRollNo] = useState("");
