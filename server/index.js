@@ -672,7 +672,21 @@ app.get("/api/attendance/report/section/:section", adminMiddleware, async (req, 
     res.status(500).json({ message: err.message });
   }
 });
+app.delete("/api/attendance/mark/:section/:date/:subject", adminMiddleware, async (req, res) => {
+  try {
+    const { section, date, subject } = req.params;
 
+    await AttendanceRecord.deleteOne({
+      section,
+      date,
+      subject
+    });
+
+    res.json({ message: "✅ Attendance deleted successfully!" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 app.get("/api/attendance/student/:rollNo", async (req, res) => {
   try {
     const { rollNo } = req.params;
