@@ -1,0 +1,410 @@
+/* ==================== HOD REPORT CONTAINER ==================== */
+
+.hod-report-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 30px 20px;
+  background: linear-gradient(135deg, #fff5f0 0%, #ffffff 100%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.hod-report-container h2 {
+  color: #F15A29;
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 30px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* ==================== HOD FILTERS ==================== */
+
+.hod-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid #F15A29;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.filter-group select,
+.filter-group input {
+  padding: 12px 14px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  background: white;
+  color: #333;
+}
+
+.filter-group select:hover,
+.filter-group input:hover {
+  border-color: #F15A29;
+  box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.1);
+}
+
+.filter-group select:focus,
+.filter-group input:focus {
+  outline: none;
+  border-color: #F15A29;
+  box-shadow: 0 0 0 3px rgba(241, 90, 41, 0.15);
+}
+
+/* ==================== HOD STATS ==================== */
+
+.hod-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid #F15A29;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.stat-card.present {
+  border-left-color: #27ae60;
+}
+
+.stat-card.absent {
+  border-left-color: #e74c3c;
+}
+
+.stat-card .label {
+  color: #999;
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.stat-card .value {
+  color: #F15A29;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.stat-card.present .value {
+  color: #27ae60;
+}
+
+.stat-card.absent .value {
+  color: #e74c3c;
+}
+
+/* ==================== ERROR BOX ==================== */
+
+.error-box {
+  background: #ffe6e0;
+  color: #c0392b;
+  padding: 16px 20px;
+  border-radius: 8px;
+  border-left: 4px solid #e74c3c;
+  margin-bottom: 20px;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+/* ==================== LOADING ==================== */
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #F15A29;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.no-data {
+  text-align: center;
+  padding: 40px;
+  color: #999;
+  font-size: 15px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* ==================== ATTENDANCE TABLE ==================== */
+
+.attendance-table-container {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  max-height: 700px;
+  overflow-y: auto;
+}
+
+.attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attendance-table thead {
+  background: #f5f5f5;
+  border-bottom: 2px solid #F15A29;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.attendance-table th {
+  padding: 16px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: #333;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.attendance-table td {
+  padding: 14px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+}
+
+.attendance-table tbody tr:hover {
+  background: #fafafa;
+}
+
+/* ==================== TABLE CELLS ==================== */
+
+.roll-no {
+  font-weight: 700;
+  color: #F15A29;
+  font-size: 13px;
+}
+
+.name {
+  color: #333;
+  font-weight: 500;
+}
+
+.status {
+  text-align: center;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.percentage {
+  position: relative;
+  min-width: 150px;
+}
+
+.percentage-bar {
+  position: relative;
+  background: #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.bar-fill.color-green {
+  background: linear-gradient(90deg, #27ae60, #229954);
+}
+
+.bar-fill.color-orange {
+  background: linear-gradient(90deg, #f39c12, #e67e22);
+}
+
+.bar-fill.color-red {
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+}
+
+.percent-text {
+  position: relative;
+  z-index: 2;
+  font-weight: 700;
+  font-size: 12px;
+  color: #333;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+}
+
+/* ==================== ROW STYLING ==================== */
+
+.attendance-table tr.status-present {
+  background: rgba(39, 174, 96, 0.03);
+}
+
+.attendance-table tr.status-absent {
+  background: rgba(231, 76, 60, 0.03);
+}
+
+/* ==================== SCROLLBAR ==================== */
+
+.attendance-table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.attendance-table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.attendance-table-container::-webkit-scrollbar-thumb {
+  background: #F15A29;
+  border-radius: 10px;
+}
+
+.attendance-table-container::-webkit-scrollbar-thumb:hover {
+  background: #d84315;
+}
+
+/* ==================== RESPONSIVE ==================== */
+
+@media (max-width: 768px) {
+  .hod-report-container {
+    padding: 20px 15px;
+  }
+
+  .hod-report-container h2 {
+    font-size: 22px;
+    margin-bottom: 20px;
+  }
+
+  .hod-filters {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px;
+  }
+
+  .filter-group select,
+  .filter-group input {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .hod-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    padding: 15px;
+  }
+
+  .stat-card .label {
+    font-size: 11px;
+  }
+
+  .stat-card .value {
+    font-size: 20px;
+  }
+
+  .attendance-table th,
+  .attendance-table td {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+
+  .roll-no {
+    font-size: 12px;
+  }
+
+  .percentage-bar {
+    height: 24px;
+  }
+
+  .percent-text {
+    font-size: 11px;
+  }
+
+  .attendance-table-container {
+    max-height: 500px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hod-report-container {
+    padding: 15px 10px;
+  }
+
+  .hod-report-container h2 {
+    font-size: 18px;
+  }
+
+  .hod-filters {
+    padding: 12px;
+  }
+
+  .hod-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-card .value {
+    font-size: 18px;
+  }
+
+  .attendance-table {
+    font-size: 12px;
+  }
+
+  .attendance-table th,
+  .attendance-table td {
+    padding: 10px 8px;
+  }
+
+  .percentage-bar {
+    min-width: 80px;
+  }
+
+  .attendance-table-container {
+    max-height: 400px;
+  }
+}

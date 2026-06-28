@@ -12,7 +12,7 @@ export default function AdminAttendance() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sections, setSections] = useState([]);
-  const token = localStorage.getItem("adminToken");
+  const token = localStorage.getItem("token");
 
   const subjects = ["ADS", "BED", "ENG", "LMS-3", "P&S", "AI-FINANCE", "QP"];
 

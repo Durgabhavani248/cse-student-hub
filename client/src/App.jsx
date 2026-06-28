@@ -14,6 +14,7 @@ import Profile from "./Profile";
 import { requestPermission } from "./firebase";
 import AttendanceMark from "./AttendanceMark";
 import StudentPanel from "./StudentPanel";
+import HODReport from "./HODReport";
 const API = "https://cse-student-hub.onrender.com";
 
 function CurrentClassCard({ studentSection, api }) {
@@ -231,8 +232,9 @@ function App() {
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
         <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>
-  📊 Attendance
-</button>
+          📊 Attendance
+        </button>
+        {isAdmin && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📈 HOD Report</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
 
@@ -276,14 +278,15 @@ function App() {
         {activePage === "search" && <Search api={API} />}
         {activePage === "profile" && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
         {activePage === "attendance" && (
-  <div>
-    {isAdmin ? (
-      <AttendanceMark />
-    ) : (
-      <StudentPanel />
-    )}
-  </div>
-)}
+          <div>
+            {isAdmin ? (
+              <AttendanceMark />
+            ) : (
+              <StudentPanel />
+            )}
+          </div>
+        )}
+        {activePage === "hod-report" && isAdmin && <HODReport />}
         {activePage === "admin" && isAdmin && (
           <div>
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Admin Panel</h2>
