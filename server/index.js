@@ -17,13 +17,17 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-try {
-  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-  initializeApp({ credential: cert(serviceAccount) });
-  console.log("Firebase initialized ✅");
-} catch (err) {
-  console.log("Firebase init skipped:", err.message);
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    initializeApp({ credential: cert(serviceAccount) });
+    console.log("Firebase initialized ✅");
+  } catch (err) {
+    console.log("Firebase init skipped:", err.message);
+  }
+} else {
+  console.log("Firebase not configured - skipping");
 }
 
 mongoose.connect(process.env.MONGO_URI, { family: 4 })
@@ -87,33 +91,34 @@ const userSchema = new mongoose.Schema({
 });
 
 const noticeSchema = new mongoose.Schema({ title: String, description: String, createdAt: { type: Date, default: Date.now } });
-
-const noteSchema = new mongoose.Schema({
-  title: String, subject: String, semester: String,
-  section: String, fileUrl: String, fileType: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const assignmentSchema = new mongoose.Schema({
-  title: String, subject: String, semester: String,
-  dueDate: String, fileUrl: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const paperSchema = new mongoose.Schema({
-  title: String, subject: String, semester: String,
-  year: String, fileUrl: String,
-  createdAt: { type: Date, default: Date.now }
-});
-
-const studyMaterialSchema = new mongoose.Schema({
-  title: String, subject: String, semester: String,
-  fileUrl: String, createdAt: { type: Date, default: Date.now }
-});
-
+const noteSchema = new mongoose.Schema({title: String, subject: String, semester: String,section: String, fileUrl: String, fileType: String,createdAt: { type: Date, default: Date.now }});
+const assignmentSchema = new mongoose.Schema({title: String, subject: String, semester: String,dueDate: String, fileUrl: String,createdAt: { type: Date, default: Date.now }});
+const paperSchema = new mongoose.Schema({title: String, subject: String, semester: String,year: String, fileUrl: String,createdAt: { type: Date, default: Date.now }});
+const studyMaterialSchema = new mongoose.Schema({title: String, subject: String, semester: String,fileUrl: String, createdAt: { type: Date, default: Date.now }});
 const timetableSchema = new mongoose.Schema({ section: String, timings: Array, schedule: Object });
-
 const fcmTokenSchema = new mongoose.Schema({ token: String, createdAt: { type: Date, default: Date.now } });
+
+const attendanceRecordSchema = new mongoose.Schema({
+  section: { type: String, required: true, index: true },
+  subject: { type: String, required: true },
+  date: { type: String, required: true, index: true },
+  records: [{ rollNo: String, name: String, status: { type: String, enum: ['present', 'absent'], default: 'absent' } }],
+  markedBy: String,
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+attendanceRecordSchema.index({ section: 1, date: 1, subject: 1 });
+
+const attendanceSummarySchema = new mongoose.Schema({
+  rollNo: { type: String, unique: true, required: true, index: true },
+  section: String,
+  name: String,
+  totalClasses: { type: Number, default: 0 },
+  presentCount: { type: Number, default: 0 },
+  absentCount: { type: Number, default: 0 },
+  percentage: { type: Number, default: 0 },
+  lastUpdated: { type: Date, default: Date.now }
+});
 
 const User = mongoose.model("User", userSchema);
 const Notice = mongoose.model("Notice", noticeSchema);
@@ -123,6 +128,8 @@ const Paper = mongoose.model("Paper", paperSchema);
 const StudyMaterial = mongoose.model("StudyMaterial", studyMaterialSchema);
 const Timetable = mongoose.model("Timetable", timetableSchema);
 const FCMToken = mongoose.model("FCMToken", fcmTokenSchema);
+const AttendanceRecord = mongoose.model("AttendanceRecord", attendanceRecordSchema);
+const AttendanceSummary = mongoose.model("AttendanceSummary", attendanceSummarySchema);
 
 app.get("/", (req, res) => res.send("NRI Hub Server 🚀"));
 
@@ -143,11 +150,9 @@ app.post("/api/student/login", async (req, res) => {
     if (!user) return res.status(404).json({ message: "Roll number not found!" });
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: "Wrong password!" });
-
     user.loginCount = (user.loginCount || 0) + 1;
     user.lastLogin = new Date();
     await user.save();
-
     const token = jwt.sign({ rollNo: user.rollNo, role: "student", section: user.section }, process.env.JWT_SECRET, { expiresIn: "7d" });
     res.json({ token, role: "student", user: { rollNo: user.rollNo, name: user.name, section: user.section, year: user.year, isFirstLogin: user.isFirstLogin } });
   } catch (err) {
@@ -165,90 +170,77 @@ app.post("/api/student/change-password", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error: " + err.message });
   }
 });
+
 app.post("/api/student/forgot-password", async (req, res) => {
   try {
     const { rollNo, name, section, newPassword } = req.body;
-
-    const user = await User.findOne({
-      rollNo: rollNo.toUpperCase().trim(),
-      name: name.trim(),
-      section: section.trim()
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "Student details not matched!"
-      });
-    }
-
+    const user = await User.findOne({rollNo: rollNo.toUpperCase().trim(),name: name.trim(),section: section.trim()});
+    if (!user) return res.status(404).json({message: "Student details not matched!"});
     const hashed = await bcrypt.hash(newPassword, 10);
-
     user.password = hashed;
     user.isFirstLogin = false;
-
     await user.save();
-
-    res.json({
-      message: "Password reset successful!"
-    });
-
+    res.json({message: "Password reset successful!"});
   } catch (err) {
-    res.status(500).json({
-      message: "Server error: " + err.message
-    });
+    res.status(500).json({message: "Server error: " + err.message});
   }
 });
 
+// ✅ FIXED UPLOAD - ENSURES SECTION IS STRING
 app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: "No file uploaded!" });
     const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const data = XLSX.utils.sheet_to_json(sheet);
-
-    let count = 0;
-    let skipped = 0;
-
+    console.log(`📊 Upload: ${data.length} rows`);
+    let count = 0, skipped = 0;
     for (const row of data) {
-      const keys = Object.keys(row);
-      const getValue = (possibleNames) => {
-        for (const name of possibleNames) {
-          const matchKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
-          if (matchKey && row[matchKey] !== undefined && row[matchKey] !== "") return row[matchKey];
-        }
-        return null;
-      };
-
-      const rollNo = String(getValue(["rollNo", "ROLL NO", "Roll No", "RollNo", "roll no"]) || "").trim().toUpperCase();
-      const name = getValue(["name", "NAME", "Name"]) || "";
-      const section = String(getValue(["section", "SECTION", "Section"]) || "").trim();
-      const year = String(getValue(["year", "YEAR", "Year"]) || "2").trim();
-
-      if (!rollNo) {
-        skipped++;
-        continue;
-      }
-
       try {
+        const keys = Object.keys(row);
+        const getValue = (possibleNames) => {
+          for (const name of possibleNames) {
+            const matchKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+            if (matchKey && row[matchKey] !== undefined && row[matchKey] !== "") {
+              return String(row[matchKey]).trim();
+            }
+          }
+          return null;
+        };
+        const rollNo = (getValue(["rollNo", "ROLL NO", "Roll No", "RollNo"]) || "").toUpperCase();
+        const name = getValue(["name", "NAME", "Name"]) || "";
+        const section = String(getValue(["section", "SECTION", "Section"]) || "").trim(); // ✅ STRING!
+        const branch = getValue(["branch", "BRANCH", "Branch"]) || "CSE";
+        const year = getValue(["year", "YEAR", "Year"]) || "2";
+        if (!rollNo) { skipped++; continue; }
         const existing = await User.findOne({ rollNo });
         if (!existing) {
           const hashed = await bcrypt.hash(process.env.DEFAULT_PASSWORD || "nri@2024", 10);
-          await new User({ rollNo, name, section, year, password: hashed }).save();
+          await User.create({ rollNo, name, section, branch, year, password: hashed });
           count++;
         } else {
           skipped++;
         }
       } catch (innerErr) {
+        console.error("Row error:", innerErr.message);
         skipped++;
       }
     }
-    res.json({ message: `${count} students added! (${skipped} skipped/existed)` });
+    res.json({ message: `✅ ${count} students added! (${skipped} skipped/existed)` });
   } catch (err) {
-    console.error("Excel upload error:", err);
+    console.error("Upload error:", err);
     res.status(500).json({ message: "Error: " + err.message });
   }
 });
-
+app.get("/api/sections", async (req, res) => {
+  try {
+    const sections = await User.distinct("section");
+    const sortedSections = sections.map(s => String(s)).sort((a, b) => parseInt(a) - parseInt(b));
+    res.json(sortedSections);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
   try {
     const totalStudents = await User.countDocuments();
@@ -258,33 +250,13 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
     const totalPapers = await Paper.countDocuments();
     const totalMaterials = await StudyMaterial.countDocuments();
     const totalSubscriptions = await FCMToken.countDocuments();
-
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const activeToday = await User.countDocuments({ lastLogin: { $gte: oneDayAgo } });
-
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const activeThisWeek = await User.countDocuments({ lastLogin: { $gte: sevenDaysAgo } });
-
     const everLoggedIn = await User.countDocuments({ loginCount: { $gt: 0 } });
-
-    const sectionCounts = await User.aggregate([
-      { $group: { _id: "$section", count: { $sum: 1 } } },
-      { $sort: { _id: 1 } }
-    ]);
-
-    res.json({
-      totalStudents,
-      totalNotices,
-      totalNotes,
-      totalAssignments,
-      totalPapers,
-      totalMaterials,
-      totalSubscriptions,
-      activeToday,
-      activeThisWeek,
-      everLoggedIn,
-      sectionCounts
-    });
+    const sectionCounts = await User.aggregate([{ $group: { _id: "$section", count: { $sum: 1 } } },{ $sort: { _id: 1 } }]);
+    res.json({ totalStudents, totalNotices, totalNotes, totalAssignments, totalPapers, totalMaterials, totalSubscriptions, activeToday, activeThisWeek, everLoggedIn, sectionCounts });
   } catch (err) {
     res.status(500).json({ message: "Error: " + err.message });
   }
@@ -293,168 +265,553 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
 app.post("/api/fcm-subscribe", async (req, res) => {
   try {
     const { token } = req.body;
-    console.log("FCM subscribe request, token starts with:", token?.substring(0, 20));
     const existing = await FCMToken.findOne({ token });
     if (!existing) {
       await new FCMToken({ token }).save();
-      console.log("New FCM token saved ✅");
-    } else {
-      console.log("FCM token already exists");
     }
     res.json({ message: "Subscribed!" });
   } catch (err) {
-    console.log("FCM subscribe error:", err.message);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/fcm-count", async (req, res) => {
+  try {
+    const count = await FCMToken.countDocuments();
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
-  const prompt = `You are NRI Hub AI Assistant, a helpful AI assistant for CSE engineering students at NRI Institute of Technology. Always respond in clear English by default. Only respond in Telugu if the student explicitly writes their question in Telugu script or specifically requests a Telugu answer. For technical/academic questions (DBMS, OS, Computer Networks, Data Structures, programming, etc.), give a helpful, clear, educational answer with examples where useful. Keep answers focused and not too long.
-
-Student's question: ${message}`;
-
+  const prompt = `You are NRI Hub AI Assistant for CSE students at NRI Institute of Technology.`;
   let lastError;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-      const result = await model.generateContent(prompt);
+      const result = await model.generateContent(prompt + message);
       const reply = result.response.text();
       return res.json({ reply });
     } catch (err) {
       lastError = err;
-      console.log(`Chat attempt ${attempt} failed:`, err.message);
       if (attempt < 3) await new Promise(r => setTimeout(r, 1000));
     }
   }
-  console.error("Chat error after retries:", lastError);
-  res.status(500).json({ reply: "Sorry, I'm having trouble connecting right now. Please try asking again in a moment!" });
+  res.status(500).json({ reply: "Sorry, try again in a moment!" });
+});
+
+app.get("/api/students", async (req, res) => {
+  try {
+    const students = await User.find({}, "rollNo name section");
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/notices", async (req, res) => {
-  const notices = await Notice.find().sort({ createdAt: -1 });
-  res.json(notices);
-});
-app.post("/api/notices", adminMiddleware, async (req, res) => {
-  const notice = new Notice(req.body);
-  await notice.save();
   try {
-    const tokens = await FCMToken.find();
-    console.log("FCM tokens found:", tokens.length);
-    if (tokens.length > 0) {
-const message = {
-  data: {
-    title: "📢 New Notice!",
-    body: notice.title,
-    url: "https://cse-student-hub.vercel.app/"
-  },
-  tokens: tokens.map(t => t.token)
-};
-      const response = await getMessaging().sendEachForMulticast(message);
-      console.log("FCM response success count:", response.successCount, "failure count:", response.failureCount);
-      if (response.failureCount > 0) {
-        response.responses.forEach((r, i) => {
-          if (!r.success) console.log("FCM failure detail:", JSON.stringify(r.error));
-        });
-      }
-    } else {
-      console.log("No FCM tokens to send to!");
-    }
-  } catch (e) {
-    console.log("FCM send error:", e.message);
+    const notices = await Notice.find().sort({ createdAt: -1 });
+    res.json(notices);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-  res.json(notice);
 });
+
+app.post("/api/notices", adminMiddleware, async (req, res) => {
+  try {
+    const notice = new Notice(req.body);
+    await notice.save();
+    res.json(notice);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
-  await Notice.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  try {
+    await Notice.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/notes", async (req, res) => {
-  const { section } = req.query;
-  const notes = await Note.find(section ? { section } : {}).sort({ createdAt: -1 });
-  res.json(notes);
+  try {
+    const { section } = req.query;
+    const notes = await Note.find(section ? { section } : {}).sort({ createdAt: -1 });
+    res.json(notes);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.post("/api/notes", adminMiddleware, upload.single("file"), async (req, res) => {
-  const { subject, semester, title, section } = req.body;
-  const note = new Note({ title, subject, semester, section, fileUrl: req.file.path, fileType: req.file.mimetype });
-  await note.save();
-  res.json(note);
+  try {
+    const { subject, semester, title, section } = req.body;
+    const note = new Note({ title, subject, semester, section, fileUrl: req.file.path, fileType: req.file.mimetype });
+    await note.save();
+    res.json(note);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
-  await Note.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  try {
+    await Note.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/assignments", async (req, res) => {
-  const assignments = await Assignment.find().sort({ createdAt: -1 });
-  res.json(assignments);
+  try {
+    const assignments = await Assignment.find().sort({ createdAt: -1 });
+    res.json(assignments);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.post("/api/assignments", adminMiddleware, upload.single("file"), async (req, res) => {
-  const { title, subject, semester, dueDate } = req.body;
-  const assignment = new Assignment({ title, subject, semester, dueDate, fileUrl: req.file?.path });
-  await assignment.save();
-  res.json(assignment);
+  try {
+    const { title, subject, semester, dueDate } = req.body;
+    const assignment = new Assignment({ title, subject, semester, dueDate, fileUrl: req.file?.path });
+    await assignment.save();
+    res.json(assignment);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
-  await Assignment.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  try {
+    await Assignment.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/papers", async (req, res) => {
-  const papers = await Paper.find().sort({ createdAt: -1 });
-  res.json(papers);
+  try {
+    const papers = await Paper.find().sort({ createdAt: -1 });
+    res.json(papers);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.post("/api/papers", adminMiddleware, upload.single("file"), async (req, res) => {
-  const { title, subject, semester, year } = req.body;
-  const paper = new Paper({ title, subject, semester, year, fileUrl: req.file.path });
-  await paper.save();
-  res.json(paper);
+  try {
+    const { title, subject, semester, year } = req.body;
+    const paper = new Paper({ title, subject, semester, year, fileUrl: req.file.path });
+    await paper.save();
+    res.json(paper);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
-  await Paper.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  try {
+    await Paper.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/materials", async (req, res) => {
-  const materials = await StudyMaterial.find().sort({ createdAt: -1 });
-  res.json(materials);
+  try {
+    const materials = await StudyMaterial.find().sort({ createdAt: -1 });
+    res.json(materials);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.post("/api/materials", adminMiddleware, upload.single("file"), async (req, res) => {
-  const { title, subject, semester } = req.body;
-  const material = new StudyMaterial({ title, subject, semester, fileUrl: req.file.path });
-  await material.save();
-  res.json(material);
+  try {
+    const { title, subject, semester } = req.body;
+    const material = new StudyMaterial({ title, subject, semester, fileUrl: req.file.path });
+    await material.save();
+    res.json(material);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.delete("/api/materials/:id", adminMiddleware, async (req, res) => {
-  await StudyMaterial.findByIdAndDelete(req.params.id);
-  res.json({ message: "Deleted" });
+  try {
+    await StudyMaterial.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.get("/api/timetables", async (req, res) => {
-  const timetables = await Timetable.find();
-  res.json(timetables.map(t => t.section));
+  try {
+    const timetables = await Timetable.find();
+    res.json(timetables.map(t => t.section));
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.get("/api/timetable/:section", async (req, res) => {
-  const timetable = await Timetable.findOne({ section: req.params.section });
-  res.json(timetable);
+  try {
+    const timetable = await Timetable.findOne({ section: req.params.section });
+    res.json(timetable);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.post("/api/timetable/:section", adminMiddleware, async (req, res) => {
-  const { timings, schedule } = req.body;
-  await Timetable.findOneAndUpdate(
-    { section: req.params.section },
-    { section: req.params.section, timings, schedule },
-    { upsert: true, new: true }
-  );
-  res.json({ message: "Saved!" });
+  try {
+    const { timings, schedule } = req.body;
+    await Timetable.findOneAndUpdate({ section: req.params.section }, { section: req.params.section, timings, schedule }, { upsert: true, new: true });
+    res.json({ message: "Saved!" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
+
 app.delete("/api/timetable/:section", adminMiddleware, async (req, res) => {
-  await Timetable.findOneAndDelete({ section: req.params.section });
-  res.json({ message: "Deleted" });
+  try {
+    await Timetable.findOneAndDelete({ section: req.params.section });
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/section/:section/students", adminMiddleware, async (req, res) => {
+  try {
+    const { section } = req.params;
+    const students = await User.find({ section }, "rollNo name section").sort({ rollNo: 1 });
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/section/:section/date/:date", adminMiddleware, async (req, res) => {
+  try {
+    const { section, date } = req.params;
+    const { subject } = req.query;
+    const record = await AttendanceRecord.findOne({section, date, subject});
+    if (!record) {
+      const students = await User.find({ section }, "rollNo name").sort({ rollNo: 1 });
+      return res.json({ section, date, subject, records: students.map(s => ({rollNo: s.rollNo, name: s.name, status: "absent"}))});
+    }
+    res.json({section, date, subject, records: record.records});
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/attendance/mark", adminMiddleware, async (req, res) => {
+  try {
+    const { section, subject, date, records } = req.body;
+    if (!section || !subject || !date || !records) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+    let attendance = await AttendanceRecord.findOne({section, date, subject});
+    if (!attendance) {
+      attendance = new AttendanceRecord({section, subject, date, records, markedBy: req.user.username, createdAt: new Date(), updatedAt: new Date()});
+    } else {
+      attendance.records = records;
+      attendance.updatedAt = new Date();
+    }
+    await attendance.save();
+    for (let rec of records) {
+      let summary = await AttendanceSummary.findOne({ rollNo: rec.rollNo });
+      if (!summary) {
+        summary = new AttendanceSummary({
+          rollNo: rec.rollNo,
+          section,
+          name: rec.name,
+          totalClasses: 1,
+          presentCount: rec.status === "present" ? 1 : 0,
+          absentCount: rec.status === "absent" ? 1 : 0
+        });
+      } else {
+        summary.totalClasses = (summary.totalClasses || 0) + 1;
+        if (rec.status === "present") {
+          summary.presentCount = (summary.presentCount || 0) + 1;
+        } else {
+          summary.absentCount = (summary.absentCount || 0) + 1;
+        }
+      }
+      summary.percentage = summary.totalClasses > 0 
+        ? (summary.presentCount / summary.totalClasses) * 100 
+        : 0;
+      summary.lastUpdated = new Date();
+      await summary.save();
+    }
+    res.json({ message: "Attendance marked successfully", data: attendance });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/report/all-sections", adminMiddleware, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const query = {};
+    if (startDate && endDate) {
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+    const records = await AttendanceRecord.find(query).sort({ date: -1 });
+    const sectionData = {};
+    records.forEach(rec => {
+      if (!sectionData[rec.section]) {
+        sectionData[rec.section] = { section: rec.section, totalClasses: 0, dates: [], subjects: new Set(), studentStats: {} };
+      }
+      sectionData[rec.section].totalClasses++;
+      sectionData[rec.section].dates.push(rec.date);
+      sectionData[rec.section].subjects.add(rec.subject);
+      rec.records.forEach(student => {
+        if (!sectionData[rec.section].studentStats[student.rollNo]) {
+          sectionData[rec.section].studentStats[student.rollNo] = {
+            rollNo: student.rollNo,
+            name: student.name,
+            present: 0,
+            absent: 0
+          };
+        }
+        if (student.status === "present") {
+          sectionData[rec.section].studentStats[student.rollNo].present++;
+        } else {
+          sectionData[rec.section].studentStats[student.rollNo].absent++;
+        }
+      });
+    });
+    const result = Object.values(sectionData).map(section => {
+      const students = Object.values(section.studentStats).map(student => ({
+        ...student,
+        percentage: student.present + student.absent > 0 
+          ? ((student.present / (student.present + student.absent)) * 100).toFixed(2)
+          : 0
+      }));
+      return {
+        section: section.section,
+        totalClasses: section.totalClasses,
+        subjects: Array.from(section.subjects),
+        uniqueDates: [...new Set(section.dates)].length,
+        students: students.sort((a, b) => b.percentage - a.percentage)
+      };
+    });
+    res.json({
+      period: { startDate, endDate },
+      sections: result.sort((a, b) => {
+        const secA = parseInt(a.section);
+        const secB = parseInt(b.section);
+        return secA - secB;
+      })
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/report/section/:section", adminMiddleware, async (req, res) => {
+  try {
+    const { section } = req.params;
+    const { startDate, endDate } = req.query;
+    const query = { section };
+    if (startDate && endDate) {
+      query.date = { $gte: startDate, $lte: endDate };
+    }
+    const records = await AttendanceRecord.find(query).sort({ date: -1 });
+    const dates = [...new Set(records.map(r => r.date))];
+    const subjects = [...new Set(records.map(r => r.subject))];
+    const students = await User.find({ section }, "rollNo name").sort({ rollNo: 1 });
+    const attendanceMatrix = {};
+    students.forEach(student => {
+      attendanceMatrix[student.rollNo] = {
+        rollNo: student.rollNo,
+        name: student.name,
+        present: 0,
+        absent: 0,
+        percentage: 0
+      };
+    });
+    records.forEach(rec => {
+      rec.records.forEach(student => {
+        if (attendanceMatrix[student.rollNo]) {
+          if (student.status === "present") {
+            attendanceMatrix[student.rollNo].present++;
+          } else {
+            attendanceMatrix[student.rollNo].absent++;
+          }
+        }
+      });
+    });
+    Object.values(attendanceMatrix).forEach(student => {
+      const total = student.present + student.absent;
+      student.percentage = total > 0 ? ((student.present / total) * 100).toFixed(2) : 0;
+    });
+    res.json({
+      section,
+      period: { startDate, endDate },
+      totalClasses: records.length,
+      uniqueDates: dates.length,
+      subjects,
+      students: Object.values(attendanceMatrix).sort((a, b) => b.percentage - a.percentage)
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/student/:rollNo", async (req, res) => {
+  try {
+    const { rollNo } = req.params;
+    const summary = await AttendanceSummary.findOne({ rollNo: rollNo.toUpperCase() });
+    if (!summary) {
+      return res.json({
+        rollNo: rollNo.toUpperCase(),
+        totalClasses: 0,
+        presentCount: 0,
+        absentCount: 0,
+        percentage: 0,
+        message: "No attendance data found"
+      });
+    }
+    res.json({
+      rollNo: summary.rollNo,
+      section: summary.section,
+      name: summary.name,
+      totalClasses: summary.totalClasses,
+      presentCount: summary.presentCount,
+      absentCount: summary.absentCount,
+      percentage: summary.percentage.toFixed(2)
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
 app.listen(3001, () => console.log("Server running on 3001 🚀"));
-app.get("/api/fcm-count", async (req, res) => {
-  const count = await FCMToken.countDocuments();
-  res.json({ count });
+// ==================== FIXED ADMIN UPLOAD ROUTE ====================
+
+app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded!" });
+    
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json(sheet);
+
+    console.log(`📊 Excel upload started: ${data.length} rows`);
+
+    let count = 0;
+    let skipped = 0;
+    let errors = [];
+
+    for (const row of data) {
+      try {
+        const keys = Object.keys(row);
+        
+        // Better key matching - case insensitive
+        const getValue = (possibleNames) => {
+          for (const name of possibleNames) {
+            const matchKey = keys.find(k => k.trim().toLowerCase() === name.toLowerCase());
+            if (matchKey && row[matchKey] !== undefined && row[matchKey] !== "") {
+              return String(row[matchKey]).trim();
+            }
+          }
+          return null;
+        };
+
+        const rollNo = (getValue(["rollNo", "ROLL NO", "Roll No", "RollNo", "roll no"]) || "").toUpperCase();
+        const name = getValue(["name", "NAME", "Name"]) || "";
+        const sectionRaw = getValue(["section", "SECTION", "Section"]) || "";
+        const section = String(sectionRaw).trim(); // ENSURE STRING
+        const branch = getValue(["branch", "BRANCH", "Branch"]) || "CSE";
+        const year = getValue(["year", "YEAR", "Year"]) || "2";
+
+        if (!rollNo) {
+          skipped++;
+          continue;
+        }
+
+        console.log(`Processing: ${rollNo} | ${name} | Section: ${section}`);
+
+        const existing = await User.findOne({ rollNo });
+        
+        if (!existing) {
+          const hashed = await bcrypt.hash(process.env.DEFAULT_PASSWORD || "nri@2024", 10);
+          await User.create({
+            rollNo,
+            name,
+            section, // STRING
+            branch,
+            year,
+            password: hashed
+          });
+          count++;
+          console.log(`✅ Added: ${rollNo}`);
+        } else {
+          skipped++;
+          console.log(`⏭️  Skipped (exists): ${rollNo}`);
+        }
+      } catch (innerErr) {
+        errors.push(`Row error: ${innerErr.message}`);
+        console.error("Row error:", innerErr);
+        skipped++;
+      }
+    }
+
+    console.log(`📈 Upload complete: ${count} added, ${skipped} skipped`);
+    
+    res.json({ 
+      message: `✅ ${count} students added! (${skipped} skipped/existed)`,
+      details: {
+        added: count,
+        skipped: skipped,
+        total: data.length
+      },
+      errors: errors.length > 0 ? errors : undefined
+    });
+
+  } catch (err) {
+    console.error("❌ Excel upload error:", err);
+    res.status(500).json({ 
+      message: "Error: " + err.message,
+      error: err.toString()
+    });
+  }
+});
+
+// ==================== DEBUG ROUTE - Check Students by Section ====================
+
+app.get("/api/admin/students-by-section", adminMiddleware, async (req, res) => {
+  try {
+    const sections = await User.aggregate([
+      { $group: { _id: "$section", count: { $sum: 1 }, sample: { $first: "$$ROOT" } } },
+      { $sort: { _id: 1 } }
+    ]);
+    
+    res.json({
+      totalStudents: await User.countDocuments(),
+      bySection: sections.map(s => ({
+        section: s._id,
+        sectionType: typeof s._id,
+        count: s.count,
+        sampleStudent: { rollNo: s.sample.rollNo, name: s.sample.name, section: s.sample.section }
+      }))
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
