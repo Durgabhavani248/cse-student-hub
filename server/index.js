@@ -234,9 +234,9 @@ app.post("/api/admin/upload-students", adminMiddleware, xlsxUpload.single("file"
 });
 app.get("/api/sections", async (req, res) => {
   try {
-    const sections = await User.distinct("section");
-    const sortedSections = sections.map(s => String(s)).sort((a, b) => parseInt(a) - parseInt(b));
-    res.json(sortedSections);
+    // Return all 24 sections (1-24) regardless of students
+    const allSections = Array.from({ length: 24 }, (_, i) => String(i + 1));
+    res.json(allSections);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
