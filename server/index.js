@@ -186,23 +186,31 @@ app.post("/api/student/forgot-password", async (req, res) => {
   }
 });
 // ============== PUSH NOTIFICATIONS ==============
-// Subscribe student to push notifications
+// ============== SUBSCRIBE TO NOTIFICATIONS ==============
 app.post("/api/notifications/subscribe", async (req, res) => {
   try {
     const { token, rollNo, name } = req.body;
 
     // Save FCM token to database
-    await User.findOneAndUpdate(
+    const result = await User.findOneAndUpdate(
       { rollNo },
-      { fcmToken: token, lastNotificationTime: new Date() },
-      { upsert: true }
+      { 
+        fcmToken: token,
+        lastNotificationTime: new Date()
+      },
+      { new: true }
     );
+
+    if (!result) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
     res.json({ success: true, message: "Subscribed to notifications" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+// ============== END NOTIFICATIONS ==============
 
 // Send notification to specific student
 app.post("/api/notifications/send", adminMiddleware, async (req, res) => {
