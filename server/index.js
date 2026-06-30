@@ -115,25 +115,11 @@ const adminMiddleware = (req, res, next) => {
     res.status(401).json({ message: "Invalid token" });
   }
 };
-
-// ============== AUTH ROUTES ==============
-
-app.post("/api/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-      const token = jwt.sign({ username, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
-      res.json({ token, role: "admin" });
-    } else {
-      res.status(401).json({ message: "Invalid credentials" });
-    }
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
+// ============== STUDENT LOGIN ==============
 
 app.post("/api/student-login", async (req, res) => {
   try {
+    console.log(req.body);
     const { rollNo, password } = req.body;
     const user = await User.findOne({ rollNo });
 
@@ -155,9 +141,28 @@ app.post("/api/student-login", async (req, res) => {
       }
     });
   } catch (err) {
+  console.error("LOGIN ERROR:", err);
+  res.status(500).json({ message: err.message });
+}
+});
+
+// ============== AUTH ROUTES ==============
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+      const token = jwt.sign({ username, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
+      res.json({ token, role: "admin" });
+    } else {
+      res.status(401).json({ message: "Invalid credentials" });
+    }
+  } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+
 
 app.post("/api/change-password", async (req, res) => {
   try {
@@ -172,6 +177,40 @@ app.post("/api/change-password", async (req, res) => {
     res.json({ message: "Password changed successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+app.post("/api/student/forgot-password", async (req, res) => {
+  try {
+    const { rollNo, name, section, newPassword } = req.body;
+
+    const user = await User.findOne({
+      rollNo,
+      name,
+      section
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "Student details not matched!"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+    user.isFirstLogin = false;
+
+    await user.save();
+
+    res.json({
+      message: "Password reset successful!"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 });
 

@@ -14,7 +14,7 @@ const [fpPassword, setFpPassword] = useState("");
   const handleLogin = () => {
     if (!rollNo || !password) { alert("Roll number and password enter cheyyi!"); return; }
     setLoading(true);
-    fetch(`${api}/api/student/login`, {
+    fetch(`${api}/api/student-login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rollNo, password })
@@ -24,8 +24,8 @@ const [fpPassword, setFpPassword] = useState("");
         setLoading(false);
         if (data.token) {
           localStorage.setItem("studentToken", data.token);
-          localStorage.setItem("studentInfo", JSON.stringify(data.user));
-          onLogin(data.user);
+          localStorage.setItem("studentInfo", JSON.stringify(data.student));
+onLogin(data.student);
         } else {
           setError(data.message || "Login failed!");
         }
