@@ -16,7 +16,7 @@ try {
   const app = initializeApp(firebaseConfig);
   messaging = getMessaging(app);
 } catch (err) {
-  console.log('Firebase already initialized or error:', err);
+  console.log('Firebase initialization info:', err.message);
 }
 
 export const requestPermission = async (API) => {

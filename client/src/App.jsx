@@ -11,12 +11,8 @@ import Assignments from "./Assignments";
 import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
-import { requestPermission } from "./firebase";
-import AttendanceMark from "./AttendanceMark";
-import StudentPanel from "./StudentPanel";
-import HODReport from "./HODReport";
-import StudentAttendanceView from "./StudentAttendanceView";
 import Notifications from "./Notifications";
+
 const API = "https://cse-student-hub.onrender.com";
 
 function CurrentClassCard({ studentSection, api }) {
@@ -114,7 +110,6 @@ function App() {
       const info = JSON.parse(savedInfo);
       setStudentInfo(info);
       if (info.isFirstLogin) setShowChangePassword(true);
-      else requestPermission(API);
     }
   }, []);
 
@@ -124,8 +119,6 @@ function App() {
     setStudentInfo(user);
     if (user.isFirstLogin) {
       setShowChangePassword(true);
-    } else {
-      requestPermission(API);
     }
   };
 
@@ -135,7 +128,6 @@ function App() {
     info.isFirstLogin = false;
     localStorage.setItem("studentInfo", JSON.stringify(info));
     setStudentInfo({ ...info, isFirstLogin: false });
-    requestPermission(API);
   };
 
   const handleStudentLogout = () => {
@@ -180,11 +172,11 @@ function App() {
         {showAdminLogin && (
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
             <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", maxWidth: "400px", width: "90%" }}>
-             <Login onLogin={() => {
-  setIsAdmin(true);
-  setShowAdminLogin(false);
-  setStudentInfo({ name: "Admin", section: "" });
-}} />
+              <Login onLogin={() => {
+                setIsAdmin(true);
+                setShowAdminLogin(false);
+                setStudentInfo({ name: "Admin", section: "" });
+              }} />
               <button onClick={() => setShowAdminLogin(false)} style={{ width: "100%", padding: "10px", background: "#f5f5f5", border: "none", borderRadius: "8px", cursor: "pointer", marginTop: "8px" }}>Cancel</button>
             </div>
           </div>
@@ -233,13 +225,10 @@ function App() {
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-        {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📊 Mark Attendance</button>}
-        {!isAdmin && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>📊 My Attendance</button>}
-        {isAdmin && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📈 HOD Report</button>}
         {!isAdmin && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
-        
+
       <div style={{ padding: "24px 32px", maxWidth: "1200px", margin: "0 auto" }}>
 
         {activePage === "notices" && (
@@ -279,11 +268,7 @@ function App() {
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
         {activePage === "profile" && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
-        
-        {activePage === "my-attendance" && !isAdmin && <StudentAttendanceView studentInfo={studentInfo} />}
-{isAdmin && activePage === "attendance" && <AttendanceMark />}
-{activePage === "notifications" && !isAdmin && <Notifications studentInfo={studentInfo} />}
-        {activePage === "hod-report" && isAdmin && <HODReport />}
+        {activePage === "notifications" && !isAdmin && <Notifications studentInfo={studentInfo} />}
         {activePage === "admin" && isAdmin && (
           <div>
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Admin Panel</h2>
@@ -348,7 +333,6 @@ function AdminPanel({ api }) {
             {statCard("Logged In (Ever)", stats.everLoggedIn, "#2196F3")}
             {statCard("Active Today", stats.activeToday, "#4CAF50")}
             {statCard("Active This Week", stats.activeThisWeek, "#9C27B0")}
-            {statCard("Push Subscriptions", stats.totalSubscriptions, "#FF9800")}
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", marginBottom: "12px" }}>
             {statCard("Notices", stats.totalNotices)}
