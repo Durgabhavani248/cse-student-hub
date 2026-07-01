@@ -1,249 +1,516 @@
 import { useEffect, useState } from "react";
 
-const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 
-const DAY_NAMES = {
-  MON: "Monday",
-  TUE: "Tuesday",
-  WED: "Wednesday",
-  THU: "Thursday",
-  FRI: "Friday",
-  SAT: "Saturday",
+const DAY_MAP = {
+  Monday: "MON",
+  Tuesday: "TUE",
+  Wednesday: "WED",
+  Thursday: "THU",
+  Friday: "FRI",
+  Saturday: "SAT",
 };
 
-function getTodayDay() {
-  const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-  return days[new Date().getDay()];
-}
+const SUBJECTS = [
+  "ADS",
+  "AI",
+  "LMS",
+  "P&S",
+  "QP",
+  "ENG",
+  "BED",
+  "ADS LAB",
+  "BED LAB",
+  "EXAM",
+];
 
 function Timetable({ isAdmin, studentSection, api }) {
-  const [mode, setMode] = useState("select");
-  const [selectedSection, setSelectedSection] = useState("");
-  const [timetable, setTimetable] = useState(null);
-  const [activeDay, setActiveDay] = useState(getTodayDay());
-  const [editing, setEditing] = useState(null);
+  const [mode, setMode] = useState(isAdmin ? "select" : "view");
 
-  // fetch timetable
+  const [selectedSection, setSelectedSection] = useState("");
+
+  const [timetable, setTimetable] = useState(null);
+
+  const [editedSchedule, setEditedSchedule] = useState({});
+
+  const [editing, setEditing] = useState(false);
+
+  const [activeDay, setActiveDay] = useState("Monday");
+
+  const [loading, setLoading] = useState(false);
+
+  const [error, setError] = useState("");
+
   useEffect(() => {
     const section = isAdmin ? selectedSection : studentSection;
 
-    if (!section) return;
+    if (!section) {
+      setTimetable(null);
+      return;
+    }
 
-    fetch(`${api}/api/timetable/${section}`)
-      .then((res) => res.json())
-      .then((data) => {
-        setTimetable(data);
-        setMode("view");
+    loadTimetable(section);
+
+  }, [selectedSection, studentSection]);
+
+  const loadTimetable = async (section) => {
+    try {
+
+      setLoading(true);
+      setError("");
+
+      const res = await fetch(
+        `${api}/api/timetable/${section}`
+      );
+
+      if (!res.ok)
+        throw new Error("Unable to load timetable");
+
+      const data = await res.json();
+
+      console.log(data);
+
+      setTimetable(data);
+
+      setEditedSchedule(data.schedule);
+
+      setMode("view");
+
+    } catch (err) {
+
+      console.log(err);
+
+      setError("No timetable found.");
+
+      setTimetable(null);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  };
+
+  const handleSectionChange = (e) => {
+    setSelectedSection(e.target.value);
+  };
+
+  const updateSubject = (index, value) => {
+
+    const key = DAY_MAP[activeDay];
+
+    setEditedSchedule((prev) => ({
+      ...prev,
+
+      [key]: prev[key].map((item, i) =>
+        i === index ? value : item
+      ),
+    }));
+  };
+
+  const cancelEdit = () => {
+    setEditedSchedule(timetable.schedule);
+    setEditing(false);
+  };
+
+  const saveTimetable = async () => {
+    try {
+
+      const section = isAdmin
+        ? selectedSection
+        : studentSection;
+
+      const res = await fetch(
+        `${api}/api/timetable`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+
+            Authorization:
+              "Bearer " +
+              localStorage.getItem("token"),
+          },
+
+          body: JSON.stringify({
+            section,
+            timings: timetable.timings,
+            schedule: editedSchedule,
+          }),
+        }
+      );
+
+      if (!res.ok)
+        throw new Error();
+
+      alert("Timetable Updated Successfully");
+
+      setTimetable({
+        ...timetable,
+        schedule: editedSchedule,
       });
-  }, [selectedSection, studentSection, isAdmin]);
 
-  const containerStyle = {
-    fontFamily: "Arial",
-    padding: "20px",
-    background: "#f6f7fb",
-    minHeight: "100vh",
+      setEditing(false);
+
+    } catch {
+
+      alert("Failed to update timetable.");
+
+    }
   };
 
-  const card = {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "14px",
-    marginBottom: "10px",
-    border: "1px solid #eee",
-  };
-
-  const header = {
-    background: "linear-gradient(135deg,#F15A29,#d94b1f)",
-    padding: "16px",
-    borderRadius: "12px",
-    color: "#fff",
-    marginBottom: "15px",
-  };
-
-  const selectSection = (
-    <div style={{ maxWidth: "300px", margin: "0 auto" }}>
-      <h2>Select Section</h2>
-
-      <select
-        style={{ width: "100%", padding: "10px" }}
-        value={selectedSection}
-        onChange={(e) => setSelectedSection(e.target.value)}
-      >
-        <option value="">Select</option>
-        {Array.from({ length: 24 }, (_, i) => (
-          <option key={i} value={String(i + 1)}>
-            Section {i + 1}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-
-  if (mode === "select") {
-    return <div style={containerStyle}>{selectSection}</div>;
-  }
-
-  if (!timetable) {
+  if (isAdmin && mode === "select") {
     return (
-      <div style={containerStyle}>
-        <h3>No timetable found</h3>
+      <div
+        style={{
+          padding: 30,
+          background:
+            "linear-gradient(135deg,#fff5f0,#fff)",
+          borderRadius: 12,
+        }}
+      >
+        <h2
+          style={{
+            color: "#F15A29",
+            marginBottom: 20,
+          }}
+        >
+          Select Section
+        </h2>
+
+        <select
+          value={selectedSection}
+          onChange={handleSectionChange}
+          style={{
+            padding: 12,
+            width: 220,
+            borderRadius: 8,
+          }}
+        >
+          <option value="">
+            -- Select Section --
+          </option>
+
+          {Array.from(
+            { length: 24 },
+            (_, i) => (
+              <option
+                key={i}
+                value={String(i + 1)}
+              >
+                Section {i + 1}
+              </option>
+            )
+          )}
+        </select>
       </div>
     );
   }
 
-  const schedule = timetable.schedule?.[activeDay] || [];
+  if (loading)
+    return (
+      <div style={{ padding: 40 }}>
+        Loading timetable...
+      </div>
+    );
+
+  if (error)
+    return (
+      <div
+        style={{
+          padding: 30,
+          color: "red",
+        }}
+      >
+        {error}
+      </div>
+    );
+
+  if (!timetable)
+    return (
+      <div style={{ padding: 40 }}>
+        No Timetable Available
+      </div>
+    );
+
+  const dayKey = DAY_MAP[activeDay];
+
+  const daySchedule = editing
+    ? editedSchedule[dayKey] || []
+    : timetable.schedule[dayKey] || [];
+
   const timings = timetable.timings || [];
-
-  const updateSubject = (index, value) => {
-    const updated = { ...timetable };
-    updated.schedule[activeDay][index] = value;
-    setTimetable(updated);
-  };
-
-  return (
-    <div style={containerStyle}>
-      {/* HEADER */}
-      <div style={header}>
-        <h2 style={{ margin: 0 }}>
+    return (
+    <div
+      style={{
+        background: "linear-gradient(135deg,#fff5f0,#fff)",
+        borderRadius: "12px",
+        padding: "30px 20px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "25px",
+          flexWrap: "wrap",
+        }}
+      >
+        <h2
+          style={{
+            color: "#F15A29",
+            margin: 0,
+          }}
+        >
           Section {isAdmin ? selectedSection : studentSection}
         </h2>
 
-        {isAdmin && (
+        {!editing && isAdmin && (
           <button
-            onClick={() => setMode("select")}
+            onClick={() => setEditing(true)}
             style={{
-              marginTop: "10px",
-              padding: "6px 10px",
-              background: "#fff",
+              background: "#F15A29",
+              color: "#fff",
               border: "none",
-              borderRadius: "6px",
+              borderRadius: "8px",
+              padding: "10px 20px",
               cursor: "pointer",
-              color: "#F15A29",
-              fontWeight: "bold",
+              fontWeight: "600",
             }}
           >
-            Change Section
+            ✏️ Edit Timetable
           </button>
         )}
       </div>
 
       {/* DAY BUTTONS */}
-      <div style={{ display: "flex", gap: "6px", marginBottom: "10px" }}>
-        {DAYS.map((d) => (
+
+      <div
+        style={{
+          display: "flex",
+          gap: "10px",
+          flexWrap: "wrap",
+          marginBottom: "25px",
+        }}
+      >
+        {DAYS.map((day) => (
           <button
-            key={d}
-            onClick={() => setActiveDay(d)}
+            key={day}
+            onClick={() => setActiveDay(day)}
             style={{
-              padding: "6px 10px",
-              borderRadius: "6px",
-              border: "1px solid #ddd",
-              background: activeDay === d ? "#F15A29" : "#fff",
-              color: activeDay === d ? "#fff" : "#333",
+              border: "none",
+              borderRadius: "8px",
               cursor: "pointer",
+              padding: "10px 18px",
+              background:
+                activeDay === day
+                  ? "#F15A29"
+                  : "#ececec",
+              color:
+                activeDay === day
+                  ? "#fff"
+                  : "#333",
+              fontWeight:
+                activeDay === day
+                  ? "600"
+                  : "500",
             }}
           >
-            {d}
+            {day}
           </button>
         ))}
       </div>
 
-      {/* TIMETABLE */}
-      <div>
-        {timings.map((t, i) => {
-          const subject = schedule[i];
+      {/* TIMETABLE CARD */}
 
-          return (
-            <div key={i} style={card}>
+       <div
+        style={{
+          background: "#fff",
+          borderRadius: "12px",
+          overflow: "hidden",
+          boxShadow:
+            "0 2px 8px rgba(0,0,0,.08)",
+        }}
+      >
+              {daySchedule.length > 0 ? (
+          daySchedule.map((subject, index) => {
+            const timing = timings[index] || {};
+
+            const isBreak =
+              timing.type === "break" ||
+              timing.type === "lunch";
+
+            return (
               <div
+                key={index}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "16px 20px",
+                  borderBottom:
+                    index !== daySchedule.length - 1
+                      ? "1px solid #eee"
+                      : "none",
+                  background: isBreak
+                    ? "#fafafa"
+                    : "#fff",
                 }}
               >
                 <div>
-                  <b>{t.label}</b>
-                  <div style={{ fontSize: "12px", color: "#777" }}>
-                    {t.start} - {t.end}
+                  <div
+                    style={{
+                      color: "#F15A29",
+                      fontWeight: "700",
+                      fontSize: "13px",
+                    }}
+                  >
+                    {timing.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "#666",
+                    }}
+                  >
+                    {timing.start} - {timing.end}
                   </div>
                 </div>
 
-                {isAdmin && (
-                  <button
-                    onClick={() =>
-                      setEditing({ index: i, value: subject || "" })
-                    }
-                    style={{
-                      border: "1px solid #F15A29",
-                      background: "#fff",
-                      color: "#F15A29",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Edit
-                  </button>
-                )}
+                <div>
+                  {editing && !isBreak ? (
+                    <select
+                      value={subject}
+                      onChange={(e) =>
+                        updateSubject(
+                          index,
+                          e.target.value
+                        )
+                      }
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "6px",
+                        border: "1px solid #ddd",
+                        minWidth: "140px",
+                      }}
+                    >
+                      {SUBJECTS.map((sub) => (
+                        <option
+                          key={sub}
+                          value={sub}
+                        >
+                          {sub}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <h4
+                      style={{
+                        margin: 0,
+                        color: isBreak
+                          ? "#888"
+                          : "#333",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {isBreak
+                        ? timing.type === "lunch"
+                          ? "🍽️ Lunch"
+                          : "☕ Break"
+                        : subject}
+                    </h4>
+                  )}
+                </div>
               </div>
-
-              <h3 style={{ marginTop: "8px" }}>{subject || "-"}</h3>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div
+            style={{
+              padding: "30px",
+              textAlign: "center",
+              color: "#999",
+            }}
+          >
+            No Classes Available
+          </div>
+        )}
       </div>
+            {/* Bottom Buttons */}
 
-      {/* EDIT MODAL */}
-      {editing && (
+      {editing ? (
         <div
           style={{
-            position: "fixed",
-            top: "30%",
-            left: "30%",
-            background: "#fff",
-            padding: "20px",
-            borderRadius: "10px",
-            boxShadow: "0 0 10px rgba(0,0,0,0.2)",
+            display: "flex",
+            justifyContent: "center",
+            gap: "15px",
+            marginTop: "25px",
           }}
         >
-          <h3>Edit Subject</h3>
+          <button
+            onClick={cancelEdit}
+            style={{
+              padding: "12px 22px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#888",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            Cancel
+          </button>
 
-          <input
-            value={editing.value}
-            onChange={(e) =>
-              setEditing({ ...editing, value: e.target.value })
-            }
-            style={{ padding: "8px", width: "100%" }}
-          />
-
-          <div style={{ marginTop: "10px" }}>
+          <button
+            onClick={saveTimetable}
+            style={{
+              padding: "12px 22px",
+              border: "none",
+              borderRadius: "8px",
+              background: "#F15A29",
+              color: "#fff",
+              cursor: "pointer",
+              fontWeight: "600",
+            }}
+          >
+            💾 Save Changes
+          </button>
+        </div>
+      ) : (
+        isAdmin && (
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: "25px",
+            }}
+          >
             <button
-              onClick={() => {
-                updateSubject(editing.index, editing.value);
-                setEditing(null);
-              }}
+              onClick={() => setEditing(true)}
               style={{
+                padding: "12px 24px",
+                border: "none",
+                borderRadius: "8px",
                 background: "#F15A29",
                 color: "#fff",
-                border: "none",
-                padding: "6px 10px",
-                marginRight: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
               }}
             >
-              Save
-            </button>
-
-            <button
-              onClick={() => setEditing(null)}
-              style={{
-                background: "#ccc",
-                border: "none",
-                padding: "6px 10px",
-              }}
-            >
-              Cancel
+              ✏️ Edit Timetable
             </button>
           </div>
-        </div>
+        )
       )}
     </div>
   );

@@ -10,10 +10,14 @@ function Assignments({ isAdmin, api }) {
   const [loading, setLoading] = useState(false);
 
   const fetchItems = () => {
-    fetch(`${api}/api/assignments`)
-      .then(res => res.json())
-      .then(data => setItems(data));
-  };
+  fetch(`${api}/api/assignments`)
+    .then(res => res.json())
+    .then(data => {
+      console.log("Assignments API:", data);
+      setItems(Array.isArray(data) ? data : data.assignments || []);
+    })
+    .catch(err => console.error(err));
+};
 
   useEffect(() => { fetchItems(); }, []);
 

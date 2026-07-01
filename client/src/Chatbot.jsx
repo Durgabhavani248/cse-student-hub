@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 function Chatbot({ api }) {
   const [messages, setMessages] = useState([
-    { role: "assistant", text: "Hi! 👋 Nenu NRI Hub AI Assistant. CSE subjects (DBMS, OS, CN, DS, etc.) gurinchi em doubt unna adagandi!" }
+    { role: "assistant", text: "Hi! 👋 I'm NRI Hub AI Assistant. Ask me anything about DBMS, OS, CN, DS, and other CSE subjects! 🎓" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -14,23 +14,46 @@ function Chatbot({ api }) {
 
   const sendMessage = async () => {
     if (!input.trim()) return;
+
     const userMsg = input;
     setMessages(prev => [...prev, { role: "user", text: userMsg }]);
     setInput("");
     setLoading(true);
 
     try {
-      const res = await fetch(`${api}/api/chat`, {
+      console.log("Sending message:", userMsg);
+
+      const response = await fetch(`${api}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: userMsg })
       });
-      const data = await res.json();
-      setMessages(prev => [...prev, { role: "assistant", text: data.reply || "Sorry, error vachindi!" }]);
+
+      console.log("Response status:", response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("API Error:", errorData);
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", data);
+      
+      if (data.reply) {
+        setMessages(prev => [...prev, { role: "assistant", text: data.reply }]);
+      } else {
+        throw new Error("No reply received");
+      }
     } catch (err) {
-      setMessages(prev => [...prev, { role: "assistant", text: "Server error! Try again." }]);
+      console.error("Chat error details:", err);
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        text: "Sorry! I couldn't get a response. Please try again in a moment. 😔" 
+      }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleKeyPress = (e) => {
@@ -41,13 +64,14 @@ function Chatbot({ api }) {
   };
 
   return (
-    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", height: "600px", maxWidth: "700px" }}>
-
-      <div style={{ background: "linear-gradient(90deg, #F15A29, #d44a1e)", padding: "16px 20px", display: "flex", alignItems: "center", gap: "12px" }}>
-        <span style={{ fontSize: "24px" }}>🤖</span>
-        <div>
-          <h3 style={{ margin: 0, color: "#fff", fontSize: "16px" }}>NRI Hub AI Assistant</h3>
-          <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>Ask any subject doubt</p>
+    <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", height: "650px", maxWidth: "700px" }}>
+      <div style={{ background: "linear-gradient(90deg, #F15A29, #d44a1e)", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
+          <span style={{ fontSize: "24px" }}>🤖</span>
+          <div>
+            <h3 style={{ margin: 0, color: "#fff", fontSize: "16px", fontWeight: "600" }}>NRI Hub AI Assistant</h3>
+            <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>Ask any subject doubt</p>
+          </div>
         </div>
       </div>
 
@@ -56,14 +80,15 @@ function Chatbot({ api }) {
           <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
             <div style={{
               maxWidth: "75%",
-              padding: "10px 16px",
+              padding: "12px 16px",
               borderRadius: "16px",
               background: m.role === "user" ? "#F15A29" : "#fff",
               color: m.role === "user" ? "#fff" : "#1a1a1a",
               fontSize: "14px",
-              lineHeight: "1.5",
+              lineHeight: "1.6",
               boxShadow: m.role === "assistant" ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-              whiteSpace: "pre-wrap"
+              whiteSpace: "pre-wrap",
+              wordWrap: "break-word"
             }}>
               {m.text}
             </div>
@@ -71,23 +96,63 @@ function Chatbot({ api }) {
         ))}
         {loading && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{ padding: "10px 16px", borderRadius: "16px", background: "#fff", color: "#999", fontSize: "14px" }}>
-              Typing...
+            <div style={{ padding: "12px 16px", borderRadius: "16px", background: "#fff", color: "#F15A29", fontSize: "14px", fontWeight: "600", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
+              ✍️ Typing...
             </div>
           </div>
         )}
         <div ref={chatEndRef} />
       </div>
 
-      <div style={{ padding: "16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: "8px" }}>
+      <div style={{ padding: "16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: "8px", background: "#fff" }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
+          disabled={loading}
           placeholder="Type your doubt here..."
-          style={{ flex: 1, padding: "12px 16px", borderRadius: "24px", border: "1.5px solid #e0e0e0", outline: "none", fontSize: "14px" }}
+          style={{
+            flex: 1,
+            padding: "12px 16px",
+            borderRadius: "24px",
+            border: "1.5px solid #e0e0e0",
+            outline: "none",
+            fontSize: "14px",
+            fontFamily: "inherit",
+            transition: "border-color 0.2s ease"
+          }}
+          onFocus={(e) => {
+            e.target.style.borderColor = "#F15A29";
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = "#e0e0e0";
+          }}
         />
-        <button onClick={sendMessage} disabled={loading} style={{ background: "#F15A29", color: "#fff", border: "none", borderRadius: "50%", width: "44px", height: "44px", cursor: "pointer", fontSize: "18px" }}>
+        <button
+          onClick={sendMessage}
+          disabled={loading || !input.trim()}
+          style={{
+            background: "#F15A29",
+            color: "#fff",
+            border: "none",
+            borderRadius: "50%",
+            width: "44px",
+            height: "44px",
+            cursor: loading || !input.trim() ? "not-allowed" : "pointer",
+            fontSize: "18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "background 0.2s ease",
+            opacity: loading || !input.trim() ? 0.6 : 1
+          }}
+          onMouseOver={(e) => {
+            if (!loading && input.trim()) e.target.style.background = "#d44a1e";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = "#F15A29";
+          }}
+        >
           ➤
         </button>
       </div>
