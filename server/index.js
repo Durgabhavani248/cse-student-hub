@@ -44,8 +44,8 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected ✅"))
   .catch(err => console.error("MongoDB Error:", err));
 
-// ============== CLOUDINARY CONFIG ==============
-cloudinary.v2.config({
+// ============== CLOUDINARY CONFIG =============
+cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -686,7 +686,7 @@ app.post("/api/upload", adminMiddleware, async (req, res) => {
 
     const file = req.files.file;
 
-    const uploadStream = cloudinary.v2.uploader.upload_stream(
+    const uploadStream = cloudinary.uploader.upload_stream(
       { 
         resource_type: "auto",
         folder: "nri-hub",
