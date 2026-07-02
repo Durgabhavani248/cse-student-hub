@@ -110,13 +110,27 @@ function Papers({ isAdmin, api }) {
     }
   };
 
-  const deletePaper = (id) => {
-    const token = localStorage.getItem("token");
-    fetch(`${api}/api/papers/${id}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
-    }).then(() => fetchPapers());
-  };
+  const deletePaper = async (id) => {
+  console.log("Deleting ID:", id);
+
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${api}/api/papers/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+
+  console.log("Status:", res.status);
+  console.log("Response:", data);
+
+  if (res.ok) {
+    fetchPapers();
+  }
+};
 
   return (
     <div>

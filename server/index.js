@@ -460,7 +460,20 @@ app.post("/api/papers", adminMiddleware, async (req, res) => {
     });
   }
 });
+app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
+  try {
+    await Paper.findByIdAndDelete(req.params.id);
 
+    res.json({
+      message: "Paper deleted successfully",
+    });
+  } catch (err) {
+    console.error("Delete paper error:", err);
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
 // ============== STUDY MATERIALS ==============
 
 app.get("/api/materials", async (req, res) => {
