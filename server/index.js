@@ -16,6 +16,18 @@ const app = express();
 // ============== MIDDLEWARE ==============
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/");
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage });
+
+app.use("/uploads", express.static("uploads"));
 app.use(express.urlencoded({ limit: "50mb" }));
 app.use(fileUpload());
 
@@ -107,6 +119,8 @@ const Assignment = mongoose.model("Assignment", AssignmentSchema);
 const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
 const Timetable = mongoose.model("Timetable", TimetableSchema);
+const multer = require("multer");
+const path = require("path");
 
 // ============== MIDDLEWARE FUNCTIONS ==============
 
@@ -285,18 +299,33 @@ app.get("/api/notes", async (req, res) => {
   }
 });
 
-app.post("/api/notes", adminMiddleware, async (req, res) => {
+app.post("/api/notes", adminMiddleware, upload.single("file"), async (req, res) => {
   try {
-    const { section, subject, title, description, fileUrl } = req.body;
 
-    if (!section || !subject || !title || !description) {
-      return res.status(400).json({ message: "All fields required" });
-    }
+    console.log("NOTES BODY:", req.body);
 
-    const note = new Note({ section, subject, title, description, fileUrl });
-    await note.save();
-    res.json(note);
-  } catch (err) {
+    const { section, subject, title, description } = req.body;
+
+const fileUrl = req.file
+  ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+  : "";
+
+   if (!section || !subject || !title || !description) {
+  return res.status(400).json({ message: "All fields required" });
+}
+
+const note = new Note({
+  section,
+  subject,
+  title,
+  description,
+  fileUrl,
+});
+
+await note.save();
+
+res.json(note);}
+ catch (err) {
     console.error("Post note error:", err);
     res.status(500).json({ message: err.message });
   }
@@ -324,23 +353,34 @@ app.get("/api/assignments", async (req, res) => {
   }
 });
 
-app.post("/api/assignments", adminMiddleware, async (req, res) => {
+app.post("/api/assignments", adminMiddleware, upload.single("file"), async (req, res) => {
   try {
-    const { section, subject, title, description, dueDate } = req.body;
+    const { section, subject, title, description } = req.body;
+    const fileUrl = req.file
+  ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+  : "";
 
     if (!section || !subject || !title || !description) {
       return res.status(400).json({ message: "All fields required" });
     }
 
-    const assignment = new Assignment({ section, subject, title, description, dueDate });
+  const assignment = new Assignment({
+  section,
+  subject,
+  title,
+  description,
+  fileUrl,
+});
+
     await assignment.save();
+
     res.json(assignment);
+
   } catch (err) {
     console.error("Post assignment error:", err);
     res.status(500).json({ message: err.message });
   }
 });
-
 app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
   try {
     await Assignment.deleteOne({ _id: req.params.id });
@@ -351,8 +391,9 @@ app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
   }
 });
 
-// ============== PAPERS ==============
+// ====================== PAPERS ======================
 
+// Get all papers
 app.get("/api/papers", async (req, res) => {
   try {
     const papers = await Paper.find().sort({ createdAt: -1 });
@@ -363,30 +404,63 @@ app.get("/api/papers", async (req, res) => {
   }
 });
 
-app.post("/api/papers", adminMiddleware, async (req, res) => {
+// Add paper
+app.post("/api/papers", adminMiddleware, upload.single("file"), async (req, res) => {
   try {
-    const { section, subject, title, fileUrl } = req.body;
 
-    if (!section || !subject || !title || !fileUrl) {
-      return res.status(400).json({ message: "All fields required" });
+    console.log("========== PAPERS API ==========");
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
+
+    const { section, subject, title } = req.body;
+
+    const fileUrl = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      : "";
+
+    if (!section || !subject || !title) {
+      return res.status(400).json({
+        message: "All fields required",
+      });
     }
 
-    const paper = new Paper({ section, subject, title, fileUrl });
+    const paper = new Paper({
+      section,
+      subject,
+      title,
+      fileUrl,
+    });
+
     await paper.save();
+
+    console.log("✅ Paper saved successfully");
+
     res.json(paper);
+
   } catch (err) {
     console.error("Post paper error:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 
+// Delete paper
 app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
   try {
-    await Paper.deleteOne({ _id: req.params.id });
-    res.json({ message: "Paper deleted" });
+    await Paper.deleteOne({
+      _id: req.params.id,
+    });
+
+    res.json({
+      message: "Paper deleted",
+    });
+
   } catch (err) {
     console.error("Delete paper error:", err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message,
+    });
   }
 });
 

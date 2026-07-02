@@ -2,133 +2,225 @@ import { useEffect, useState } from "react";
 
 function Notes({ isAdmin, api, studentSection }) {
   const [notes, setNotes] = useState([]);
-  const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
-  const [semester, setSemester] = useState("1");
-  const [section, setSection] = useState("7");
-  const [files, setFiles] = useState([]);
-  const [filter, setFilter] = useState("All");
-  const [loading, setLoading] = useState(false);
 
-  const fetchNotes = () => {
-    const url = isAdmin ? `${api}/api/notes` : `${api}/api/notes?section=${studentSection}`;
-    fetch(url)
-      .then(res => res.json())
-      .then(data => setNotes(data));
-  };
+const [form, setForm] = useState({
+  section: "",
+  subject: "",
+  title: "",
+  description: "",
+});
 
+const [file, setFile] = useState(null);
+
+const [message, setMessage] = useState("");
   useEffect(() => {
     fetchNotes();
-  }, [studentSection]);
+  }, []);
 
-  const addNotes = async () => {
-    if (!subject || !section || files.length === 0) {
-      alert("Subject, section and files select cheyyi!");
+  const fetchNotes = () => {
+    fetch(`${api}/api/notes`)
+      .then(res => res.json())
+      .then(data => setNotes(data))
+      .catch(err => console.error(err));
+  };
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!form.section || !form.subject || !form.title || !form.description) {
+      setMessage("❌ All fields required!");
       return;
     }
+
     const token = localStorage.getItem("token");
-    setLoading(true);
-    for (let i = 0; i < files.length; i++) {
-      const formData = new FormData();
-      formData.append("title", title || `${subject} - ${i + 1}`);
-      formData.append("subject", subject);
-      formData.append("semester", semester);
-      formData.append("section", section);
-      formData.append("file", files[i]);
-      await fetch(`${api}/api/notes`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      }).then(res => res.json());
+
+const formData = new FormData();
+
+formData.append("section", form.section);
+formData.append("subject", form.subject);
+formData.append("title", form.title);
+formData.append("description", form.description);
+
+if (file) {
+  formData.append("file", file);
+}
+
+try {
+  const res = await fetch(`${api}/api/notes`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMessage("✅ Note added successfully!");
+        setForm({
+  section: "",
+  subject: "",
+  title: "",
+  description: "",
+});
+
+setFile(null);
+        fetchNotes();
+      } else {
+        setMessage("❌ " + (data.message || "Error adding note"));
+      }
+    } catch (err) {
+      setMessage("❌ Server error: " + err.message);
     }
-    fetchNotes();
-    setTitle("");
-    setSubject("");
-    setFiles([]);
-    setLoading(false);
   };
 
   const deleteNote = (id) => {
     const token = localStorage.getItem("token");
     fetch(`${api}/api/notes/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { "Authorization": `Bearer ${token}` }
     }).then(() => fetchNotes());
   };
 
-  const subjects = ["All", ...new Set(notes.map(n => n.subject))];
-  const filtered = filter === "All" ? notes : notes.filter(n => n.subject === filter);
-
-  const inputStyle = {
-    width: "100%",
-    padding: "10px 14px",
-    borderRadius: "10px",
-    border: "1.5px solid #e0e0e0",
-    background: "#fff",
-    color: "#1a1a1a",
-    fontSize: "14px",
-    marginBottom: "12px",
-    outline: "none",
-    boxSizing: "border-box"
-  };
+  const filteredNotes = studentSection 
+    ? notes.filter(n => n.section === studentSection)
+    : notes;
 
   return (
     <div>
+      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📚 Notes</h2>
+
       {isAdmin && (
-        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "24px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ margin: "0 0 16px 0", color: "#F15A29", fontSize: "18px", fontWeight: "700" }}>📚 Add Notes</h2>
-          <input placeholder="Title (optional)" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-          <input placeholder="Subject (e.g. DBMS, OS)" value={subject} onChange={e => setSubject(e.target.value)} style={inputStyle} />
-          <select value={section} onChange={e => setSection(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-            {["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18","19","20","21","22","23","24"].map(s => (
-              <option key={s} value={s}>Section {s}</option>
-            ))}
-          </select>
-          <select value={semester} onChange={e => setSemester(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-            {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>Semester {s}</option>)}
-          </select>
-          <input type="file" accept="image/*,.pdf" multiple onChange={e => setFiles(Array.from(e.target.files))} style={{ ...inputStyle, padding: "8px" }} />
-          {files.length > 0 && (
-            <p style={{ color: "#F15A29", fontSize: "13px", marginBottom: "12px" }}>{files.length} file(s) selected ✅</p>
-          )}
-          <button onClick={addNotes} disabled={loading} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}>
-            {loading ? "Uploading... ⏳" : "Upload Notes 📚"}
-          </button>
+        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
+          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Note</h3>
+          {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : "#c0392b", fontWeight: "600" }}>{message}</p>}
+          
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+            <select name="section" value={form.section} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }}>
+              <option value="">-- Select Section --</option>
+              {Array.from({ length: 24 }, (_, i) => (
+                <option key={i} value={String(i + 1)}>Section {i + 1}</option>
+              ))}
+            </select>
+
+            <input type="text" name="subject" placeholder="Subject" value={form.subject} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }} />
+            <input type="text" name="title" placeholder="Title" value={form.title} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }} />
+            <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", minHeight: "100px" }} />
+            <div>
+  <label
+    style={{
+      display: "block",
+      marginBottom: "8px",
+      fontWeight: "600",
+      color: "#555",
+    }}
+  >
+    Upload File
+  </label>
+
+  <input
+    type="file"
+    accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png"
+    onChange={(e) => setFile(e.target.files[0])}
+    style={{
+      padding: "12px",
+      borderRadius: "8px",
+      border: "1px solid #e0e0e0",
+      width: "100%",
+    }}
+  />
+
+  {file && (
+    <p
+      style={{
+        color: "#4CAF50",
+        marginTop: "8px",
+        fontSize: "13px",
+      }}
+    >
+      ✅ {file.name}
+    </p>
+  )}
+</div>
+
+            <button type="submit" style={{ padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
+              ➕ Add Note
+            </button>
+          </form>
         </div>
       )}
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-        {subjects.map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: "6px 16px", borderRadius: "20px", border: filter === s ? "none" : "1px solid #e0e0e0", background: filter === s ? "#F15A29" : "#fff", color: filter === s ? "#fff" : "#666", cursor: "pointer", fontWeight: filter === s ? "600" : "400" }}>
-            {s}
-          </button>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+        {filteredNotes.map(note => (
+          <div key={note._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+            <h3 style={{ margin: "0 0 8px 0", color: "#F15A29", fontSize: "16px" }}>{note.title}</h3>
+            <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Subject:</strong> {note.subject}</p>
+            <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Section:</strong> {note.section}</p>
+            <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: "14px" }}>{note.description}</p>
+            
+            {/* Image Preview */}
+{note.fileUrl &&
+  (note.fileUrl.toLowerCase().endsWith(".jpg") ||
+    note.fileUrl.toLowerCase().endsWith(".jpeg") ||
+    note.fileUrl.toLowerCase().endsWith(".png")) && (
+    <img
+      src={note.fileUrl}
+      alt={note.title}
+      style={{
+        width: "100%",
+        borderRadius: "8px",
+        marginBottom: "10px",
+      }}
+    />
+)}
+
+{/* PDF Preview */}
+{note.fileUrl &&
+  note.fileUrl.toLowerCase().endsWith(".pdf") && (
+    <iframe
+      src={note.fileUrl}
+      title={note.title}
+      width="100%"
+      height="350"
+      style={{
+        border: "1px solid #ddd",
+        borderRadius: "8px",
+        marginBottom: "10px",
+      }}
+    />
+)}
+
+{note.fileUrl && (
+  <a
+    href={note.fileUrl}
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      color: "#F15A29",
+      textDecoration: "none",
+      fontWeight: "600",
+      fontSize: "13px",
+    }}
+  >
+    📄 View File
+  </a>
+)}
+
+            {isAdmin && (
+              <button onClick={() => deleteNote(note._id)} style={{ marginLeft: "auto", display: "block", marginTop: "12px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
+                Delete
+              </button>
+            )}
+          </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: "16px" }}>
-        {filtered.map(n => (
-          <div key={n._id} style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", border: "1px solid #e0e0e0", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            {n.fileType?.includes("pdf") ? (
-              <div style={{ height: "160px", background: "#fff0ee", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>📄</div>
-            ) : (
-              <img src={n.fileUrl} alt={n.title} style={{ width: "100%", height: "160px", objectFit: "cover" }} />
-            )}
-            <div style={{ padding: "12px" }}>
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#1a1a1a" }}>{n.title}</h3>
-              <p style={{ margin: 0, fontSize: "12px", color: "#F15A29" }}>📖 {n.subject} | Sem {n.semester} | Sec {n.section}</p>
-              <a href={n.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: "8px", color: "#2196F3", fontSize: "12px", textDecoration: "none" }}>
-                {n.fileType?.includes("pdf") ? "📥 View PDF" : "🔍 View Image"}
-              </a>
-              {isAdmin && (
-                <button onClick={() => deleteNote(n._id)} style={{ marginTop: "8px", marginLeft: "8px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "20px", cursor: "pointer", fontSize: "12px" }}>
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-        {filtered.length === 0 && <p style={{ color: "#999" }}>No notes yet!</p>}
-      </div>
+      {filteredNotes.length === 0 && <p style={{ color: "#999", textAlign: "center", padding: "40px" }}>No notes available</p>}
     </div>
   );
 }
