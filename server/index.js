@@ -110,7 +110,6 @@ const PaperSchema = new mongoose.Schema({
 });
 
 const MaterialSchema = new mongoose.Schema({
-  section: { type: String, required: true },
   subject: { type: String, required: true },
   title: { type: String, required: true },
   fileUrl: String,
@@ -488,15 +487,22 @@ app.get("/api/materials", async (req, res) => {
 
 app.post("/api/materials", adminMiddleware, async (req, res) => {
   try {
-    const { section, subject, title, fileUrl } = req.body;
+    const { subject, title, fileUrl } = req.body;
 
-    if (!section || !subject || !title || !fileUrl) {
-      return res.status(400).json({ message: "All fields required" });
+    if (!subject || !title || !fileUrl) {
+      return res.status(400).json({
+        message: "Subject, title and fileUrl are required"
+      });
     }
 
-    const material = new Material({ section, subject, title, fileUrl });
-    await material.save();
-    res.json(material);
+    const material = await Material.create({
+      subject,
+      title,
+      fileUrl
+    });
+
+    res.status(201).json(material);
+
   } catch (err) {
     console.error("Post material error:", err);
     res.status(500).json({ message: err.message });

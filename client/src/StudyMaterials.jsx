@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 
 function StudyMaterials({ isAdmin, api }) {
   const [materials, setMaterials] = useState([]);
-  const [form, setForm] = useState({ section: "", subject: "", title: "", fileUrl: "" });
+  const [form, setForm] = useState({
+  subject: "",
+  title: "",
+  fileUrl: ""
+});
   const [message, setMessage] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -67,10 +71,10 @@ function StudyMaterials({ isAdmin, api }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!form.section || !form.subject || !form.title || !form.fileUrl) {
-      setMessage("❌ Select section, subject, title and upload file!");
-      return;
-    }
+    if (!form.subject || !form.title || !form.fileUrl) {
+  setMessage("❌ Enter subject, title and upload file!");
+  return;
+}
 
     const token = localStorage.getItem("token");
 
@@ -88,7 +92,11 @@ function StudyMaterials({ isAdmin, api }) {
       
       if (res.ok) {
         setMessage("✅ Material added successfully!");
-        setForm({ section: "", subject: "", title: "", fileUrl: "" });
+        setForm({
+  subject: "",
+  title: "",
+  fileUrl: ""
+});
         fetchMaterials();
         setTimeout(() => setMessage(""), 3000);
       } else {
@@ -117,13 +125,7 @@ function StudyMaterials({ isAdmin, api }) {
           {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : message.includes("⏳") ? "#FF9800" : "#c0392b", fontWeight: "600", padding: "10px", background: "#f9f9f9", borderRadius: "6px" }}>{message}</p>}
           
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
-            <select name="section" value={form.section} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }}>
-              <option value="">-- Select Section --</option>
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={String(i + 1)}>Section {i + 1}</option>
-              ))}
-            </select>
-
+            
             <input type="text" name="subject" placeholder="Subject (DBMS, OS, CN, etc)" value={form.subject} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
             <input type="text" name="title" placeholder="Material Title" value={form.title} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
 
@@ -205,7 +207,7 @@ function StudyMaterials({ isAdmin, api }) {
             <div key={material._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
               <h3 style={{ margin: "0 0 8px 0", color: "#F15A29", fontSize: "16px" }}>{material.title}</h3>
               <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Subject:</strong> {material.subject}</p>
-              <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: "13px" }}><strong>Section:</strong> {material.section}</p>
+              
               
               {material.fileUrl && (
                 <a href={material.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", color: "#fff", background: "#F15A29", textDecoration: "none", fontWeight: "600", fontSize: "13px", padding: "8px 16px", borderRadius: "6px" }}>
