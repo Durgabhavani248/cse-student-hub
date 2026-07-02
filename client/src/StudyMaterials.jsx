@@ -1,105 +1,226 @@
 import { useEffect, useState } from "react";
 
 function StudyMaterials({ isAdmin, api }) {
-  const [items, setItems] = useState([]);
-  const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
-  const [semester, setSemester] = useState("1");
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [filter, setFilter] = useState("All");
+  const [materials, setMaterials] = useState([]);
+  const [form, setForm] = useState({ section: "", subject: "", title: "", fileUrl: "" });
+  const [message, setMessage] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  const fetchItems = () => {
+  useEffect(() => {
+    fetchMaterials();
+  }, []);
+
+  const fetchMaterials = () => {
     fetch(`${api}/api/materials`)
       .then(res => res.json())
-      .then(data => setItems(data));
+      .then(data => setMaterials(data))
+      .catch(err => console.error(err));
   };
 
-  useEffect(() => { fetchItems(); }, []);
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const addItem = async () => {
-    if (!title || !subject || !file) { alert("Title, subject and file select cheyyi!"); return; }
+  const handleFileChange = (e) => {
+    setSelectedFile(e.target.files[0]);
+    setMessage("");
+  };
+
+  const uploadFile = async () => {
+    if (!selectedFile) {
+      setMessage("❌ Select a file first!");
+      return;
+    }
+
+    setUploading(true);
+    setMessage("⏳ Uploading...");
+
     const token = localStorage.getItem("token");
     const formData = new FormData();
-    formData.append("title", title);
-    formData.append("subject", subject);
-    formData.append("semester", semester);
-    formData.append("file", file);
+    formData.append("file", selectedFile);
 
-    setLoading(true);
-    await fetch(`${api}/api/materials`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    }).then(res => res.json());
+    try {
+      const res = await fetch(`${api}/api/upload`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData
+      });
 
-    fetchItems();
-    setTitle(""); setSubject(""); setFile(null);
-    setLoading(false);
+      const data = await res.json();
+      
+      if (res.ok && data.url) {
+        setForm({ ...form, fileUrl: data.url });
+        setMessage("✅ File uploaded! Ready to add material.");
+        setSelectedFile(null);
+        document.getElementById("fileInput").value = "";
+      } else {
+        setMessage("❌ Upload failed: " + (data.message || "Error"));
+      }
+    } catch (err) {
+      setMessage("❌ Upload error: " + err.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const deleteItem = (id) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!form.section || !form.subject || !form.title || !form.fileUrl) {
+      setMessage("❌ Select section, subject, title and upload file!");
+      return;
+    }
+
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`${api}/api/materials`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(form)
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        setMessage("✅ Material added successfully!");
+        setForm({ section: "", subject: "", title: "", fileUrl: "" });
+        fetchMaterials();
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("❌ " + (data.message || "Error adding material"));
+      }
+    } catch (err) {
+      setMessage("❌ Server error: " + err.message);
+    }
+  };
+
+  const deleteMaterial = (id) => {
     const token = localStorage.getItem("token");
     fetch(`${api}/api/materials/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(() => fetchItems());
-  };
-
-  const getViewUrl = (fileUrl) => `https://docs.google.com/viewer?url=${encodeURIComponent(fileUrl)}&embedded=true`;
-
-  const subjects = ["All", ...new Set(items.map(i => i.subject))];
-  const filtered = filter === "All" ? items : items.filter(i => i.subject === filter);
-
-  const inputStyle = {
-    width: "100%", padding: "10px 14px", borderRadius: "10px",
-    border: "1.5px solid #e0e0e0", background: "#fff", color: "#1a1a1a",
-    fontSize: "14px", marginBottom: "12px", outline: "none", boxSizing: "border-box"
+      headers: { "Authorization": `Bearer ${token}` }
+    }).then(() => fetchMaterials());
   };
 
   return (
     <div>
+      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📖 Study Materials</h2>
+
       {isAdmin && (
-        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "24px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-          <h2 style={{ margin: "0 0 16px 0", color: "#F15A29", fontSize: "18px", fontWeight: "700" }}>📖 Add Study Material</h2>
-          <input placeholder="Title (e.g. Unit 1 Notes)" value={title} onChange={e => setTitle(e.target.value)} style={inputStyle} />
-          <input placeholder="Subject" value={subject} onChange={e => setSubject(e.target.value)} style={inputStyle} />
-          <select value={semester} onChange={e => setSemester(e.target.value)} style={{ ...inputStyle, cursor: "pointer" }}>
-            {[1,2,3,4,5,6,7,8].map(s => <option key={s} value={s}>Semester {s}</option>)}
-          </select>
-          <input type="file" accept=".pdf" onChange={e => setFile(e.target.files[0])} style={{ ...inputStyle, padding: "8px" }} />
-          <button onClick={addItem} disabled={loading} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}>
-            {loading ? "Uploading..." : "Add Material 📤"}
-          </button>
+        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
+          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Material</h3>
+          {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : message.includes("⏳") ? "#FF9800" : "#c0392b", fontWeight: "600", padding: "10px", background: "#f9f9f9", borderRadius: "6px" }}>{message}</p>}
+          
+          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
+            <select name="section" value={form.section} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }}>
+              <option value="">-- Select Section --</option>
+              {Array.from({ length: 24 }, (_, i) => (
+                <option key={i} value={String(i + 1)}>Section {i + 1}</option>
+              ))}
+            </select>
+
+            <input type="text" name="subject" placeholder="Subject (DBMS, OS, CN, etc)" value={form.subject} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
+            <input type="text" name="title" placeholder="Material Title" value={form.title} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
+
+            {/* FILE UPLOAD SECTION */}
+            <div style={{ background: "#f9f9f9", padding: "20px", borderRadius: "8px", border: "2px dashed #F15A29" }}>
+              <p style={{ margin: "0 0 12px 0", fontWeight: "600", color: "#333" }}>📤 Upload Material (PDF, DOC, DOCX)</p>
+              
+              <input 
+                id="fileInput"
+                type="file" 
+                accept=".pdf,.doc,.docx" 
+                onChange={handleFileChange}
+                style={{ 
+                  marginBottom: "12px", 
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #e0e0e0",
+                  width: "100%",
+                  cursor: "pointer"
+                }}
+              />
+              
+              {selectedFile && (
+                <p style={{ color: "#666", fontSize: "13px", margin: "0 0 12px 0" }}>
+                  Selected: <strong>{selectedFile.name}</strong>
+                </p>
+              )}
+              
+              <button 
+                type="button"
+                onClick={uploadFile}
+                disabled={uploading || !selectedFile}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  background: uploading || !selectedFile ? "#ccc" : "#F15A29",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: uploading || !selectedFile ? "not-allowed" : "pointer",
+                  fontWeight: "600",
+                  fontSize: "14px"
+                }}
+              >
+                {uploading ? "⏳ Uploading..." : "📤 Upload File"}
+              </button>
+
+              {form.fileUrl && (
+                <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600", fontSize: "13px" }}>
+                  ✅ File ready! Click "Add Material" below.
+                </p>
+              )}
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={!form.fileUrl || uploading}
+              style={{ 
+                padding: "12px", 
+                background: !form.fileUrl || uploading ? "#ccc" : "#F15A29", 
+                color: "#fff", 
+                border: "none", 
+                borderRadius: "8px", 
+                cursor: !form.fileUrl || uploading ? "not-allowed" : "pointer", 
+                fontWeight: "600",
+                fontSize: "14px"
+              }}>
+              ➕ Add Material
+            </button>
+          </form>
         </div>
       )}
 
-      <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>📖 Study Materials</h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
+        {materials.length === 0 ? (
+          <p style={{ color: "#999", gridColumn: "1/-1", textAlign: "center", padding: "40px" }}>No materials available</p>
+        ) : (
+          materials.map(material => (
+            <div key={material._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+              <h3 style={{ margin: "0 0 8px 0", color: "#F15A29", fontSize: "16px" }}>{material.title}</h3>
+              <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Subject:</strong> {material.subject}</p>
+              <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: "13px" }}><strong>Section:</strong> {material.section}</p>
+              
+              {material.fileUrl && (
+                <a href={material.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", color: "#fff", background: "#F15A29", textDecoration: "none", fontWeight: "600", fontSize: "13px", padding: "8px 16px", borderRadius: "6px" }}>
+                  📥 Download Material
+                </a>
+              )}
 
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-        {subjects.map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding: "6px 16px", borderRadius: "20px", border: filter === s ? "none" : "1px solid #e0e0e0", background: filter === s ? "#F15A29" : "#fff", color: filter === s ? "#fff" : "#666", cursor: "pointer", fontWeight: filter === s ? "600" : "400" }}>
-            {s}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-        {filtered.map(m => (
-          <div key={m._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            <h3 style={{ margin: "0 0 4px 0", color: "#1a1a1a", fontSize: "16px" }}>📖 {m.title}</h3>
-            <p style={{ margin: "0 0 12px 0", color: "#666", fontSize: "13px" }}>{m.subject} | Sem {m.semester}</p>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <a href={m.fileUrl} target="_blank" rel="noreferrer" style={{ color: "#2196F3", fontSize: "13px", textDecoration: "none" }}>📥 View PDF</a>
               {isAdmin && (
-                <button onClick={() => deleteItem(m._id)} style={{ marginLeft: "auto", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
+                <button onClick={() => deleteMaterial(material._id)} style={{ marginLeft: "8px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
                   Delete
                 </button>
               )}
             </div>
-          </div>
-        ))}
-        {filtered.length === 0 && <p style={{ color: "#999" }}>No materials yet!</p>}
+          ))
+        )}
       </div>
     </div>
   );

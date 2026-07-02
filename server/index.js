@@ -6,8 +6,16 @@ import cors from "cors";
 import dotenv from "dotenv";
 import axios from "axios";
 import XLSX from "xlsx";
-import cloudinary from "cloudinary";
+import { v2 as cloudinary } from "cloudinary";
 import fileUpload from "express-fileupload";
+
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+
+if (!fs.existsSync("uploads")) {
+  fs.mkdirSync("uploads");
+}
 
 dotenv.config();
 
@@ -83,11 +91,22 @@ const AssignmentSchema = new mongoose.Schema({
 });
 
 const PaperSchema = new mongoose.Schema({
-  section: { type: String, required: true },
-  subject: { type: String, required: true },
-  title: { type: String, required: true },
-  fileUrl: String,
-  createdAt: { type: Date, default: Date.now }
+  subject: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  fileUrl: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 const MaterialSchema = new mongoose.Schema({
@@ -119,8 +138,7 @@ const Assignment = mongoose.model("Assignment", AssignmentSchema);
 const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
 const Timetable = mongoose.model("Timetable", TimetableSchema);
-const multer = require("multer");
-const path = require("path");
+
 
 // ============== MIDDLEWARE FUNCTIONS ==============
 
@@ -405,61 +423,40 @@ app.get("/api/papers", async (req, res) => {
 });
 
 // Add paper
-app.post("/api/papers", adminMiddleware, upload.single("file"), async (req, res) => {
+app.post("/api/papers", adminMiddleware, async (req, res) => {
   try {
+    console.log("========== PAPERS ==========");
+    console.log(req.body);
 
-    console.log("========== PAPERS API ==========");
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
+    const { subject, title, fileUrl } = req.body;
 
-    const { section, subject, title } = req.body;
+    console.log("subject =", subject);
+    console.log("title =", title);
+    console.log("fileUrl =", fileUrl);
 
-    const fileUrl = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
-      : "";
-
-    if (!section || !subject || !title) {
+    if (!subject || !title || !fileUrl) {
       return res.status(400).json({
-        message: "All fields required",
+        message: "Subject, title and fileUrl are required"
       });
     }
 
     const paper = new Paper({
-      section,
       subject,
       title,
-      fileUrl,
+      fileUrl
     });
 
     await paper.save();
 
-    console.log("✅ Paper saved successfully");
-
-    res.json(paper);
+    res.status(201).json(paper);
 
   } catch (err) {
-    console.error("Post paper error:", err);
+    console.log("FULL ERROR");
+    console.log(err);
+    console.log(err.errors);
+
     res.status(500).json({
-      message: err.message,
-    });
-  }
-});
-
-// Delete paper
-app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
-  try {
-    await Paper.deleteOne({
-      _id: req.params.id,
-    });
-
-    res.json({
-      message: "Paper deleted",
-    });
-
-  } catch (err) {
-    console.error("Delete paper error:", err);
-    res.status(500).json({
-      message: err.message,
+      message: err.message
     });
   }
 });
