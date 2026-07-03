@@ -117,16 +117,28 @@ const MaterialSchema = new mongoose.Schema({
 });
 
 const TimetableSchema = new mongoose.Schema({
-  section: { type: String, required: true, unique: true },
-  timings: [
-    {
-      start: String,
-      end: String,
-      type: String
-    }
-  ],
-  schedule: mongoose.Schema.Types.Mixed,
-  createdAt: { type: Date, default: Date.now }
+  section: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  timings: [{
+    label: String,
+    start: String,
+    end: String,
+    type: String
+  }],
+
+  schedule: {
+    type: mongoose.Schema.Types.Mixed,
+    required: true
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
 
 // ============== MODELS ==============

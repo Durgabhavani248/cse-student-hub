@@ -25,23 +25,40 @@ function CurrentClassCard({ studentSection, api }) {
   }, []);
 
   useEffect(() => {
-    if (studentSection) {
-      fetch(`${api}/api/timetable/${studentSection}`)
-        .then(res => res.json())
-        .then(data => setTimetable(data));
-    }
-  }, [studentSection]);
+  console.log("Student Section:", studentSection);
 
-  if (!timetable) return null;
+  if (studentSection) {
+    fetch(`${api}/api/timetable/${studentSection}`)
+      .then(res => res.json())
+      .then(data => {
+        console.log("Timetable API Response:", data);
+        setTimetable(data);
+      });
+  }
+}, [studentSection]);
+
+  if (!timetable) {
+  return <h2>Timetable Loading...</h2>;
+}
+
+console.log("Student Section:", studentSection);
+console.log("Timetable:", timetable);
 
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const today = days[now.getDay()];
+  console.log("Today:", today);
   const current = now.getHours() * 60 + now.getMinutes();
 
   let currentClass = null, nextClass = null, currentPeriod = null, nextPeriod = null;
 
   if (timetable.timings) {
     for (let i = 0; i < timetable.timings.length; i++) {
+      console.log(
+  i,
+  t.start,
+  t.end,
+  timetable.schedule?.[today]?.[i]
+);
       const t = timetable.timings[i];
       const [sh, sm] = t.start.split(":").map(Number);
       const [eh, em] = t.end.split(":").map(Number);
@@ -233,6 +250,11 @@ function App() {
 
         {activePage === "notices" && (
           <div>
+            <p style={{ color: "red", fontSize: "20px" }}>
+  Section = {studentInfo?.section}
+</p>
+
+
             <CurrentClassCard studentSection={studentInfo?.section} api={API} />
             {isAdmin && <AddNotice onAdd={addNotice} />}
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Notices</h2>
