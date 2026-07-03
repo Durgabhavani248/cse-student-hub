@@ -792,26 +792,9 @@ app.post("/api/notifications/broadcast", adminMiddleware, async (req, res) => {
   }
 });
 
-// ============== HEALTH CHECK ==============
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "OK", timestamp: new Date() });
-});
+// ============== ADMIN STATS ==============
 
-// ============== ERROR HANDLING ==============
-
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
-
-app.use((err, req, res, next) => {
-  console.error("Server error:", err);
-  res.status(500).json({ message: "Internal server error" });
-});
-
-// ============== START SERVER ==============
-
-const PORT = process.env.PORT || 3001;
 app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
   try {
 
@@ -827,7 +810,7 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
     });
 
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
 
     const activeToday = await User.countDocuments({
       lastLogin: { $gte: today }
@@ -842,13 +825,13 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
 
     const sectionCounts = await User.aggregate([
       {
-        $group:{
-          _id:"$section",
-          count:{ $sum:1 }
+        $group: {
+          _id: "$section",
+          count: { $sum: 1 }
         }
       },
       {
-        $sort:{ _id:1 }
+        $sort: { _id: 1 }
       }
     ]);
 
@@ -865,13 +848,45 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
       sectionCounts
     });
 
-  } catch(err){
+  } catch (err) {
     console.log(err);
     res.status(500).json({
-      message:err.message
+      message: err.message
     });
   }
 });
+
+
+// ============== HEALTH CHECK ==============
+
+app.get("/api/health", (req, res) => {
+  res.json({
+    status: "OK",
+    timestamp: new Date()
+  });
+});
+
+
+// ============== ERROR HANDLING ==============
+
+app.use((req, res) => {
+  res.status(404).json({
+    message: "Route not found"
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({
+    message: "Internal server error"
+  });
+});
+
+
+// ============== START SERVER ==============
+
+const PORT = process.env.PORT || 3001;
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on ${PORT} 🚀`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);

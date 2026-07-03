@@ -12,6 +12,7 @@ import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
+import AdminPanel from "./AdminPanel";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -36,10 +37,7 @@ function CurrentClassCard({ studentSection, api }) {
       });
   }
 }, [studentSection]);
-
-  if (!timetable) {
-  return <h2>Timetable Loading...</h2>;
-}
+if (!timetable) return null;
 
 console.log("Student Section:", studentSection);
 console.log("Timetable:", timetable);
@@ -74,7 +72,13 @@ console.log("Timetable:", timetable);
   return (
     <div style={{ background: "linear-gradient(135deg, #F15A29, #d44a1e)", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px", boxShadow: "0 4px 20px rgba(241,90,41,0.3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
       <div>
-        <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "12px" }}>{now.toLocaleTimeString()} | Section {studentSection}</p>
+        <p style={{
+  margin:0,
+  color:"rgba(255,255,255,.8)",
+  fontSize:"12px"
+}}>
+{now.toLocaleTimeString()}
+</p>
         {currentPeriod?.type === "class" && currentClass ? (
           <>
             <h2 style={{ margin: "6px 0 4px 0", color: "#fff", fontSize: "22px", fontWeight: "700" }}>{currentClass}</h2>
@@ -247,9 +251,7 @@ function App() {
 
         {activePage === "notices" && (
           <div>
-            <p style={{ color: "red", fontSize: "20px" }}>
-  Section = {studentInfo?.section}
-</p>
+            
 
 
             <CurrentClassCard studentSection={studentInfo?.section} api={API} />
