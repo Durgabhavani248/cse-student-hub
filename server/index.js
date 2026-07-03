@@ -115,7 +115,6 @@ const MaterialSchema = new mongoose.Schema({
   fileUrl: String,
   createdAt: { type: Date, default: Date.now }
 });
-
 const TimetableSchema = new mongoose.Schema({
   section: {
     type: String,
@@ -131,7 +130,7 @@ const TimetableSchema = new mongoose.Schema({
   }],
 
   schedule: {
-    type: mongoose.Schema.Types.Mixed,
+    type: Object,
     required: true
   },
 
@@ -535,40 +534,23 @@ app.delete("/api/materials/:id", adminMiddleware, async (req, res) => {
 
 app.get("/api/timetable/:section", async (req, res) => {
   try {
-    const timetable = await Timetable.findOne({ section: req.params.section });
-    
+    const timetable = await Timetable.findOne({ section: req.params.section }).lean();
+
     if (!timetable) {
-      return res.status(404).json({ message: "Timetable not found for this section" });
+      return res.status(404).json({ message: "Timetable not found" });
     }
 
-    res.json(timetable);
+    res.json({
+      section: timetable.section,
+      timings: timetable.timings || [],
+      schedule: timetable.schedule || {}
+    });
+
   } catch (err) {
-    console.error("Get timetable error:", err);
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 });
-
-app.post("/api/timetable", adminMiddleware, async (req, res) => {
-  try {
-    const { section, timings, schedule } = req.body;
-
-    if (!section || !timings || !schedule) {
-      return res.status(400).json({ message: "Section, timings, and schedule required" });
-    }
-
-    const timetable = await Timetable.findOneAndUpdate(
-      { section },
-      { section, timings, schedule },
-      { upsert: true, new: true, runValidators: true }
-    );
-
-    res.json(timetable);
-  } catch (err) {
-    console.error("Post timetable error:", err);
-    res.status(500).json({ message: err.message });
-  }
-});
-
 // ============== CHATBOT ==============
 
    
