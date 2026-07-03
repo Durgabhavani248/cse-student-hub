@@ -75,7 +75,8 @@ function Timetable({ isAdmin, studentSection, api }) {
 
       const data = await res.json();
 
-      console.log(data);
+      
+
 
       setTimetable(data);
 
@@ -215,12 +216,7 @@ function Timetable({ isAdmin, studentSection, api }) {
     );
   }
 
-  if (loading)
-    return (
-      <div style={{ padding: 40 }}>
-        Loading timetable...
-      </div>
-    );
+  
 
   if (error)
     return (
