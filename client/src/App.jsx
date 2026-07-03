@@ -52,28 +52,25 @@ console.log("Timetable:", timetable);
   let currentClass = null, nextClass = null, currentPeriod = null, nextPeriod = null;
 
   if (timetable.timings) {
-    for (let i = 0; i < timetable.timings.length; i++) {
-      console.log(
-  i,
-  t.start,
-  t.end,
-  timetable.schedule?.[today]?.[i]
-);
-      const t = timetable.timings[i];
-      const [sh, sm] = t.start.split(":").map(Number);
-      const [eh, em] = t.end.split(":").map(Number);
-      if (current >= sh * 60 + sm && current < eh * 60 + em) {
-        currentPeriod = t;
-        currentClass = timetable.schedule?.[today]?.[i];
-        if (i + 1 < timetable.timings.length) {
-          nextPeriod = timetable.timings[i + 1];
-          nextClass = timetable.schedule?.[today]?.[i + 1];
-        }
-        break;
+  for (let i = 0; i < timetable.timings.length; i++) {
+    const t = timetable.timings[i];
+
+    const [sh, sm] = t.start.split(":").map(Number);
+    const [eh, em] = t.end.split(":").map(Number);
+
+    if (current >= sh * 60 + sm && current < eh * 60 + em) {
+      currentPeriod = t;
+      currentClass = timetable.schedule?.[today]?.[i];
+
+      if (i + 1 < timetable.timings.length) {
+        nextPeriod = timetable.timings[i + 1];
+        nextClass = timetable.schedule?.[today]?.[i + 1];
       }
+
+      break;
     }
   }
-
+}
   return (
     <div style={{ background: "linear-gradient(135deg, #F15A29, #d44a1e)", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px", boxShadow: "0 4px 20px rgba(241,90,41,0.3)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
       <div>
