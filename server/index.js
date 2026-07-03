@@ -818,6 +818,66 @@ app.use((err, req, res, next) => {
 // ============== START SERVER ==============
 
 const PORT = process.env.PORT || 3001;
+app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
+  try {
+
+    const totalStudents = await User.countDocuments();
+    const totalNotices = await Notice.countDocuments();
+    const totalNotes = await Note.countDocuments();
+    const totalAssignments = await Assignment.countDocuments();
+    const totalPapers = await Paper.countDocuments();
+    const totalMaterials = await Material.countDocuments();
+
+    const everLoggedIn = await User.countDocuments({
+      lastLogin: { $exists: true }
+    });
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const activeToday = await User.countDocuments({
+      lastLogin: { $gte: today }
+    });
+
+    const week = new Date();
+    week.setDate(week.getDate() - 7);
+
+    const activeThisWeek = await User.countDocuments({
+      lastLogin: { $gte: week }
+    });
+
+    const sectionCounts = await User.aggregate([
+      {
+        $group:{
+          _id:"$section",
+          count:{ $sum:1 }
+        }
+      },
+      {
+        $sort:{ _id:1 }
+      }
+    ]);
+
+    res.json({
+      totalStudents,
+      totalNotices,
+      totalNotes,
+      totalAssignments,
+      totalPapers,
+      totalMaterials,
+      everLoggedIn,
+      activeToday,
+      activeThisWeek,
+      sectionCounts
+    });
+
+  } catch(err){
+    console.log(err);
+    res.status(500).json({
+      message:err.message
+    });
+  }
+});
 app.listen(PORT, () => {
   console.log(`✅ Server running on ${PORT} 🚀`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
