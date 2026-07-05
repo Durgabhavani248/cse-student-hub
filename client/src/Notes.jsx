@@ -113,13 +113,27 @@ setFile(null);
     }
   };
 
-  const deleteNote = (id) => {
-    const token = localStorage.getItem("token");
-    fetch(`${api}/api/notes/${id}`, {
-      method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
-    }).then(() => fetchNotes());
-  };
+  const deleteNote = async (id) => {
+
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${api}/api/notes/${id}`,{
+    method:"DELETE",
+    headers:{
+      Authorization:`Bearer ${token}`
+    }
+  });
+
+  const data = await res.json();
+
+  console.log(data);
+
+  if(res.ok){
+      fetchNotes();
+  }else{
+      alert(data.message);
+  }
+}
 
   const filteredNotes = studentSection 
     ? notes.filter(n => n.section === studentSection)

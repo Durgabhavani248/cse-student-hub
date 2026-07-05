@@ -359,29 +359,38 @@ app.get("/api/notes", async (req, res) => {
 
 app.post("/api/notes", adminMiddleware, async (req, res) => {
   try {
-    const { section, subject, title, description, fileUrl } = req.body;
 
-    if (!section || !subject || !title || !description) {
-      return res.status(400).json({ message: "All fields required" });
-    }
-
-    const note = new Note({
+    const {
       section,
       subject,
       title,
       description,
-      fileUrl,
+      fileUrl
+    } = req.body;
+
+    if (!section || !subject || !title || !description) {
+      return res.status(400).json({
+        message: "All fields required"
+      });
+    }
+
+    const note = await Note.create({
+      section,
+      subject,
+      title,
+      description,
+      fileUrl
     });
 
-    await note.save();
+    res.status(201).json(note);
 
-    res.json(note);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
-
 // ============== ASSIGNMENTS ==============
 
 app.get("/api/assignments", async (req, res) => {
@@ -394,7 +403,7 @@ app.get("/api/assignments", async (req, res) => {
   }
 });
 
-app.post("/api/assignments", adminMiddleware, upload.single("file"), async (req, res) => {
+app.post("/api/assignments", adminMiddleware, async (req, res) => {
   try {
     const {
   section,
