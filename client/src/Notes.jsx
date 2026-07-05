@@ -8,6 +8,7 @@ const [form, setForm] = useState({
   subject: "",
   title: "",
   description: "",
+  fileUrl: "",
 });
 
 const [file, setFile] = useState(null);
@@ -27,6 +28,42 @@ const [message, setMessage] = useState("");
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
+  const uploadFile = async () => {
+  if (!file) {
+    setMessage("❌ Select a file first!");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  try {
+    const res = await fetch(`${api}/api/upload`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: fd,
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      setForm((prev) => ({
+        ...prev,
+        fileUrl: data.url,
+      }));
+
+      setMessage("✅ File uploaded successfully!");
+    } else {
+      setMessage("❌ " + data.message);
+    }
+  } catch (err) {
+    setMessage(err.message);
+  }
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -38,16 +75,7 @@ const [message, setMessage] = useState("");
 
     const token = localStorage.getItem("token");
 
-const formData = new FormData();
 
-formData.append("section", form.section);
-formData.append("subject", form.subject);
-formData.append("title", form.title);
-formData.append("description", form.description);
-
-if (file) {
-  formData.append("file", file);
-}
 
 try {
   const res = await fetch(`${api}/api/notes`, {
@@ -55,7 +83,12 @@ try {
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: formData,
+  headers: {
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${token}`,
+},
+
+body: JSON.stringify(form),
   });
 
       const data = await res.json();

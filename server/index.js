@@ -45,7 +45,7 @@ const upload = multer({ storage });
 
 app.use("/uploads", express.static("uploads"));
 app.use(express.urlencoded({ limit: "50mb" }));
-app.use(fileUpload());
+//app.use(fileUpload());
 
 // ============== DATABASE CONNECTION ==============
 mongoose.connect(process.env.MONGO_URI)
@@ -357,23 +357,13 @@ app.get("/api/notes", async (req, res) => {
   }
 });
 
-app.post("/api/notes", adminMiddleware, upload.single("file"), async (req, res) => {
+app.post("/api/notes", adminMiddleware, async (req, res) => {
   try {
-    console.log("========== NOTES ==========");
-    console.log("BODY:", req.body);
-    console.log("FILE:", req.file);
-
-    const { section, subject, title, description } = req.body;
+    const { section, subject, title, description, fileUrl } = req.body;
 
     if (!section || !subject || !title || !description) {
       return res.status(400).json({ message: "All fields required" });
     }
-
-    const fileUrl = req.file
-      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
-      : "";
-
-    console.log("fileUrl =", fileUrl);
 
     const note = new Note({
       section,
@@ -383,22 +373,12 @@ app.post("/api/notes", adminMiddleware, upload.single("file"), async (req, res) 
       fileUrl,
     });
 
-    console.log("Saving note...");
-
     await note.save();
 
-    console.log("Saved successfully");
-
     res.json(note);
-
   } catch (err) {
-    console.log("========== NOTE ERROR ==========");
-    console.log(err);
-    console.log(err.stack);
-
-    res.status(500).json({
-      message: err.message
-    });
+    console.error(err);
+    res.status(500).json({ message: err.message });
   }
 });
 
@@ -416,10 +396,14 @@ app.get("/api/assignments", async (req, res) => {
 
 app.post("/api/assignments", adminMiddleware, upload.single("file"), async (req, res) => {
   try {
-    const { section, subject, title, description } = req.body;
-    const fileUrl = req.file
-  ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
-  : "";
+    const {
+  section,
+  subject,
+  title,
+  description,
+  fileUrl,
+} = req.body;
+    
 
     if (!section || !subject || !title || !description) {
       return res.status(400).json({ message: "All fields required" });
