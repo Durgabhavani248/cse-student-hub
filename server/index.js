@@ -19,7 +19,7 @@ if (!fs.existsSync("uploads")) {
 
 dotenv.config();
 
-const admin = await import("firebase-admin");
+import * as admin from "firebase-admin";
 
 admin.initializeApp({
   credential: admin.credential.cert({
@@ -28,7 +28,6 @@ admin.initializeApp({
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
   }),
 });
-
 
 const app = express();
 
