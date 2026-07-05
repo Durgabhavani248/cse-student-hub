@@ -23,8 +23,6 @@ import admin from "firebase-admin";
 import dotenv from "dotenv";
 import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
 
-dotenv.config();
-
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
