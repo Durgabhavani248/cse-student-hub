@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import cors from "cors";
-import dotenv from "dotenv";
+
 import axios from "axios";
 import XLSX from "xlsx";
 import { v2 as cloudinary } from "cloudinary";
