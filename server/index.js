@@ -392,24 +392,15 @@ app.post("/api/notes", adminMiddleware, async (req, res) => {
   }
 });
 
-const deleteNote = (id) => {
-  console.log("Deleting:", id);
+app.delete("/api/notes/:id", (req, res) => {
+  console.log("DELETE HIT");
+  res.json({
+    id: req.params.id
+  });
 
-  const token = localStorage.getItem("token");
-
-  fetch(`${api}/api/notes/${id}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  })
-    .then(async (res) => {
-      console.log("Status:", res.status);
-      console.log(await res.text());
-      fetchNotes();
-    })
-    .catch(console.error);
-};
+app.get("/api/notes/test", (req, res) => {
+  res.json({ message: "notes test works" });
+});
 // ============== ASSIGNMENTS ==============
 
 app.get("/api/assignments", async (req, res) => {
