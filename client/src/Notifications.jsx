@@ -22,15 +22,25 @@ export default function Notifications({ studentInfo }) {
     setLoading(true);
     try {
       // Fetch all notification sources
-      const [noticesRes, assignmentsRes, attendanceRes] = await Promise.all([
-        axios.get(`${API}/api/notices`),
-        axios.get(`${API}/api/assignments`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        axios.get(`${API}/api/attendance/student/${studentInfo?.rollNo}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => ({ data: {} }))
-      ]);
+      const [
+  noticesRes,
+  assignmentsRes,
+  notesRes,
+  papersRes,
+  materialsRes
+] = await Promise.all([
+  axios.get(`${API}/api/notices`),
+
+  axios.get(`${API}/api/assignments`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
+
+  axios.get(`${API}/api/notes`),
+
+  axios.get(`${API}/api/papers`),
+
+  axios.get(`${API}/api/materials`)
+]);
 
       let allNotifications = [];
 
@@ -51,37 +61,67 @@ export default function Notifications({ studentInfo }) {
       }
 
       // Add assignments as notifications
-      if (assignmentsRes.data?.assignments) {
-        allNotifications = [
-          ...allNotifications,
-          ...assignmentsRes.data.assignments.map(a => ({
-            id: `assignment-${a._id}`,
-            type: "assignment",
-            title: `New Assignment: ${a.subject}`,
-            description: a.description,
-            createdAt: a.createdAt,
-            icon: "📝",
-            priority: "high"
-          }))
-        ];
-      }
+      const assignments =
+  assignmentsRes.data.assignments || assignmentsRes.data || [];
 
-      // Add low attendance warning
-      if (attendanceRes.data?.overallPercentage) {
-        const attendance = attendanceRes.data.overallPercentage;
-        if (attendance < 75) {
-          const urgency = attendance < 60 ? "critical" : "warning";
-          allNotifications.unshift({
-            id: "attendance-warning",
-            type: "attendance",
-            title: "⚠️ Low Attendance Alert",
-            description: `Your attendance is ${attendance}%. Need to attend more classes!`,
-            createdAt: new Date().toISOString(),
-            icon: "📊",
-            priority: urgency === "critical" ? "critical" : "high"
-          });
-        }
-      }
+allNotifications.push(
+  ...assignments.map(a => ({
+    id: `assignment-${a._id}`,
+    type: "assignment",
+    title: `New Assignment - ${a.subject}`,
+    description: a.description,
+    createdAt: a.createdAt,
+    icon: "📝",
+    priority: "high"
+  }))
+);
+
+const notes =
+  notesRes.data.notes || notesRes.data || [];
+
+allNotifications.push(
+  ...notes.map(note => ({
+    id: `note-${note._id}`,
+    type: "note",
+    title: "📚 New Notes Uploaded",
+    description: note.subject || note.title || "New Notes Available",
+    createdAt: note.createdAt,
+    icon: "📚",
+    priority: "normal"
+  }))
+);
+const papers =
+  papersRes.data.papers || papersRes.data || [];
+
+allNotifications.push(
+  ...papers.map(p => ({
+    id: `paper-${p._id}`,
+    type: "paper",
+    title: `New Question Paper`,
+    description: p.subject || p.title || "Question Paper Uploaded",
+    createdAt: p.createdAt,
+    icon: "📄",
+    priority: "normal"
+  }))
+);
+
+
+
+const materials =
+  materialsRes.data.materials || materialsRes.data || [];
+
+allNotifications.push(
+  ...materials.map(m => ({
+    id: `material-${m._id}`,
+    type: "material",
+    title: `New Study Material`,
+    description: m.subject || m.title || "Study Material Uploaded",
+    createdAt: m.createdAt,
+    icon: "📚",
+    priority: "normal"
+  }))
+);
+      
 
       // Sort by date (newest first)
       allNotifications.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -128,9 +168,8 @@ export default function Notifications({ studentInfo }) {
   let displayNotifications = notifications;
   if (filter === "unread") {
     displayNotifications = notifications.filter(n => !n.isRead);
-  } else if (filter === "low-attendance") {
-    displayNotifications = notifications.filter(n => n.type === "attendance");
-  } else if (filter === "assignments") {
+  
+  }else if (filter === "assignments") {
     displayNotifications = notifications.filter(n => n.type === "assignment");
   } else if (filter === "notices") {
     displayNotifications = notifications.filter(n => n.type === "notice");
@@ -157,12 +196,7 @@ export default function Notifications({ studentInfo }) {
           >
             Unread ({unreadCount})
           </button>
-          <button
-            className={`tab ${filter === "low-attendance" ? "active" : ""}`}
-            onClick={() => setFilter("low-attendance")}
-          >
-            Attendance
-          </button>
+          
           <button
             className={`tab ${filter === "assignments" ? "active" : ""}`}
             onClick={() => setFilter("assignments")}
