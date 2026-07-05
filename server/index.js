@@ -397,6 +397,7 @@ app.delete("/api/notes/:id", (req, res) => {
   res.json({
     id: req.params.id
   });
+});
 
 app.get("/api/notes/test", (req, res) => {
   res.json({ message: "notes test works" });
