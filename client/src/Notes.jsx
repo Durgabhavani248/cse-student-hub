@@ -95,11 +95,12 @@ body: JSON.stringify(form),
       
       if (res.ok) {
         setMessage("✅ Note added successfully!");
-        setForm({
+      setForm({
   section: "",
   subject: "",
   title: "",
   description: "",
+  fileUrl: "",
 });
 
 setFile(null);
@@ -167,6 +168,22 @@ setFile(null);
       width: "100%",
     }}
   />
+  <button
+  type="button"
+  onClick={uploadFile}
+  disabled={!file}
+  style={{
+    marginTop: "10px",
+    padding: "10px 16px",
+    background: !file ? "#ccc" : "#F15A29",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: !file ? "not-allowed" : "pointer",
+  }}
+>
+  📤 Upload File
+</button>
 
   {file && (
     <p
