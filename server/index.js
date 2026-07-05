@@ -19,7 +19,7 @@ if (!fs.existsSync("uploads")) {
 
 dotenv.config();
 
-import * as admin from "firebase-admin";
+const admin = await import("firebase-admin");
 
 admin.initializeApp({
   credential: admin.credential.cert({
