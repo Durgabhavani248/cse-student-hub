@@ -17,19 +17,16 @@ if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
 }
 
+import dotenv from "dotenv";
 dotenv.config();
 
 import admin from "firebase-admin";
-import dotenv from "dotenv";
-import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
 
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  }),
-});
+
+
+const serviceAccount = JSON.parse(
+  fs.readFileSync("./serviceAccountKey.json", "utf-8")
+);
 const app = express();
 
 // ============== MIDDLEWARE ==============
@@ -362,43 +359,46 @@ app.get("/api/notes", async (req, res) => {
 
 app.post("/api/notes", adminMiddleware, upload.single("file"), async (req, res) => {
   try {
-
-    console.log("NOTES BODY:", req.body);
+    console.log("========== NOTES ==========");
+    console.log("BODY:", req.body);
+    console.log("FILE:", req.file);
 
     const { section, subject, title, description } = req.body;
 
-const fileUrl = req.file
-  ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
-  : "";
+    if (!section || !subject || !title || !description) {
+      return res.status(400).json({ message: "All fields required" });
+    }
 
-   if (!section || !subject || !title || !description) {
-  return res.status(400).json({ message: "All fields required" });
-}
+    const fileUrl = req.file
+      ? `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`
+      : "";
 
-const note = new Note({
-  section,
-  subject,
-  title,
-  description,
-  fileUrl,
-});
+    console.log("fileUrl =", fileUrl);
 
-await note.save();
+    const note = new Note({
+      section,
+      subject,
+      title,
+      description,
+      fileUrl,
+    });
 
-res.json(note);}
- catch (err) {
-    console.error("Post note error:", err);
-    res.status(500).json({ message: err.message });
-  }
-});
+    console.log("Saving note...");
 
-app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
-  try {
-    await Note.deleteOne({ _id: req.params.id });
-    res.json({ message: "Note deleted" });
+    await note.save();
+
+    console.log("Saved successfully");
+
+    res.json(note);
+
   } catch (err) {
-    console.error("Delete note error:", err);
-    res.status(500).json({ message: err.message });
+    console.log("========== NOTE ERROR ==========");
+    console.log(err);
+    console.log(err.stack);
+
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
