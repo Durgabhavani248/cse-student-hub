@@ -12,7 +12,7 @@ import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
-import AdminPanel from "./AdminPanel";
+
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -32,19 +32,19 @@ function CurrentClassCard({ studentSection, api }) {
     fetch(`${api}/api/timetable/${studentSection}`)
       .then(res => res.json())
       .then(data => {
-        console.log("Timetable API Response:", data);
+        
         setTimetable(data);
       });
   }
 }, [studentSection]);
 if (!timetable) return null;
 
-console.log("Student Section:", studentSection);
-console.log("Timetable:", timetable);
+
+
 
   const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const today = days[now.getDay()];
-  console.log("Today:", today);
+  
   const current = now.getHours() * 60 + now.getMinutes();
 
   let currentClass = null, nextClass = null, currentPeriod = null, nextPeriod = null;
@@ -254,7 +254,12 @@ function App() {
             
 
 
-            <CurrentClassCard studentSection={studentInfo?.section} api={API} />
+            {!isAdmin && (
+  <CurrentClassCard
+    studentSection={studentInfo?.section}
+    api={API}
+  />
+)}
             {isAdmin && <AddNotice onAdd={addNotice} />}
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Notices</h2>
             {notices.length === 0 && <p style={{ color: "#999" }}>No notices yet!</p>}
