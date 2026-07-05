@@ -18,6 +18,12 @@ if (!fs.existsSync("uploads")) {
 }
 
 dotenv.config();
+import admin from "firebase-admin";
+import serviceAccount from "./firebase-service-account.json" assert { type: "json" };
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
 
 const app = express();
 
@@ -298,6 +304,28 @@ app.post("/api/notices", adminMiddleware, async (req, res) => {
 
     const notice = new Notice({ title, description });
     await notice.save();
+    const users = await User.find({
+  fcmToken: { $exists: true, $ne: null }
+});
+
+const tokens = users
+  .map(u => u.fcmToken)
+  .filter(Boolean);
+
+if (tokens.length > 0) {
+  await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: {
+      title: title,
+      body: description
+    },
+    webpush: {
+      notification: {
+        icon: "/icon-192.png"
+      }
+    }
+  });
+}
     res.json(notice);
   } catch (err) {
     console.error("Post notice error:", err);
@@ -785,7 +813,27 @@ app.post("/api/notifications/broadcast", adminMiddleware, async (req, res) => {
       return res.json({ message: "No users to notify in this section" });
     }
 
-    res.json({ success: true, message: `Sent to ${users.length} users` });
+    const tokens = users
+  .map(user => user.fcmToken)
+  .filter(Boolean);
+
+await admin.messaging().sendEachForMulticast({
+  tokens,
+  notification: {
+    title,
+    body
+  },
+  webpush: {
+    notification: {
+      icon: "/icon-192.png"
+    }
+  }
+});
+
+res.json({
+  success: true,
+  message: `Notification sent to ${tokens.length} students`
+});
   } catch (err) {
     console.error("Broadcast notification error:", err);
     res.status(500).json({ message: err.message });
