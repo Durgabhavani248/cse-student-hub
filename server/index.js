@@ -392,11 +392,20 @@ app.post("/api/notes", adminMiddleware, async (req, res) => {
   }
 });
 
-app.delete("/api/notes/:id", (req, res) => {
-  console.log("DELETE HIT");
-  res.json({
-    id: req.params.id
-  });
+app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
+  try {
+    await Note.findByIdAndDelete(req.params.id);
+
+    res.json({
+      message: "Note deleted successfully"
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      message: err.message
+    });
+  }
 });
 
 app.get("/api/notes/test", (req, res) => {
