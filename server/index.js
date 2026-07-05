@@ -391,6 +391,25 @@ app.post("/api/notes", adminMiddleware, async (req, res) => {
     });
   }
 });
+
+const deleteNote = (id) => {
+  console.log("Deleting:", id);
+
+  const token = localStorage.getItem("token");
+
+  fetch(`${api}/api/notes/${id}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  })
+    .then(async (res) => {
+      console.log("Status:", res.status);
+      console.log(await res.text());
+      fetchNotes();
+    })
+    .catch(console.error);
+};
 // ============== ASSIGNMENTS ==============
 
 app.get("/api/assignments", async (req, res) => {
