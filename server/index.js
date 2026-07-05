@@ -19,16 +19,19 @@ if (!fs.existsSync("uploads")) {
 
 dotenv.config();
 
-import * as admin from "firebase-admin";
+import admin from "firebase-admin";
+import dotenv from "dotenv";
+import serviceAccount from "./serviceAccountKey.json" assert { type: "json" };
+
+dotenv.config();
 
 admin.initializeApp({
   credential: admin.credential.cert({
     projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
     clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
   }),
 });
-
 const app = express();
 
 // ============== MIDDLEWARE ==============
