@@ -24,9 +24,9 @@ import admin from "firebase-admin";
 
 
 
-const serviceAccount = JSON.parse(
-  fs.readFileSync("./serviceAccountKey.json", "utf-8")
-);
+//const serviceAccount = JSON.parse(
+  //fs.readFileSync("./serviceAccountKey.json", "utf-8")
+//);
 const app = express();
 
 // ============== MIDDLEWARE ==============
