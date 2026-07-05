@@ -930,6 +930,9 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date()
   });
 });
+app.get("/api/test123", (req, res) => {
+  res.json({ message: "working" });
+});
 
 
 // ============== ERROR HANDLING ==============
