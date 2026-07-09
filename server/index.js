@@ -6,12 +6,15 @@ import cors from "cors";
 
 import axios from "axios";
 import XLSX from "xlsx";
-import { v2 as cloudinary } from "cloudinary";
+import cloudinary from "./config/cloudinary.js";
 import fileUpload from "express-fileupload";
 
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import connectDB from "./config/database.js";
+import User from "./models/User.js";
+import authRoutes from "./routes/authRoutes.js";
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -32,6 +35,7 @@ const app = express();
 // ============== MIDDLEWARE ==============
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
+app.use("/api", authRoutes);
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -47,32 +51,13 @@ app.use("/uploads", express.static("uploads"));
 app.use(express.urlencoded({ limit: "50mb" }));
 //app.use(fileUpload());
 
-// ============== DATABASE CONNECTION ==============
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ MongoDB Connected ✅"))
-  .catch(err => console.error("MongoDB Error:", err));
+// ============== DATABASE CONNECTION ===========
+connectDB();
 
-// ============== CLOUDINARY CONFIG =============
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
+
 
 // ============== SCHEMAS ==============
 
-const UserSchema = new mongoose.Schema({
-  rollNo: { type: String, unique: true, required: true },
-  name: { type: String, required: true },
-  section: { type: String, required: true },
-  branch: { type: String, default: "CSE" },
-  password: { type: String, required: true },
-  isFirstLogin: { type: Boolean, default: true },
-  fcmToken: String,
-  lastNotificationTime: Date,
-  createdAt: { type: Date, default: Date.now },
-  lastLogin: Date
-});
 
 const NoticeSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -149,7 +134,7 @@ const TimetableSchema = new mongoose.Schema({
 });
 
 // ============== MODELS ==============
-const User = mongoose.model("User", UserSchema);
+
 const Notice = mongoose.model("Notice", NoticeSchema);
 const Note = mongoose.model("Note", NoteSchema);
 const Assignment = mongoose.model("Assignment", AssignmentSchema);
@@ -177,7 +162,7 @@ const adminMiddleware = (req, res, next) => {
 
 // ============== AUTH ROUTES ==============
 
-app.post("/api/login", async (req, res) => {
+/*app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -195,7 +180,7 @@ app.post("/api/login", async (req, res) => {
     console.error("Login error:", err);
     res.status(500).json({ message: err.message });
   }
-});
+});*/
 
 app.post("/api/student-login", async (req, res) => {
   try {
