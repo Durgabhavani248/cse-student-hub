@@ -25,7 +25,7 @@ const UserSchema = new mongoose.Schema({
 
   role: {
     type: String,
-    enum: ["student", "cr", "faculty", "hod"],
+    enum: ["student", "cr", "faculty", "hod", "admin"],
     default: "student",
   },
 
@@ -35,18 +35,40 @@ const UserSchema = new mongoose.Schema({
     default: null,
   },
 
-  section: String,
-  branch: String,
-  year: Number,
-  semester: Number,
-  department: String,
+  branch: {
+    type: String,
+    default: "",
+  },
+
+  section: {
+    type: String,
+    default: "",
+  },
+
+  year: {
+    type: Number,
+    default: null,
+  },
+
+  semester: {
+    type: Number,
+    default: null,
+  },
+
+  department: {
+    type: String,
+    default: "",
+  },
 
   password: {
     type: String,
     required: true,
   },
 
-  profileImage: String,
+  profileImage: {
+    type: String,
+    default: "",
+  },
 
   isFirstLogin: {
     type: Boolean,
@@ -58,7 +80,10 @@ const UserSchema = new mongoose.Schema({
     default: true,
   },
 
-  fcmToken: String,
+  fcmToken: {
+    type: String,
+    default: "",
+  },
 
   lastNotificationTime: Date,
 

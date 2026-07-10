@@ -13,8 +13,24 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import connectDB from "./config/database.js";
-import User from "./models/User.js";
+
 import authRoutes from "./routes/authRoutes.js";
+import notesRoutes from "./routes/notesRoutes.js";
+import User from "./models/User.js";
+import Note from "./models/Note.js";
+import Assignment from "./models/Assignment.js";
+import Notice from "./models/Notice.js";
+import Material from "./models/Material.js";
+import Paper from "./models/Paper.js";
+import Timetable from "./models/Timetable.js";
+
+
+
+
+
+
+
+
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -36,6 +52,7 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use("/api", authRoutes);
+app.use("/api/notes", notesRoutes);
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -65,16 +82,16 @@ const NoticeSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-const NoteSchema = new mongoose.Schema({
+/*const NoteSchema = new mongoose.Schema({
   section: { type: String, required: true },
   subject: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   fileUrl: String,
   createdAt: { type: Date, default: Date.now }
-});
+});*/
 
-const AssignmentSchema = new mongoose.Schema({
+/*const AssignmentSchema = new mongoose.Schema({
   section: { type: String, required: true },
   subject: { type: String, required: true },
   title: { type: String, required: true },
@@ -131,16 +148,16 @@ const TimetableSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+});*/
 
 // ============== MODELS ==============
 
-const Notice = mongoose.model("Notice", NoticeSchema);
+/*const Notice = mongoose.model("Notice", NoticeSchema);
 const Note = mongoose.model("Note", NoteSchema);
 const Assignment = mongoose.model("Assignment", AssignmentSchema);
 const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
-const Timetable = mongoose.model("Timetable", TimetableSchema);
+const Timetable = mongoose.model("Timetable", TimetableSchema);*/
 
 
 // ============== MIDDLEWARE FUNCTIONS ==============
@@ -182,7 +199,7 @@ const adminMiddleware = (req, res, next) => {
   }
 });*/
 
-app.post("/api/student-login", async (req, res) => {
+/*app.post("/api/student-login", async (req, res) => {
   try {
     const { rollNo, password } = req.body;
 
@@ -217,9 +234,9 @@ app.post("/api/student-login", async (req, res) => {
     console.error("Student login error:", err);
     res.status(500).json({ message: err.message });
   }
-});
+});*/
 
-app.post("/api/change-password", async (req, res) => {
+/*app.post("/api/change-password", async (req, res) => {
   try {
     const { rollNo, newPassword } = req.body;
 
@@ -243,7 +260,7 @@ app.post("/api/change-password", async (req, res) => {
     console.error("Change password error:", err);
     res.status(500).json({ message: err.message });
   }
-});
+});*/
 
 app.post("/api/student/forgot-password", async (req, res) => {
   try {
@@ -332,7 +349,7 @@ app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
 
 // ============== NOTES ==============
 
-app.get("/api/notes", async (req, res) => {
+/*app.get("/api/notes", async (req, res) => {
   try {
     const notes = await Note.find().sort({ createdAt: -1 });
     res.json(notes);
@@ -395,7 +412,7 @@ app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
 
 app.get("/api/notes/test", (req, res) => {
   res.json({ message: "notes test works" });
-});
+});*/
 // ============== ASSIGNMENTS ==============
 
 app.get("/api/assignments", async (req, res) => {
