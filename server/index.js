@@ -1538,6 +1538,15 @@ app.get("/api/admin/debug-students/:branch", adminMiddleware, async (req, res) =
   })));
 });
 
+app.get("/api/admin/debug-branches", adminMiddleware, async (req, res) => {
+  const branches = await User.distinct("branch");
+  const sample = await User.find({}).limit(5).lean();
+  res.json({
+    distinctBranches: branches,
+    sample: sample.map(s => ({ rollNo: s.rollNo, branch: s.branch, section: s.section }))
+  });
+});
+
 // ============== HEALTH CHECK ==============
 
 app.get("/api/health", (req, res) => {
