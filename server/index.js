@@ -1542,8 +1542,11 @@ app.get("/api/admin/debug-branches", adminMiddleware, async (req, res) => {
   const branches = await User.distinct("branch");
   const sample = await User.find({}).limit(5).lean();
   res.json({
+    totalCount: await User.countDocuments({}),
     distinctBranches: branches,
-    sample: sample.map(s => ({ rollNo: s.rollNo, branch: s.branch, section: s.section }))
+    sample_readable: sample.map(s =>
+      `rollNo=${s.rollNo} | branch="${s.branch}" | section="${s.section}"`
+    )
   });
 });
 
