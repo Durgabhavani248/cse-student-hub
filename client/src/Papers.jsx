@@ -16,7 +16,10 @@ function Papers({ isAdmin, api }) {
   }, []);
 
   const fetchPapers = () => {
-    fetch(`${api}/api/papers`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${api}/api/papers`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => setPapers(data))
       .catch(err => console.error(err));

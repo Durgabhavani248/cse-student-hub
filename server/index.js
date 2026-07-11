@@ -6,31 +6,12 @@ import cors from "cors";
 
 import axios from "axios";
 import XLSX from "xlsx";
-import cloudinary from "./config/cloudinary.js";
+import { v2 as cloudinary } from "cloudinary";
 import fileUpload from "express-fileupload";
 
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import connectDB from "./config/database.js";
-
-import authRoutes from "./routes/authRoutes.js";
-import notesRoutes from "./routes/notesRoutes.js";
-import User from "./models/User.js";
-import Note from "./models/Note.js";
-import Assignment from "./models/Assignment.js";
-import Notice from "./models/Notice.js";
-import Material from "./models/Material.js";
-import Paper from "./models/Paper.js";
-import Timetable from "./models/Timetable.js";
-
-
-
-
-
-
-
-
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -51,8 +32,6 @@ const app = express();
 // ============== MIDDLEWARE ==============
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
-app.use("/api", authRoutes);
-app.use("/api/notes", notesRoutes);
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "uploads/");
@@ -68,13 +47,60 @@ app.use("/uploads", express.static("uploads"));
 app.use(express.urlencoded({ limit: "50mb" }));
 //app.use(fileUpload());
 
-// ============== DATABASE CONNECTION ===========
-connectDB();
+// ============== DATABASE CONNECTION ==============
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB Connected ✅"))
+  .catch(err => console.error("MongoDB Error:", err));
 
-
+// ============== CLOUDINARY CONFIG =============
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
 // ============== SCHEMAS ==============
 
+const UserSchema = new mongoose.Schema({
+  rollNo: { type: String, unique: true, required: true },
+  name: { type: String, required: true },
+  section: { type: String, required: true },
+  branch: { type: String, default: "CSE" },
+  password: { type: String, required: true },
+  isFirstLogin: { type: Boolean, default: true },
+  isCR: { type: Boolean, default: false },
+  fcmToken: String,
+  lastNotificationTime: Date,
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: Date
+});
+
+// Faculty & HOD accounts. role="hod" gets full-branch access (all sections),
+// role="faculty" is restricted to assignedSections only.
+const FacultySchema = new mongoose.Schema({
+  facultyId: { type: String, unique: true, required: true },
+  name: { type: String, required: true },
+  password: { type: String, required: true },
+  branch: { type: String, required: true },
+  role: { type: String, enum: ["faculty", "hod"], default: "faculty" },
+  assignedSections: [{ type: String }], // ignored for hod (full branch access)
+  isFirstLogin: { type: Boolean, default: true },
+  fcmToken: String,
+  createdAt: { type: Date, default: Date.now },
+  lastLogin: Date
+});
+
+const AttendanceSchema = new mongoose.Schema({
+  rollNo: { type: String, required: true },
+  studentName: String,
+  branch: { type: String, required: true },
+  section: { type: String, required: true },
+  subject: { type: String, required: true },
+  date: { type: String, required: true }, // "YYYY-MM-DD"
+  status: { type: String, enum: ["present", "absent"], required: true },
+  markedBy: { type: String, required: true }, // facultyId
+  createdAt: { type: Date, default: Date.now }
+});
 
 const NoticeSchema = new mongoose.Schema({
   title: { type: String, required: true },
@@ -82,25 +108,30 @@ const NoticeSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-/*const NoteSchema = new mongoose.Schema({
+const NoteSchema = new mongoose.Schema({
+  branch: { type: String, default: "CSE" },
   section: { type: String, required: true },
   subject: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   fileUrl: String,
+  uploadedBy: String, // facultyId or rollNo (CR)
   createdAt: { type: Date, default: Date.now }
-});*/
+});
 
-/*const AssignmentSchema = new mongoose.Schema({
+const AssignmentSchema = new mongoose.Schema({
+  branch: { type: String, default: "CSE" },
   section: { type: String, required: true },
   subject: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, required: true },
   dueDate: String,
+  uploadedBy: String,
   createdAt: { type: Date, default: Date.now }
 });
 
 const PaperSchema = new mongoose.Schema({
+  branch: { type: String, default: "CSE" },
   subject: {
     type: String,
     required: true
@@ -120,16 +151,17 @@ const PaperSchema = new mongoose.Schema({
 });
 
 const MaterialSchema = new mongoose.Schema({
+  branch: { type: String, default: "CSE" },
   subject: { type: String, required: true },
   title: { type: String, required: true },
   fileUrl: String,
   createdAt: { type: Date, default: Date.now }
 });
 const TimetableSchema = new mongoose.Schema({
+  branch: { type: String, default: "CSE" },
   section: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
 
   timings: [{
@@ -148,16 +180,21 @@ const TimetableSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});*/
+});
+// branch+section together must be unique (not section alone, since section "A"
+// exists in every branch now)
+TimetableSchema.index({ branch: 1, section: 1 }, { unique: true });
 
 // ============== MODELS ==============
-
-/*const Notice = mongoose.model("Notice", NoticeSchema);
+const User = mongoose.model("User", UserSchema);
+const Faculty = mongoose.model("Faculty", FacultySchema);
+const Attendance = mongoose.model("Attendance", AttendanceSchema);
+const Notice = mongoose.model("Notice", NoticeSchema);
 const Note = mongoose.model("Note", NoteSchema);
 const Assignment = mongoose.model("Assignment", AssignmentSchema);
 const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
-const Timetable = mongoose.model("Timetable", TimetableSchema);*/
+const Timetable = mongoose.model("Timetable", TimetableSchema);
 
 
 // ============== MIDDLEWARE FUNCTIONS ==============
@@ -177,9 +214,72 @@ const adminMiddleware = (req, res, next) => {
   }
 };
 
+// Verifies any valid token (student / faculty / hod / admin) and attaches
+// the decoded payload to req.user. Used as a base for role checks below.
+const verifyAnyToken = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// Student-only routes (change password, notifications, etc.)
+const studentMiddleware = (req, res, next) => {
+  verifyAnyToken(req, res, () => {
+    if (req.user.role !== "student") return res.status(403).json({ message: "Students only" });
+    next();
+  });
+};
+
+// Faculty or HOD (both are stored in the Faculty collection)
+const facultyMiddleware = (req, res, next) => {
+  verifyAnyToken(req, res, () => {
+    if (req.user.role !== "faculty" && req.user.role !== "hod") {
+      return res.status(403).json({ message: "Faculty/HOD only" });
+    }
+    next();
+  });
+};
+
+// HOD or Admin (branch-wide / global management actions)
+const hodOrAdminMiddleware = (req, res, next) => {
+  verifyAnyToken(req, res, () => {
+    if (req.user.role !== "hod" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "HOD/Admin only" });
+    }
+    next();
+  });
+};
+
+// Anyone who can upload content: CR (student flag), faculty, hod, admin
+const uploaderMiddleware = (req, res, next) => {
+  verifyAnyToken(req, res, () => {
+    const u = req.user;
+    const allowed = u.role === "faculty" || u.role === "hod" || u.role === "admin" || (u.role === "student" && u.isCR);
+    if (!allowed) return res.status(403).json({ message: "Not authorized to upload" });
+    next();
+  });
+};
+
+// Given req.user (from a verified token) and a target { branch, section },
+// returns true if that user is allowed to see/act on that branch+section.
+function canAccess(user, branch, section) {
+  if (user.role === "admin") return true;
+  if (user.role === "hod") return user.branch === branch;
+  if (user.role === "faculty") return user.branch === branch && (!section || (user.assignedSections || []).includes(section));
+  if (user.role === "student") return user.branch === branch && (!section || user.section === section);
+  return false;
+}
+
 // ============== AUTH ROUTES ==============
 
-/*app.post("/api/login", async (req, res) => {
+app.post("/api/login", async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -197,11 +297,11 @@ const adminMiddleware = (req, res, next) => {
     console.error("Login error:", err);
     res.status(500).json({ message: err.message });
   }
-});*/
+});
 
-/*app.post("/api/student-login", async (req, res) => {
+app.post("/api/student-login", async (req, res) => {
   try {
-    const { rollNo, password } = req.body;
+    const { rollNo, password, branch } = req.body;
 
     if (!rollNo || !password) {
       return res.status(400).json({ message: "Roll No and password required" });
@@ -213,12 +313,20 @@ const adminMiddleware = (req, res, next) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
+    if (branch && user.branch && branch !== user.branch) {
+      return res.status(400).json({ message: `This roll number belongs to ${user.branch}. Please select the correct branch.` });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = jwt.sign({ rollNo, role: "student" }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign(
+      { rollNo, role: "student", branch: user.branch, section: user.section, isCR: user.isCR },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
     await User.updateOne({ rollNo }, { lastLogin: new Date() });
 
     res.json({
@@ -227,6 +335,8 @@ const adminMiddleware = (req, res, next) => {
         rollNo: user.rollNo,
         name: user.name,
         section: user.section,
+        branch: user.branch,
+        isCR: user.isCR,
         isFirstLogin: user.isFirstLogin
       }
     });
@@ -234,14 +344,145 @@ const adminMiddleware = (req, res, next) => {
     console.error("Student login error:", err);
     res.status(500).json({ message: err.message });
   }
-});*/
+});
 
-/*app.post("/api/change-password", async (req, res) => {
+// ============== FACULTY / HOD AUTH ==============
+
+app.post("/api/faculty-login", async (req, res) => {
   try {
-    const { rollNo, newPassword } = req.body;
+    const { facultyId, password } = req.body;
 
-    if (!rollNo || !newPassword) {
-      return res.status(400).json({ message: "Roll No and new password required" });
+    if (!facultyId || !password) {
+      return res.status(400).json({ message: "Faculty ID and password required" });
+    }
+
+    const faculty = await Faculty.findOne({ facultyId });
+    if (!faculty) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    const isMatch = await bcrypt.compare(password, faculty.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    const token = jwt.sign(
+      {
+        facultyId: faculty.facultyId,
+        role: faculty.role, // "faculty" or "hod"
+        branch: faculty.branch,
+        assignedSections: faculty.assignedSections || []
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    await Faculty.updateOne({ facultyId }, { lastLogin: new Date() });
+
+    res.json({
+      token,
+      faculty: {
+        facultyId: faculty.facultyId,
+        name: faculty.name,
+        branch: faculty.branch,
+        role: faculty.role,
+        assignedSections: faculty.assignedSections || [],
+        isFirstLogin: faculty.isFirstLogin
+      }
+    });
+  } catch (err) {
+    console.error("Faculty login error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/faculty/change-password", async (req, res) => {
+  try {
+    const { facultyId, newPassword } = req.body;
+
+    if (!facultyId || !newPassword) {
+      return res.status(400).json({ message: "Faculty ID and new password required" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const result = await Faculty.updateOne(
+      { facultyId },
+      { password: hashedPassword, isFirstLogin: false }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+
+    res.json({ message: "Password changed successfully" });
+  } catch (err) {
+    console.error("Faculty change password error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Admin creates faculty/HOD accounts (default password, forced change on first login)
+app.post("/api/admin/create-faculty", adminMiddleware, async (req, res) => {
+  try {
+    const { facultyId, name, branch, role, assignedSections } = req.body;
+
+    if (!facultyId || !name || !branch) {
+      return res.status(400).json({ message: "facultyId, name and branch are required" });
+    }
+
+    const existing = await Faculty.findOne({ facultyId });
+    if (existing) {
+      return res.status(400).json({ message: "Faculty ID already exists" });
+    }
+
+    if (role === "hod") {
+      const existingHod = await Faculty.findOne({ branch, role: "hod" });
+      if (existingHod) {
+        return res.status(400).json({ message: `${branch} already has an HOD (${existingHod.facultyId})` });
+      }
+    }
+
+    const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
+
+    const faculty = await Faculty.create({
+      facultyId: String(facultyId).trim(),
+      name: String(name).trim(),
+      branch: String(branch).trim(),
+      role: role === "hod" ? "hod" : "faculty",
+      assignedSections: role === "hod" ? [] : (assignedSections || []),
+      password: hashedPassword
+    });
+
+    res.status(201).json({
+      message: "Faculty account created",
+      faculty: { facultyId: faculty.facultyId, name: faculty.name, branch: faculty.branch, role: faculty.role }
+    });
+  } catch (err) {
+    console.error("Create faculty error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// List faculty (HOD sees own branch, Admin sees all)
+app.get("/api/faculty", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const filter = req.user.role === "hod" ? { branch: req.user.branch } : {};
+    const faculty = await Faculty.find(filter).select("-password").sort({ name: 1 });
+    res.json(faculty);
+  } catch (err) {
+    console.error("List faculty error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.post("/api/student/change-password", studentMiddleware, async (req, res) => {
+  try {
+    const rollNo = req.user.rollNo;
+    const { newPassword } = req.body;
+
+    if (!newPassword) {
+      return res.status(400).json({ message: "New password required" });
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -255,12 +496,12 @@ const adminMiddleware = (req, res, next) => {
       return res.status(404).json({ message: "Student not found" });
     }
 
-    res.json({ message: "Password changed successfully" });
+    res.json({ message: "Password changed!" });
   } catch (err) {
     console.error("Change password error:", err);
     res.status(500).json({ message: err.message });
   }
-});*/
+});
 
 app.post("/api/student/forgot-password", async (req, res) => {
   try {
@@ -349,9 +590,16 @@ app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
 
 // ============== NOTES ==============
 
-/*app.get("/api/notes", async (req, res) => {
+app.get("/api/notes", verifyAnyToken, async (req, res) => {
   try {
-    const notes = await Note.find().sort({ createdAt: -1 });
+    const u = req.user;
+    let filter = {};
+    if (u.role === "student") filter = { branch: u.branch, section: u.section };
+    else if (u.role === "faculty") filter = { branch: u.branch, section: { $in: u.assignedSections || [] } };
+    else if (u.role === "hod") filter = { branch: u.branch };
+    // admin: no filter, sees everything
+
+    const notes = await Note.find(filter).sort({ createdAt: -1 });
     res.json(notes);
   } catch (err) {
     console.error("Get notes error:", err);
@@ -359,10 +607,11 @@ app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
   }
 });
 
-app.post("/api/notes", adminMiddleware, async (req, res) => {
+app.post("/api/notes", uploaderMiddleware, async (req, res) => {
   try {
 
     const {
+      branch,
       section,
       subject,
       title,
@@ -376,12 +625,19 @@ app.post("/api/notes", adminMiddleware, async (req, res) => {
       });
     }
 
+    const targetBranch = branch || req.user.branch || "CSE";
+    if (!canAccess(req.user, targetBranch, section)) {
+      return res.status(403).json({ message: "You can only upload for your own branch/section" });
+    }
+
     const note = await Note.create({
+      branch: targetBranch,
       section,
       subject,
       title,
       description,
-      fileUrl
+      fileUrl,
+      uploadedBy: req.user.facultyId || req.user.rollNo
     });
 
     res.status(201).json(note);
@@ -394,8 +650,14 @@ app.post("/api/notes", adminMiddleware, async (req, res) => {
   }
 });
 
-app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
+app.delete("/api/notes/:id", uploaderMiddleware, async (req, res) => {
   try {
+    const note = await Note.findById(req.params.id);
+    if (!note) return res.status(404).json({ message: "Note not found" });
+    if (!canAccess(req.user, note.branch, note.section)) {
+      return res.status(403).json({ message: "Not authorized to delete this note" });
+    }
+
     await Note.findByIdAndDelete(req.params.id);
 
     res.json({
@@ -412,12 +674,18 @@ app.delete("/api/notes/:id", adminMiddleware, async (req, res) => {
 
 app.get("/api/notes/test", (req, res) => {
   res.json({ message: "notes test works" });
-});*/
+});
 // ============== ASSIGNMENTS ==============
 
-app.get("/api/assignments", async (req, res) => {
+app.get("/api/assignments", verifyAnyToken, async (req, res) => {
   try {
-    const assignments = await Assignment.find().sort({ createdAt: -1 });
+    const u = req.user;
+    let filter = {};
+    if (u.role === "student") filter = { branch: u.branch, section: u.section };
+    else if (u.role === "faculty") filter = { branch: u.branch, section: { $in: u.assignedSections || [] } };
+    else if (u.role === "hod") filter = { branch: u.branch };
+
+    const assignments = await Assignment.find(filter).sort({ createdAt: -1 });
     res.json({ assignments });
   } catch (err) {
     console.error("Get assignments error:", err);
@@ -425,9 +693,10 @@ app.get("/api/assignments", async (req, res) => {
   }
 });
 
-app.post("/api/assignments", adminMiddleware, async (req, res) => {
+app.post("/api/assignments", uploaderMiddleware, async (req, res) => {
   try {
     const {
+  branch,
   section,
   subject,
   title,
@@ -440,12 +709,19 @@ app.post("/api/assignments", adminMiddleware, async (req, res) => {
       return res.status(400).json({ message: "All fields required" });
     }
 
+    const targetBranch = branch || req.user.branch || "CSE";
+    if (!canAccess(req.user, targetBranch, section)) {
+      return res.status(403).json({ message: "You can only upload for your own branch/section" });
+    }
+
   const assignment = new Assignment({
+  branch: targetBranch,
   section,
   subject,
   title,
   description,
   fileUrl,
+  uploadedBy: req.user.facultyId || req.user.rollNo
 });
 
     await assignment.save();
@@ -457,8 +733,13 @@ app.post("/api/assignments", adminMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
+app.delete("/api/assignments/:id", uploaderMiddleware, async (req, res) => {
   try {
+    const assignment = await Assignment.findById(req.params.id);
+    if (!assignment) return res.status(404).json({ message: "Assignment not found" });
+    if (!canAccess(req.user, assignment.branch, assignment.section)) {
+      return res.status(403).json({ message: "Not authorized to delete this assignment" });
+    }
     await Assignment.deleteOne({ _id: req.params.id });
     res.json({ message: "Assignment deleted" });
   } catch (err) {
@@ -469,10 +750,12 @@ app.delete("/api/assignments/:id", adminMiddleware, async (req, res) => {
 
 // ====================== PAPERS ======================
 
-// Get all papers
-app.get("/api/papers", async (req, res) => {
+// Get all papers (branch-scoped; papers aren't section-specific)
+app.get("/api/papers", verifyAnyToken, async (req, res) => {
   try {
-    const papers = await Paper.find().sort({ createdAt: -1 });
+    const u = req.user;
+    const filter = u.role === "admin" ? {} : { branch: u.branch };
+    const papers = await Paper.find(filter).sort({ createdAt: -1 });
     res.json(papers);
   } catch (err) {
     console.error("Get papers error:", err);
@@ -481,16 +764,9 @@ app.get("/api/papers", async (req, res) => {
 });
 
 // Add paper
-app.post("/api/papers", adminMiddleware, async (req, res) => {
+app.post("/api/papers", uploaderMiddleware, async (req, res) => {
   try {
-    console.log("========== PAPERS ==========");
-    console.log(req.body);
-
-    const { subject, title, fileUrl } = req.body;
-
-    console.log("subject =", subject);
-    console.log("title =", title);
-    console.log("fileUrl =", fileUrl);
+    const { branch, subject, title, fileUrl } = req.body;
 
     if (!subject || !title || !fileUrl) {
       return res.status(400).json({
@@ -498,7 +774,13 @@ app.post("/api/papers", adminMiddleware, async (req, res) => {
       });
     }
 
+    const targetBranch = branch || req.user.branch || "CSE";
+    if (!canAccess(req.user, targetBranch)) {
+      return res.status(403).json({ message: "You can only upload for your own branch" });
+    }
+
     const paper = new Paper({
+      branch: targetBranch,
       subject,
       title,
       fileUrl
@@ -518,8 +800,13 @@ app.post("/api/papers", adminMiddleware, async (req, res) => {
     });
   }
 });
-app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
+app.delete("/api/papers/:id", uploaderMiddleware, async (req, res) => {
   try {
+    const paper = await Paper.findById(req.params.id);
+    if (!paper) return res.status(404).json({ message: "Paper not found" });
+    if (!canAccess(req.user, paper.branch)) {
+      return res.status(403).json({ message: "Not authorized to delete this paper" });
+    }
     await Paper.findByIdAndDelete(req.params.id);
 
     res.json({
@@ -534,9 +821,11 @@ app.delete("/api/papers/:id", adminMiddleware, async (req, res) => {
 });
 // ============== STUDY MATERIALS ==============
 
-app.get("/api/materials", async (req, res) => {
+app.get("/api/materials", verifyAnyToken, async (req, res) => {
   try {
-    const materials = await Material.find().sort({ createdAt: -1 });
+    const u = req.user;
+    const filter = u.role === "admin" ? {} : { branch: u.branch };
+    const materials = await Material.find(filter).sort({ createdAt: -1 });
     res.json(materials);
   } catch (err) {
     console.error("Get materials error:", err);
@@ -544,9 +833,9 @@ app.get("/api/materials", async (req, res) => {
   }
 });
 
-app.post("/api/materials", adminMiddleware, async (req, res) => {
+app.post("/api/materials", uploaderMiddleware, async (req, res) => {
   try {
-    const { subject, title, fileUrl } = req.body;
+    const { branch, subject, title, fileUrl } = req.body;
 
     if (!subject || !title || !fileUrl) {
       return res.status(400).json({
@@ -554,7 +843,13 @@ app.post("/api/materials", adminMiddleware, async (req, res) => {
       });
     }
 
+    const targetBranch = branch || req.user.branch || "CSE";
+    if (!canAccess(req.user, targetBranch)) {
+      return res.status(403).json({ message: "You can only upload for your own branch" });
+    }
+
     const material = await Material.create({
+      branch: targetBranch,
       subject,
       title,
       fileUrl
@@ -568,8 +863,13 @@ app.post("/api/materials", adminMiddleware, async (req, res) => {
   }
 });
 
-app.delete("/api/materials/:id", adminMiddleware, async (req, res) => {
+app.delete("/api/materials/:id", uploaderMiddleware, async (req, res) => {
   try {
+    const material = await Material.findById(req.params.id);
+    if (!material) return res.status(404).json({ message: "Material not found" });
+    if (!canAccess(req.user, material.branch)) {
+      return res.status(403).json({ message: "Not authorized to delete this material" });
+    }
     await Material.deleteOne({ _id: req.params.id });
     res.json({ message: "Material deleted" });
   } catch (err) {
@@ -580,15 +880,21 @@ app.delete("/api/materials/:id", adminMiddleware, async (req, res) => {
 
 // ============== TIMETABLE ==============
 
-app.get("/api/timetable/:section", async (req, res) => {
+app.get("/api/timetable/:branch/:section", verifyAnyToken, async (req, res) => {
   try {
-    const timetable = await Timetable.findOne({ section: req.params.section }).lean();
+    const { branch, section } = req.params;
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "Not authorized for this branch/section" });
+    }
+
+    const timetable = await Timetable.findOne({ branch, section }).lean();
 
     if (!timetable) {
       return res.status(404).json({ message: "Timetable not found" });
     }
 
     res.json({
+      branch: timetable.branch,
       section: timetable.section,
       timings: timetable.timings || [],
       schedule: timetable.schedule || {}
@@ -599,6 +905,132 @@ app.get("/api/timetable/:section", async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+// Old URL kept working for existing CSE-only clients during rollout (defaults to branch=CSE)
+app.get("/api/timetable/:section", verifyAnyToken, async (req, res) => {
+  try {
+    const branch = req.user.branch || "CSE";
+    const { section } = req.params;
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "Not authorized for this branch/section" });
+    }
+    const timetable = await Timetable.findOne({ branch, section }).lean();
+    if (!timetable) return res.status(404).json({ message: "Timetable not found" });
+    res.json({ branch: timetable.branch, section: timetable.section, timings: timetable.timings || [], schedule: timetable.schedule || {} });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Create/update timetable — HOD (own branch) or Admin
+app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const { branch, section, timings, schedule } = req.body;
+    if (!branch || !section || !schedule) {
+      return res.status(400).json({ message: "branch, section and schedule are required" });
+    }
+    if (!canAccess(req.user, branch)) {
+      return res.status(403).json({ message: "You can only manage your own branch's timetable" });
+    }
+
+    const timetable = await Timetable.findOneAndUpdate(
+      { branch, section },
+      { branch, section, timings: timings || [], schedule },
+      { upsert: true, new: true }
+    );
+
+    res.status(201).json(timetable);
+  } catch (err) {
+    console.error("Save timetable error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+// ============== ATTENDANCE ==============
+
+// Faculty/HOD marks attendance for a whole section, one subject, one date.
+// body: { branch, section, subject, date, records: [{ rollNo, status }] }
+app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
+  try {
+    const { branch, section, subject, date, records } = req.body;
+
+    if (!branch || !section || !subject || !date || !Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ message: "branch, section, subject, date and records[] are required" });
+    }
+
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    const ops = [];
+    for (const r of records) {
+      if (!r.rollNo || !r.status) continue;
+      const student = await User.findOne({ rollNo: r.rollNo });
+      ops.push({
+        updateOne: {
+          filter: { rollNo: r.rollNo, subject, date },
+          update: {
+            rollNo: r.rollNo,
+            studentName: student?.name || "",
+            branch,
+            section,
+            subject,
+            date,
+            status: r.status,
+            markedBy: req.user.facultyId
+          },
+          upsert: true
+        }
+      });
+    }
+
+    if (ops.length > 0) await Attendance.bulkWrite(ops);
+
+    res.json({ message: `Attendance marked for ${ops.length} students` });
+  } catch (err) {
+    console.error("Mark attendance error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Faculty/HOD viewing a section's attendance for a date+subject
+app.get("/api/attendance/section/:branch/:section", facultyMiddleware, async (req, res) => {
+  try {
+    const { branch, section } = req.params;
+    const { subject, date } = req.query;
+
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    const filter = { branch, section };
+    if (subject) filter.subject = subject;
+    if (date) filter.date = date;
+
+    const records = await Attendance.find(filter).sort({ date: -1 });
+    res.json(records);
+  } catch (err) {
+    console.error("Get section attendance error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Student viewing their own attendance
+app.get("/api/attendance/my", studentMiddleware, async (req, res) => {
+  try {
+    const records = await Attendance.find({ rollNo: req.user.rollNo }).sort({ date: -1 });
+
+    const totalClasses = records.length;
+    const present = records.filter(r => r.status === "present").length;
+    const percentage = totalClasses > 0 ? ((present / totalClasses) * 100).toFixed(1) : "0.0";
+
+    res.json({ records, summary: { totalClasses, present, percentage } });
+  } catch (err) {
+    console.error("Get my attendance error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ============== CHATBOT ==============
 
    
@@ -722,12 +1154,18 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
 
 // ============== PROFILE ==============
 
-app.get("/api/profile/:rollNo", async (req, res) => {
+app.get("/api/profile/:rollNo", verifyAnyToken, async (req, res) => {
   try {
     const user = await User.findOne({ rollNo: req.params.rollNo }).select("-password");
-    
+
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    const u = req.user;
+    const isSelf = u.role === "student" && u.rollNo === user.rollNo;
+    if (!isSelf && !canAccess(u, user.branch, user.section)) {
+      return res.status(403).json({ message: "Not authorized to view this profile" });
     }
 
     res.json(user);
@@ -739,7 +1177,7 @@ app.get("/api/profile/:rollNo", async (req, res) => {
 
 // ============== FILE UPLOAD ==============
 
-app.post("/api/upload", adminMiddleware, async (req, res) => {
+app.post("/api/upload", uploaderMiddleware, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
       return res.status(400).json({ message: "No file provided" });
@@ -924,6 +1362,41 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
   }
 });
 
+
+// ============== HOD STATS (branch-scoped) ==============
+
+app.get("/api/hod/stats", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const branchFilter = req.user.role === "hod" ? { branch: req.user.branch } : {};
+
+    const totalStudents = await User.countDocuments(branchFilter);
+    const totalFaculty = await Faculty.countDocuments({ ...branchFilter, role: "faculty" });
+    const totalNotes = await Note.countDocuments(branchFilter);
+    const totalAssignments = await Assignment.countDocuments(branchFilter);
+    const totalPapers = await Paper.countDocuments(branchFilter);
+    const totalMaterials = await Material.countDocuments(branchFilter);
+
+    const sectionCounts = await User.aggregate([
+      { $match: branchFilter },
+      { $group: { _id: "$section", count: { $sum: 1 } } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      branch: req.user.role === "hod" ? req.user.branch : "ALL",
+      totalStudents,
+      totalFaculty,
+      totalNotes,
+      totalAssignments,
+      totalPapers,
+      totalMaterials,
+      sectionCounts
+    });
+  } catch (err) {
+    console.error("HOD stats error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // ============== HEALTH CHECK ==============
 

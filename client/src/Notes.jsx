@@ -19,7 +19,10 @@ const [message, setMessage] = useState("");
   }, []);
 
   const fetchNotes = () => {
-    fetch(`${api}/api/notes`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${api}/api/notes`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => setNotes(data))
       .catch(err => console.error(err));
@@ -81,9 +84,6 @@ try {
   const res = await fetch(`${api}/api/notes`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  headers: {
   "Content-Type": "application/json",
   Authorization: `Bearer ${token}`,
 },

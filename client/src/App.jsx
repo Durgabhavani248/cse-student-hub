@@ -12,6 +12,8 @@ import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
+import FacultyLogin from "./FacultyLogin";
+import FacultyChangePassword from "./FacultyChangePassword";
 
 
 const API = "https://cse-student-hub.onrender.com";
@@ -29,7 +31,10 @@ function CurrentClassCard({ studentSection, api }) {
   console.log("Student Section:", studentSection);
 
   if (studentSection) {
-    fetch(`${api}/api/timetable/${studentSection}`)
+    const authToken = localStorage.getItem("studentToken") || localStorage.getItem("facultyToken") || localStorage.getItem("token");
+    fetch(`${api}/api/timetable/${studentSection}`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => {
         
@@ -110,6 +115,9 @@ function App() {
   const [activePage, setActivePage] = useState("notices");
   const [studentInfo, setStudentInfo] = useState(null);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [facultyInfo, setFacultyInfo] = useState(null);
+  const [showFacultyLogin, setShowFacultyLogin] = useState(false);
+  const [showFacultyChangePassword, setShowFacultyChangePassword] = useState(false);
 
   const fetchNotices = () => {
     fetch(`${API}/api/notices`)
@@ -128,6 +136,13 @@ function App() {
       const info = JSON.parse(savedInfo);
       setStudentInfo(info);
       if (info.isFirstLogin) setShowChangePassword(true);
+    }
+    const savedFacultyInfo = localStorage.getItem("facultyInfo");
+    const facultyToken = localStorage.getItem("facultyToken");
+    if (savedFacultyInfo && facultyToken) {
+      const info = JSON.parse(savedFacultyInfo);
+      setFacultyInfo(info);
+      if (info.isFirstLogin) setShowFacultyChangePassword(true);
     }
   }, []);
 
@@ -154,6 +169,28 @@ function App() {
     setStudentInfo(null);
   };
 
+  const handleFacultyLogin = (faculty) => {
+    setFacultyInfo(faculty);
+    setShowFacultyLogin(false);
+    if (faculty.isFirstLogin) {
+      setShowFacultyChangePassword(true);
+    }
+  };
+
+  const handleFacultyPasswordChanged = () => {
+    setShowFacultyChangePassword(false);
+    const info = JSON.parse(localStorage.getItem("facultyInfo"));
+    info.isFirstLogin = false;
+    localStorage.setItem("facultyInfo", JSON.stringify(info));
+    setFacultyInfo({ ...info, isFirstLogin: false });
+  };
+
+  const handleFacultyLogout = () => {
+    localStorage.removeItem("facultyToken");
+    localStorage.removeItem("facultyInfo");
+    setFacultyInfo(null);
+  };
+
   const addNotice = (notice) => setNotices([notice, ...notices]);
 
   const deleteNotice = (id) => {
@@ -177,7 +214,7 @@ function App() {
     transition: "all 0.2s"
   });
 
-  if (!studentInfo && !isAdmin) {
+  if (!studentInfo && !isAdmin && !facultyInfo) {
     return (
       <div>
         <StudentLogin onLogin={handleStudentLogin} api={API} />
@@ -186,6 +223,12 @@ function App() {
           style={{ textAlign: "center", color: "#999", fontSize: "12px", cursor: "pointer", marginTop: "-20px" }}
         >
           Admin? Click here
+        </p>
+        <p
+          onClick={() => setShowFacultyLogin(true)}
+          style={{ textAlign: "center", color: "#999", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}
+        >
+          Faculty / HOD? Click here
         </p>
         {showAdminLogin && (
           <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
@@ -199,12 +242,24 @@ function App() {
             </div>
           </div>
         )}
+        {showFacultyLogin && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
+            <div style={{ background: "#fff", borderRadius: "16px", padding: "0", maxWidth: "420px", width: "90%", overflow: "hidden" }}>
+              <FacultyLogin api={API} onLogin={handleFacultyLogin} />
+              <button onClick={() => setShowFacultyLogin(false)} style={{ width: "100%", padding: "12px", background: "#f5f5f5", border: "none", cursor: "pointer" }}>Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
   if (showChangePassword) {
     return <ChangePassword onSuccess={handlePasswordChanged} api={API} />;
+  }
+
+  if (showFacultyChangePassword) {
+    return <FacultyChangePassword onSuccess={handleFacultyPasswordChanged} api={API} />;
   }
 
   return (
@@ -216,13 +271,21 @@ function App() {
           <div>
             <h1 style={{ margin: 0, color: "#F15A29", fontSize: "16px", fontWeight: "700" }}>NRI Institute of Technology</h1>
             <p style={{ margin: 0, color: "#666", fontSize: "11px" }}>
-              {isAdmin ? "Admin Panel" : `${studentInfo?.name} | Roll: ${studentInfo?.rollNo} | Sec: ${studentInfo?.section}`}
+              {isAdmin
+                ? "Admin Panel"
+                : facultyInfo
+                ? `${facultyInfo.name} | ${facultyInfo.role === "hod" ? "HOD" : "Faculty"} | ${facultyInfo.branch}`
+                : `${studentInfo?.name} | Roll: ${studentInfo?.rollNo} | Sec: ${studentInfo?.section}`}
             </p>
           </div>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           {isAdmin ? (
             <button onClick={handleAdminLogout} style={{ background: "#fff", color: "#F15A29", border: "1.5px solid #F15A29", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
+              Logout
+            </button>
+          ) : facultyInfo ? (
+            <button onClick={handleFacultyLogout} style={{ background: "#fff", color: "#F15A29", border: "1.5px solid #F15A29", padding: "8px 20px", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "14px" }}>
               Logout
             </button>
           ) : (
@@ -243,7 +306,7 @@ function App() {
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-        {!isAdmin && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
+        {!isAdmin && !facultyInfo && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
 
@@ -293,8 +356,20 @@ function App() {
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
-        {activePage === "profile" && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
-        {activePage === "notifications" && !isAdmin && <Notifications studentInfo={studentInfo} />}
+        {activePage === "profile" && facultyInfo && (
+          <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "480px" }}>
+            <h2 style={{ color: "#F15A29", fontSize: "20px", fontWeight: "700", marginTop: 0 }}>Faculty Profile</h2>
+            <p style={{ color: "#1a1a1a", margin: "8px 0" }}><strong>Name:</strong> {facultyInfo.name}</p>
+            <p style={{ color: "#1a1a1a", margin: "8px 0" }}><strong>Faculty ID:</strong> {facultyInfo.facultyId}</p>
+            <p style={{ color: "#1a1a1a", margin: "8px 0" }}><strong>Branch:</strong> {facultyInfo.branch}</p>
+            <p style={{ color: "#1a1a1a", margin: "8px 0" }}><strong>Role:</strong> {facultyInfo.role === "hod" ? "HOD" : "Faculty"}</p>
+            {facultyInfo.role === "faculty" && (
+              <p style={{ color: "#1a1a1a", margin: "8px 0" }}><strong>Sections:</strong> {(facultyInfo.assignedSections || []).join(", ") || "—"}</p>
+            )}
+          </div>
+        )}
+        {activePage === "profile" && !facultyInfo && <Profile studentInfo={studentInfo} isAdmin={isAdmin} api={API} />}
+        {activePage === "notifications" && !isAdmin && !facultyInfo && <Notifications studentInfo={studentInfo} />}
         {activePage === "admin" && isAdmin && (
           <div>
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Admin Panel</h2>
@@ -311,6 +386,14 @@ function AdminPanel({ api }) {
   const [message, setMessage] = useState("");
   const [stats, setStats] = useState(null);
 
+  const [facultyList, setFacultyList] = useState([]);
+  const [fFacultyId, setFFacultyId] = useState("");
+  const [fName, setFName] = useState("");
+  const [fBranch, setFBranch] = useState("CSE");
+  const [fRole, setFRole] = useState("faculty");
+  const [fSections, setFSections] = useState("");
+  const [fMessage, setFMessage] = useState("");
+
   const fetchStats = () => {
     const token = localStorage.getItem("token");
     fetch(`${api}/api/admin/stats`, {
@@ -320,8 +403,19 @@ function AdminPanel({ api }) {
       .then(data => setStats(data));
   };
 
+  const fetchFaculty = () => {
+    const token = localStorage.getItem("token");
+    fetch(`${api}/api/faculty`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setFacultyList(Array.isArray(data) ? data : []))
+      .catch(err => console.error(err));
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchFaculty();
   }, []);
 
   const uploadStudents = () => {
@@ -342,12 +436,54 @@ function AdminPanel({ api }) {
       });
   };
 
+  const createFaculty = () => {
+    if (!fFacultyId || !fName || !fBranch) {
+      setFMessage("❌ Faculty ID, Name and Branch required!");
+      return;
+    }
+    const token = localStorage.getItem("token");
+    const assignedSections = fSections.split(",").map(s => s.trim()).filter(Boolean);
+
+    fetch(`${api}/api/admin/create-faculty`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        facultyId: fFacultyId.trim(),
+        name: fName.trim(),
+        branch: fBranch,
+        role: fRole,
+        assignedSections
+      })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.faculty) {
+          setFMessage(`✅ ${data.faculty.role === "hod" ? "HOD" : "Faculty"} account created — ID: ${data.faculty.facultyId}, default password: nri@2024`);
+          setFFacultyId(""); setFName(""); setFSections("");
+          fetchFaculty();
+        } else {
+          setFMessage(`❌ ${data.message || "Failed to create account"}`);
+        }
+      })
+      .catch(() => setFMessage("❌ Server error!"));
+  };
+
   const statCard = (label, value, color) => (
     <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "16px 20px", flex: 1, minWidth: "140px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
       <p style={{ margin: 0, color: "#999", fontSize: "12px" }}>{label}</p>
       <h2 style={{ margin: "4px 0 0 0", color: color || "#1a1a1a", fontSize: "28px", fontWeight: "700" }}>{value ?? "—"}</h2>
     </div>
   );
+
+  const fInputStyle = {
+    width: "100%",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "1.5px solid #e0e0e0",
+    fontSize: "14px",
+    marginBottom: "10px",
+    boxSizing: "border-box"
+  };
 
   return (
     <div>
@@ -383,22 +519,95 @@ function AdminPanel({ api }) {
         </div>
       )}
 
-      <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px" }}>
-        <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Students Excel</h3>
-        <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
-          Excel format: <strong>rollNo, name, section, year</strong>
-        </p>
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={e => setFile(e.target.files[0])}
-          style={{ marginBottom: "12px", width: "100%" }}
-        />
-        <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
-          Upload Students
-        </button>
-        {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>{message}</p>}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "24px", marginBottom: "24px" }}>
+        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px", flex: 1, minWidth: "320px" }}>
+          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Students Excel</h3>
+          <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
+            Excel format: <strong>rollNo, name, section, branch, year</strong>
+            <br />
+            <span style={{ color: "#999" }}>(branch column optional — defaults to CSE if left blank)</span>
+          </p>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={e => setFile(e.target.files[0])}
+            style={{ marginBottom: "12px", width: "100%" }}
+          />
+          <button onClick={uploadStudents} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
+            Upload Students
+          </button>
+          {message && <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600" }}>{message}</p>}
+        </div>
+
+        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px", flex: 1, minWidth: "320px" }}>
+          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Create Faculty / HOD Account</h3>
+          <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
+            Default password: <strong>nri@2024</strong> (they'll be asked to change it on first login)
+          </p>
+
+          <input placeholder="Faculty ID (e.g. FAC101)" value={fFacultyId} onChange={e => setFFacultyId(e.target.value.toUpperCase())} style={fInputStyle} />
+          <input placeholder="Full Name" value={fName} onChange={e => setFName(e.target.value)} style={fInputStyle} />
+
+          <select value={fBranch} onChange={e => setFBranch(e.target.value)} style={fInputStyle}>
+            {["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"].map(b => (
+              <option key={b} value={b}>{b}</option>
+            ))}
+          </select>
+
+          <select value={fRole} onChange={e => setFRole(e.target.value)} style={fInputStyle}>
+            <option value="faculty">Faculty</option>
+            <option value="hod">HOD</option>
+          </select>
+
+          {fRole === "faculty" && (
+            <input
+              placeholder="Assigned Sections (comma separated, e.g. A, B)"
+              value={fSections}
+              onChange={e => setFSections(e.target.value)}
+              style={fInputStyle}
+            />
+          )}
+
+          <button onClick={createFaculty} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
+            Create Account
+          </button>
+          {fMessage && <p style={{ color: fMessage.startsWith("✅") ? "#4CAF50" : "#F15A29", marginTop: "12px", fontWeight: "600", fontSize: "13px" }}>{fMessage}</p>}
+        </div>
       </div>
+
+      {facultyList.length > 0 && (
+        <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px" }}>
+          <h3 style={{ color: "#1a1a1a", marginTop: 0 }}>Faculty & HOD Accounts ({facultyList.length})</h3>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ textAlign: "left", color: "#999", borderBottom: "1px solid #e0e0e0" }}>
+                  <th style={{ padding: "8px" }}>Faculty ID</th>
+                  <th style={{ padding: "8px" }}>Name</th>
+                  <th style={{ padding: "8px" }}>Branch</th>
+                  <th style={{ padding: "8px" }}>Role</th>
+                  <th style={{ padding: "8px" }}>Sections</th>
+                </tr>
+              </thead>
+              <tbody>
+                {facultyList.map(f => (
+                  <tr key={f._id} style={{ borderBottom: "1px solid #f0f0f0" }}>
+                    <td style={{ padding: "8px", fontWeight: "600" }}>{f.facultyId}</td>
+                    <td style={{ padding: "8px" }}>{f.name}</td>
+                    <td style={{ padding: "8px" }}>{f.branch}</td>
+                    <td style={{ padding: "8px" }}>
+                      <span style={{ background: f.role === "hod" ? "#fff0ee" : "#f0f7ff", color: f.role === "hod" ? "#F15A29" : "#2196F3", padding: "3px 10px", borderRadius: "12px", fontWeight: "600", fontSize: "11px" }}>
+                        {f.role === "hod" ? "HOD" : "FACULTY"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px" }}>{(f.assignedSections || []).join(", ") || (f.role === "hod" ? "All" : "—")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -66,8 +66,10 @@ function Timetable({ isAdmin, studentSection, api }) {
       setLoading(true);
       setError("");
 
+      const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
       const res = await fetch(
-        `${api}/api/timetable/${section}`
+        `${api}/api/timetable/${section}`,
+        { headers: { Authorization: `Bearer ${authToken}` } }
       );
 
       if (!res.ok)
@@ -142,6 +144,7 @@ function Timetable({ isAdmin, studentSection, api }) {
           },
 
           body: JSON.stringify({
+            branch: "CSE",
             section,
             timings: timetable.timings,
             schedule: editedSchedule,
