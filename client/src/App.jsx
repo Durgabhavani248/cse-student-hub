@@ -433,6 +433,18 @@ function AdminPanel({ api }) {
       });
   };
 
+  const resetFacultyPassword = (facultyId) => {
+    if (!confirm(`Reset password for ${facultyId} to default (nri@2024)?`)) return;
+    const token = localStorage.getItem("token");
+    fetch(`${api}/api/admin/reset-faculty-password/${facultyId}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => alert(data.message))
+      .catch(() => alert("❌ Server error!"));
+  };
+
   const uploadFaculty = () => {
     if (!facultyFile) { alert("Please select an Excel file!"); return; }
     const token = localStorage.getItem("token");
@@ -557,6 +569,7 @@ function AdminPanel({ api }) {
                   <th style={{ padding: "8px" }}>Branch</th>
                   <th style={{ padding: "8px" }}>Role</th>
                   <th style={{ padding: "8px" }}>Sections</th>
+                  <th style={{ padding: "8px" }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -571,6 +584,14 @@ function AdminPanel({ api }) {
                       </span>
                     </td>
                     <td style={{ padding: "8px" }}>{(f.assignedSections || []).join(", ") || (f.role === "hod" ? "All" : "—")}</td>
+                    <td style={{ padding: "8px" }}>
+                      <button
+                        onClick={() => resetFacultyPassword(f.facultyId)}
+                        style={{ background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "6px", padding: "4px 10px", fontSize: "11px", cursor: "pointer", fontWeight: "600" }}
+                      >
+                        Reset Password
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

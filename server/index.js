@@ -480,6 +480,28 @@ app.get("/api/faculty", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
+// Reset a faculty/HOD's password back to the current DEFAULT_PASSWORD
+// (useful when an account was created before DEFAULT_PASSWORD was set correctly, or if they forgot it)
+app.post("/api/admin/reset-faculty-password/:facultyId", adminMiddleware, async (req, res) => {
+  try {
+    if (!process.env.DEFAULT_PASSWORD) {
+      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+    }
+    const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
+    const result = await Faculty.updateOne(
+      { facultyId: req.params.facultyId },
+      { password: hashedPassword, isFirstLogin: true }
+    );
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ message: "Faculty not found" });
+    }
+    res.json({ message: `Password reset to default for ${req.params.facultyId}` });
+  } catch (err) {
+    console.error("Reset faculty password error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.post("/api/student/change-password", studentMiddleware, async (req, res) => {
   try {
     const rollNo = req.user.rollNo;
