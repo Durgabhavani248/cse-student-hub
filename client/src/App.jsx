@@ -14,6 +14,7 @@ import Profile from "./Profile";
 import Notifications from "./Notifications";
 import FacultyLogin from "./FacultyLogin";
 import FacultyChangePassword from "./FacultyChangePassword";
+import Attendance from "./Attendance";
 
 
 const API = "https://cse-student-hub.onrender.com";
@@ -306,6 +307,7 @@ function App() {
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
+        {facultyInfo && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
         {!isAdmin && !facultyInfo && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
@@ -354,6 +356,7 @@ function App() {
         {activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
         {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
+        {activePage === "attendance" && facultyInfo && <Attendance api={API} facultyInfo={facultyInfo} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
         {activePage === "profile" && facultyInfo && (
