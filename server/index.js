@@ -45,7 +45,7 @@ const upload = multer({ storage });
 
 app.use("/uploads", express.static("uploads"));
 app.use(express.urlencoded({ limit: "50mb" }));
-//app.use(fileUpload());
+app.use(fileUpload());
 
 // ============== DATABASE CONNECTION ==============
 mongoose.connect(process.env.MONGO_URI)
