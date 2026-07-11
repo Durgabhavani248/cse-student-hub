@@ -443,6 +443,10 @@ app.post("/api/admin/create-faculty", adminMiddleware, async (req, res) => {
       }
     }
 
+    if (!process.env.DEFAULT_PASSWORD) {
+      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+    }
+
     const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
 
     const faculty = await Faculty.create({
@@ -1116,6 +1120,9 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
     if (!req.files || !req.files.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
+    if (!process.env.DEFAULT_PASSWORD) {
+      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+    }
 
     const file = req.files.file;
     const workbook = XLSX.read(file.data, { type: "buffer" });
@@ -1148,6 +1155,80 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
     res.json({ message: `✅ Added: ${added} ⏭️ Skipped: ${skipped}` });
   } catch (err) {
     console.error("Upload students error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Bulk faculty/HOD upload via Excel — same pattern as student upload.
+// Excel columns: facultyId, name, branch, role (faculty/hod), sections (comma-separated, e.g. "A,B")
+app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+    if (!process.env.DEFAULT_PASSWORD) {
+      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+    }
+
+    const file = req.files.file;
+    const workbook = XLSX.read(file.data, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    if (!data || data.length === 0) {
+      return res.status(400).json({ message: "Excel file is empty" });
+    }
+
+    let added = 0, skipped = 0;
+    const skippedReasons = [];
+
+    for (const row of data) {
+      const facultyId = String(row.facultyId || "").trim();
+      const name = String(row.name || "").trim();
+      const branch = String(row.branch || "").trim();
+      const role = String(row.role || "faculty").trim().toLowerCase() === "hod" ? "hod" : "faculty";
+      const sections = String(row.sections || "").split(",").map(s => s.trim()).filter(Boolean);
+
+      if (!facultyId || !name || !branch) {
+        skipped++;
+        skippedReasons.push(`Row skipped (missing facultyId/name/branch): ${JSON.stringify(row)}`);
+        continue;
+      }
+
+      const existing = await Faculty.findOne({ facultyId });
+      if (existing) {
+        skipped++;
+        skippedReasons.push(`${facultyId} already exists`);
+        continue;
+      }
+
+      if (role === "hod") {
+        const existingHod = await Faculty.findOne({ branch, role: "hod" });
+        if (existingHod) {
+          skipped++;
+          skippedReasons.push(`${branch} already has an HOD (${existingHod.facultyId}), skipped ${facultyId}`);
+          continue;
+        }
+      }
+
+      const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
+      await Faculty.create({
+        facultyId,
+        name,
+        branch,
+        role,
+        assignedSections: role === "hod" ? [] : sections,
+        password: hashedPassword
+      });
+      added++;
+    }
+
+    res.json({
+      message: `✅ Added: ${added} ⏭️ Skipped: ${skipped}`,
+      skippedReasons
+    });
+  } catch (err) {
+    console.error("Upload faculty error:", err);
     res.status(500).json({ message: err.message });
   }
 });

@@ -387,12 +387,9 @@ function AdminPanel({ api }) {
   const [stats, setStats] = useState(null);
 
   const [facultyList, setFacultyList] = useState([]);
-  const [fFacultyId, setFFacultyId] = useState("");
-  const [fName, setFName] = useState("");
-  const [fBranch, setFBranch] = useState("CSE");
-  const [fRole, setFRole] = useState("faculty");
-  const [fSections, setFSections] = useState("");
+  const [facultyFile, setFacultyFile] = useState(null);
   const [fMessage, setFMessage] = useState("");
+  const [fSkipped, setFSkipped] = useState([]);
 
   const fetchStats = () => {
     const token = localStorage.getItem("token");
@@ -436,34 +433,24 @@ function AdminPanel({ api }) {
       });
   };
 
-  const createFaculty = () => {
-    if (!fFacultyId || !fName || !fBranch) {
-      setFMessage("❌ Faculty ID, Name and Branch required!");
-      return;
-    }
+  const uploadFaculty = () => {
+    if (!facultyFile) { alert("Please select an Excel file!"); return; }
     const token = localStorage.getItem("token");
-    const assignedSections = fSections.split(",").map(s => s.trim()).filter(Boolean);
+    const formData = new FormData();
+    formData.append("file", facultyFile);
+    setFMessage("Uploading...");
+    setFSkipped([]);
 
-    fetch(`${api}/api/admin/create-faculty`, {
+    fetch(`${api}/api/admin/upload-faculty`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({
-        facultyId: fFacultyId.trim(),
-        name: fName.trim(),
-        branch: fBranch,
-        role: fRole,
-        assignedSections
-      })
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
     })
       .then(res => res.json())
       .then(data => {
-        if (data.faculty) {
-          setFMessage(`✅ ${data.faculty.role === "hod" ? "HOD" : "Faculty"} account created — ID: ${data.faculty.facultyId}, default password: nri@2024`);
-          setFFacultyId(""); setFName(""); setFSections("");
-          fetchFaculty();
-        } else {
-          setFMessage(`❌ ${data.message || "Failed to create account"}`);
-        }
+        setFMessage(data.message || "Done");
+        setFSkipped(data.skippedReasons || []);
+        fetchFaculty();
       })
       .catch(() => setFMessage("❌ Server error!"));
   };
@@ -474,16 +461,6 @@ function AdminPanel({ api }) {
       <h2 style={{ margin: "4px 0 0 0", color: color || "#1a1a1a", fontSize: "28px", fontWeight: "700" }}>{value ?? "—"}</h2>
     </div>
   );
-
-  const fInputStyle = {
-    width: "100%",
-    padding: "10px 14px",
-    borderRadius: "8px",
-    border: "1.5px solid #e0e0e0",
-    fontSize: "14px",
-    marginBottom: "10px",
-    boxSizing: "border-box"
-  };
 
   return (
     <div>
@@ -540,38 +517,31 @@ function AdminPanel({ api }) {
         </div>
 
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", maxWidth: "500px", flex: 1, minWidth: "320px" }}>
-          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Create Faculty / HOD Account</h3>
+          <h3 style={{ color: "#F15A29", marginTop: 0 }}>Upload Faculty / HOD Excel</h3>
           <p style={{ color: "#666", fontSize: "13px", marginBottom: "16px" }}>
-            Default password: <strong>nri@2024</strong> (they'll be asked to change it on first login)
+            Excel format: <strong>facultyId, name, branch, role, sections</strong>
+            <br />
+            <span style={{ color: "#999" }}>
+              role = faculty / hod (default faculty) &nbsp;|&nbsp; sections = comma-separated, e.g. "A,B" (ignored for hod)
+              <br />
+              Default password for everyone: <strong>nri@2024</strong> (forced change on first login)
+            </span>
           </p>
-
-          <input placeholder="Faculty ID (e.g. FAC101)" value={fFacultyId} onChange={e => setFFacultyId(e.target.value.toUpperCase())} style={fInputStyle} />
-          <input placeholder="Full Name" value={fName} onChange={e => setFName(e.target.value)} style={fInputStyle} />
-
-          <select value={fBranch} onChange={e => setFBranch(e.target.value)} style={fInputStyle}>
-            {["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"].map(b => (
-              <option key={b} value={b}>{b}</option>
-            ))}
-          </select>
-
-          <select value={fRole} onChange={e => setFRole(e.target.value)} style={fInputStyle}>
-            <option value="faculty">Faculty</option>
-            <option value="hod">HOD</option>
-          </select>
-
-          {fRole === "faculty" && (
-            <input
-              placeholder="Assigned Sections (comma separated, e.g. A, B)"
-              value={fSections}
-              onChange={e => setFSections(e.target.value)}
-              style={fInputStyle}
-            />
-          )}
-
-          <button onClick={createFaculty} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
-            Create Account
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={e => setFacultyFile(e.target.files[0])}
+            style={{ marginBottom: "12px", width: "100%" }}
+          />
+          <button onClick={uploadFaculty} style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }}>
+            Upload Faculty
           </button>
-          {fMessage && <p style={{ color: fMessage.startsWith("✅") ? "#4CAF50" : "#F15A29", marginTop: "12px", fontWeight: "600", fontSize: "13px" }}>{fMessage}</p>}
+          {fMessage && <p style={{ color: fMessage.startsWith("❌") ? "#F15A29" : "#4CAF50", marginTop: "12px", fontWeight: "600", fontSize: "13px" }}>{fMessage}</p>}
+          {fSkipped.length > 0 && (
+            <ul style={{ color: "#999", fontSize: "12px", marginTop: "8px", paddingLeft: "18px" }}>
+              {fSkipped.map((s, i) => <li key={i}>{s}</li>)}
+            </ul>
+          )}
         </div>
       </div>
 
