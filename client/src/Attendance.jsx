@@ -19,23 +19,44 @@ function Attendance({ api, facultyInfo }) {
   const loadStudents = () => {
     if (!section) { alert("Section enter cheyyi!"); return; }
     setLoading(true);
-    setMessage("");
+    setMessage("⏳ Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
+
     fetch(`${api}/api/students/${facultyInfo.branch}/${section}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
-      .then(res => res.json())
-      .then(data => {
+      .then(async res => {
+        const status = res.status;
+        let data;
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
         setLoading(false);
+
+        if (!res.ok) {
+          setMessage(`❌ Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
+          return;
+        }
+
         if (Array.isArray(data)) {
           setStudents(data);
           const initial = {};
           data.forEach(s => { initial[s.rollNo] = "present"; });
           setAttendance(initial);
+          if (data.length === 0) {
+            setMessage(`⚠️ Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
+          } else {
+            setMessage(`✅ Loaded ${data.length} students`);
+          }
         } else {
-          setMessage(`❌ ${data.message || "Failed to load students"}`);
+          setMessage(`❌ Unexpected response: ${JSON.stringify(data)}`);
         }
       })
-      .catch(() => { setLoading(false); setMessage("❌ Server error!"); });
+      .catch(err => {
+        setLoading(false);
+        setMessage(`❌ Network/fetch error: ${err.message}`);
+      });
   };
 
   const loadExisting = () => {
@@ -142,7 +163,7 @@ function Attendance({ api, facultyInfo }) {
       </div>
 
       {message && (
-        <p style={{ color: message.startsWith("❌") ? "#F15A29" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
+        <p style={{ color: message.startsWith("❌") ? "#F15A29" : message.startsWith("⚠️") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
       )}
 
       {students.length > 0 && (
