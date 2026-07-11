@@ -972,6 +972,21 @@ app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// List students in a branch+section — used by faculty/HOD to build attendance rosters
+app.get("/api/students/:branch/:section", facultyMiddleware, async (req, res) => {
+  try {
+    const { branch, section } = req.params;
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "Not authorized for this branch/section" });
+    }
+    const students = await User.find({ branch, section }).select("rollNo name isCR").sort({ rollNo: 1 });
+    res.json(students);
+  } catch (err) {
+    console.error("List students error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ============== ATTENDANCE ==============
 
 // Faculty/HOD marks attendance for a whole section, one subject, one date.
