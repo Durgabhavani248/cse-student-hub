@@ -1479,6 +1479,17 @@ app.get("/api/hod/stats", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
+// ============== TEMP DEBUG (remove after fixing password issue) ==============
+app.get("/api/admin/debug-default-password", adminMiddleware, async (req, res) => {
+  const val = process.env.DEFAULT_PASSWORD;
+  res.json({
+    exists: val !== undefined,
+    length: val ? val.length : 0,
+    value_json: JSON.stringify(val), // shows exact chars including hidden spaces
+    charCodes: val ? [...val].map(c => c.charCodeAt(0)) : []
+  });
+});
+
 // ============== HEALTH CHECK ==============
 
 app.get("/api/health", (req, res) => {
