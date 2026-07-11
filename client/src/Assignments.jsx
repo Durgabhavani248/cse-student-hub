@@ -16,7 +16,10 @@ function Assignments({ isAdmin, api }) {
   }, []);
 
   const fetchAssignments = () => {
-    fetch(`${api}/api/assignments`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${api}/api/assignments`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => setAssignments(data.assignments || []))
       .catch(err => console.error(err));

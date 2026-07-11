@@ -5,7 +5,10 @@ function Search({ api }) {
   const [query, setQuery] = useState("");
 
   useEffect(() => {
-    fetch(`${api}/api/notes`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${api}/api/notes`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => setNotes(data));
   }, []);

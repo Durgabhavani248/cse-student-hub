@@ -16,7 +16,10 @@ function StudyMaterials({ isAdmin, api }) {
   }, []);
 
   const fetchMaterials = () => {
-    fetch(`${api}/api/materials`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${api}/api/materials`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    })
       .then(res => res.json())
       .then(data => setMaterials(data))
       .catch(err => console.error(err));

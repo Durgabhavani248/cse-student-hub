@@ -35,11 +35,17 @@ export default function Notifications({ studentInfo }) {
     headers: { Authorization: `Bearer ${token}` }
   }),
 
-  axios.get(`${API}/api/notes`),
+  axios.get(`${API}/api/notes`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
 
-  axios.get(`${API}/api/papers`),
+  axios.get(`${API}/api/papers`, {
+    headers: { Authorization: `Bearer ${token}` }
+  }),
 
-  axios.get(`${API}/api/materials`)
+  axios.get(`${API}/api/materials`, {
+    headers: { Authorization: `Bearer ${token}` }
+  })
 ]);
 
       let allNotifications = [];
