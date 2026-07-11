@@ -1527,6 +1527,17 @@ app.get("/api/admin/debug-default-password", adminMiddleware, async (req, res) =
   });
 });
 
+app.get("/api/admin/debug-students/:branch", adminMiddleware, async (req, res) => {
+  const students = await User.find({ branch: req.params.branch }).limit(10).lean();
+  res.json(students.map(s => ({
+    rollNo: s.rollNo,
+    branch_value: s.branch,
+    branch_type: typeof s.branch,
+    section_value: s.section,
+    section_type: typeof s.section
+  })));
+});
+
 // ============== HEALTH CHECK ==============
 
 app.get("/api/health", (req, res) => {
