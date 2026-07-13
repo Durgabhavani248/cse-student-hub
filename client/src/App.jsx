@@ -15,6 +15,8 @@ import Notifications from "./Notifications";
 import FacultyLogin from "./FacultyLogin";
 import FacultyChangePassword from "./FacultyChangePassword";
 import Attendance from "./Attendance";
+import MyAttendance from "./MyAttendance";
+import HodAttendanceReport from "./HodAttendanceReport";
 
 
 const API = "https://cse-student-hub.onrender.com";
@@ -308,6 +310,8 @@ function App() {
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
         {facultyInfo && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
+        {facultyInfo?.role === "hod" && <button style={navBtnStyle("hodreport")} onClick={() => setActivePage("hodreport")}>📊 Branch Report</button>}
+        {!isAdmin && !facultyInfo && studentInfo && <button style={navBtnStyle("myattendance")} onClick={() => setActivePage("myattendance")}>📊 My Attendance</button>}
         {!isAdmin && !facultyInfo && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
       </div>
@@ -357,6 +361,8 @@ function App() {
         {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "attendance" && facultyInfo && <Attendance api={API} facultyInfo={facultyInfo} />}
+        {activePage === "hodreport" && facultyInfo?.role === "hod" && <HodAttendanceReport api={API} facultyInfo={facultyInfo} />}
+        {activePage === "myattendance" && !isAdmin && !facultyInfo && <MyAttendance api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
         {activePage === "profile" && facultyInfo && (
