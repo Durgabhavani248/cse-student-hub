@@ -309,7 +309,7 @@ function App() {
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
         <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-        {facultyInfo && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
+        {facultyInfo?.role === "faculty" && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
         {facultyInfo?.role === "hod" && <button style={navBtnStyle("hodreport")} onClick={() => setActivePage("hodreport")}>📊 Branch Report</button>}
         {!isAdmin && !facultyInfo && studentInfo && <button style={navBtnStyle("myattendance")} onClick={() => setActivePage("myattendance")}>📊 My Attendance</button>}
         {!isAdmin && !facultyInfo && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
@@ -360,7 +360,7 @@ function App() {
         {activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
         {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
-        {activePage === "attendance" && facultyInfo && <Attendance api={API} facultyInfo={facultyInfo} />}
+        {activePage === "attendance" && facultyInfo?.role === "faculty" && <Attendance api={API} facultyInfo={facultyInfo} />}
         {activePage === "hodreport" && facultyInfo?.role === "hod" && <HodAttendanceReport api={API} facultyInfo={facultyInfo} />}
         {activePage === "myattendance" && !isAdmin && !facultyInfo && <MyAttendance api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}

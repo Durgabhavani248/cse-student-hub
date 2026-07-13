@@ -22,6 +22,44 @@ dotenv.config();
 
 import admin from "firebase-admin";
 
+// Firebase Admin init — service account JSON is stored as a single env var
+// (FIREBASE_SERVICE_ACCOUNT) rather than a file, since Render doesn't support
+// uploading files. This never crashes the server even if misconfigured —
+// push notifications just silently no-op, everything else keeps working.
+let firebaseReady = false;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    firebaseReady = true;
+    console.log("✅ Firebase Admin initialized");
+  } else {
+    console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT env var not set — push notifications disabled");
+  }
+} catch (err) {
+  console.error("❌ Firebase Admin init failed:", err.message);
+}
+
+// Sends a push notification to all matching users' fcmTokens. Never throws —
+// logs and returns silently if Firebase isn't configured or the send fails,
+// so callers can fire-and-forget this after saving content.
+async function notifyUsers(filter, title, body) {
+  if (!firebaseReady) return;
+  try {
+    const users = await User.find({ ...filter, fcmToken: { $exists: true, $ne: null } }).select("fcmToken");
+    const tokens = users.map(u => u.fcmToken).filter(Boolean);
+    if (tokens.length === 0) return;
+
+    await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      webpush: { notification: { icon: "/icon-192.png" } }
+    });
+  } catch (err) {
+    console.error("notifyUsers error:", err.message);
+  }
+}
+
 
 
 //const serviceAccount = JSON.parse(
@@ -575,28 +613,9 @@ app.post("/api/notices", adminMiddleware, async (req, res) => {
 
     const notice = new Notice({ title, description });
     await notice.save();
-    const users = await User.find({
-  fcmToken: { $exists: true, $ne: null }
-});
 
-const tokens = users
-  .map(u => u.fcmToken)
-  .filter(Boolean);
+    notifyUsers({}, `📢 ${title}`, description);
 
-if (tokens.length > 0) {
-  await admin.messaging().sendEachForMulticast({
-    tokens,
-    notification: {
-      title: title,
-      body: description
-    },
-    webpush: {
-      notification: {
-        icon: "/icon-192.png"
-      }
-    }
-  });
-}
     res.json(notice);
   } catch (err) {
     console.error("Post notice error:", err);
@@ -665,6 +684,12 @@ app.post("/api/notes", uploaderMiddleware, async (req, res) => {
       fileUrl,
       uploadedBy: req.user.facultyId || req.user.rollNo
     });
+
+    notifyUsers(
+      { branch: targetBranch, section },
+      `📚 New Note: ${subject}`,
+      title
+    );
 
     res.status(201).json(note);
 
@@ -752,6 +777,12 @@ app.post("/api/assignments", uploaderMiddleware, async (req, res) => {
 
     await assignment.save();
 
+    notifyUsers(
+      { branch: targetBranch, section },
+      `📝 New Assignment: ${subject}`,
+      title
+    );
+
     res.json(assignment);
 
   } catch (err) {
@@ -813,6 +844,12 @@ app.post("/api/papers", uploaderMiddleware, async (req, res) => {
     });
 
     await paper.save();
+
+    notifyUsers(
+      { branch: targetBranch },
+      `📄 New Question Paper: ${subject}`,
+      title
+    );
 
     res.status(201).json(paper);
 
@@ -880,6 +917,12 @@ app.post("/api/materials", uploaderMiddleware, async (req, res) => {
       title,
       fileUrl
     });
+
+    notifyUsers(
+      { branch: targetBranch },
+      `📖 New Study Material: ${subject}`,
+      title
+    );
 
     res.status(201).json(material);
 
@@ -993,6 +1036,10 @@ app.get("/api/students/:branch/:section", facultyMiddleware, async (req, res) =>
 // body: { branch, section, subject, date, records: [{ rollNo, status }] }
 app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
   try {
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({ message: "Only faculty can mark attendance (not HOD)" });
+    }
+
     const { branch, section, subject, date, records } = req.body;
 
     if (!branch || !section || !subject || !date || !Array.isArray(records) || records.length === 0) {
@@ -1447,39 +1494,15 @@ app.post("/api/notifications/send", adminMiddleware, async (req, res) => {
 
 app.post("/api/notifications/broadcast", adminMiddleware, async (req, res) => {
   try {
-    const { section, title, body, type } = req.body;
+    const { section, title, body } = req.body;
 
     if (!section || !title || !body) {
       return res.status(400).json({ message: "section, title, and body required" });
     }
 
-    const users = await User.find({ section, fcmToken: { $exists: true } });
+    await notifyUsers({ section }, title, body);
 
-    if (users.length === 0) {
-      return res.json({ message: "No users to notify in this section" });
-    }
-
-    const tokens = users
-  .map(user => user.fcmToken)
-  .filter(Boolean);
-
-await admin.messaging().sendEachForMulticast({
-  tokens,
-  notification: {
-    title,
-    body
-  },
-  webpush: {
-    notification: {
-      icon: "/icon-192.png"
-    }
-  }
-});
-
-res.json({
-  success: true,
-  message: `Notification sent to ${tokens.length} students`
-});
+    res.json({ success: true, message: `Notification sent to Section ${section}` });
   } catch (err) {
     console.error("Broadcast notification error:", err);
     res.status(500).json({ message: err.message });
