@@ -20,7 +20,8 @@ if (!fs.existsSync("uploads")) {
 import dotenv from "dotenv";
 dotenv.config();
 
-import admin from "firebase-admin";
+import { initializeApp, cert } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 
 // Firebase Admin init — service account JSON is stored as a single env var
 // (FIREBASE_SERVICE_ACCOUNT) rather than a file, since Render doesn't support
@@ -30,7 +31,7 @@ let firebaseReady = false;
 try {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+    initializeApp({ credential: cert(serviceAccount) });
     firebaseReady = true;
     console.log("✅ Firebase Admin initialized");
   } else {
@@ -50,7 +51,7 @@ async function notifyUsers(filter, title, body) {
     const tokens = users.map(u => u.fcmToken).filter(Boolean);
     if (tokens.length === 0) return;
 
-    await admin.messaging().sendEachForMulticast({
+    await getMessaging().sendEachForMulticast({
       tokens,
       notification: { title, body },
       webpush: { notification: { icon: "/icon-192.png" } }
