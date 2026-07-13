@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function Notes({ isAdmin, api, studentSection }) {
+function Notes({ isAdmin, canUpload, api, studentSection }) {
   const [notes, setNotes] = useState([]);
 
 const [form, setForm] = useState({
@@ -37,7 +37,7 @@ const [message, setMessage] = useState("");
     return;
   }
 
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
   const fd = new FormData();
   fd.append("file", file);
@@ -76,10 +76,7 @@ const [message, setMessage] = useState("");
       return;
     }
 
-    const token = localStorage.getItem("token");
-
-
-
+    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 try {
   const res = await fetch(`${api}/api/notes`, {
     method: "POST",
@@ -115,7 +112,7 @@ setFile(null);
 
   const deleteNote = async (id) => {
 
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
   const res = await fetch(`${api}/api/notes/${id}`,{
     method:"DELETE",
@@ -143,7 +140,7 @@ setFile(null);
     <div>
       <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📚 Notes</h2>
 
-      {isAdmin && (
+      {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Note</h3>
           {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : "#c0392b", fontWeight: "600" }}>{message}</p>}
@@ -275,7 +272,7 @@ setFile(null);
   </a>
 )}
 
-            {isAdmin && (
+            {canUpload && (
               <button onClick={() => deleteNote(note._id)} style={{ marginLeft: "auto", display: "block", marginTop: "12px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
                 Delete
               </button>

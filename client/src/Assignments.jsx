@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function Assignments({ isAdmin, api }) {
+function Assignments({ isAdmin, canUpload, api }) {
   const [assignments, setAssignments] = useState([]);
   const [form, setForm] = useState({
   section: "",
@@ -37,7 +37,7 @@ function Assignments({ isAdmin, api }) {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
     try {
       const formData = new FormData();
@@ -80,7 +80,7 @@ setFile(null);
   };
 
   const deleteAssignment = (id) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
     fetch(`${api}/api/assignments/${id}`, {
       method: "DELETE",
       headers: { "Authorization": `Bearer ${token}` }
@@ -91,7 +91,7 @@ setFile(null);
     <div>
       <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📝 Assignments</h2>
 
-      {isAdmin && (
+      {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Assignment</h3>
           {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : "#c0392b", fontWeight: "600" }}>{message}</p>}
@@ -151,7 +151,7 @@ setFile(null);
             
             
 
-            {isAdmin && (
+            {canUpload && (
               <button onClick={() => deleteAssignment(assignment._id)} style={{ marginLeft: "auto", display: "block", marginTop: "12px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
                 Delete
               </button>
