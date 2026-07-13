@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-function Papers({ isAdmin, api }) {
+function Papers({ isAdmin, canUpload, api }) {
   const [papers, setPapers] = useState([]);
   const [form, setForm] = useState({
   subject: "",
@@ -46,7 +46,7 @@ function Papers({ isAdmin, api }) {
     setUploading(true);
     setMessage("⏳ Uploading...");
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
     const formData = new FormData();
     formData.append("file", selectedFile);
 
@@ -82,7 +82,7 @@ function Papers({ isAdmin, api }) {
   return;
 }
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
     try {
       const res = await fetch(`${api}/api/papers`, {
@@ -116,7 +116,7 @@ function Papers({ isAdmin, api }) {
   const deletePaper = async (id) => {
   console.log("Deleting ID:", id);
 
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
   const res = await fetch(`${api}/api/papers/${id}`, {
     method: "DELETE",
@@ -139,7 +139,7 @@ function Papers({ isAdmin, api }) {
     <div>
       <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📄 Papers</h2>
 
-      {isAdmin && (
+      {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Paper</h3>
           {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : message.includes("⏳") ? "#FF9800" : "#c0392b", fontWeight: "600", padding: "10px", background: "#f9f9f9", borderRadius: "6px" }}>{message}</p>}
@@ -236,7 +236,7 @@ function Papers({ isAdmin, api }) {
                 </a>
               )}
 
-              {isAdmin && (
+              {canUpload && (
                 <button onClick={() => deletePaper(paper._id)} style={{ marginLeft: "8px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
                   Delete
                 </button>

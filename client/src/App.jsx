@@ -194,6 +194,9 @@ function App() {
     setFacultyInfo(null);
   };
 
+  // Who can add Notes/Assignments/Papers/Materials: Admin, Faculty, HOD, or a CR student
+  const canUpload = isAdmin || facultyInfo?.role === "faculty" || facultyInfo?.role === "hod" || studentInfo?.isCR;
+
   const addNotice = (notice) => setNotices([notice, ...notices]);
 
   const deleteNotice = (id) => {
@@ -306,8 +309,8 @@ function App() {
         <button style={navBtnStyle("papers")} onClick={() => setActivePage("papers")}>📄 Papers</button>
         <button style={navBtnStyle("materials")} onClick={() => setActivePage("materials")}>📖 Materials</button>
         <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>🗓️ Timetable</button>
-        <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>
-        <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
+        {!facultyInfo && <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 AI Assistant</button>}
+        {!facultyInfo && <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>}
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
         {facultyInfo?.role === "faculty" && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
         {facultyInfo?.role === "hod" && <button style={navBtnStyle("hodreport")} onClick={() => setActivePage("hodreport")}>📊 Branch Report</button>}
@@ -355,10 +358,10 @@ function App() {
           </div>
         )}
 
-        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentInfo?.section} />}
-        {activePage === "assignments" && <Assignments isAdmin={isAdmin} api={API} />}
-        {activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
-        {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
+        {activePage === "notes" && <Notes isAdmin={isAdmin} canUpload={canUpload} api={API} studentSection={studentInfo?.section} />}
+        {activePage === "assignments" && <Assignments isAdmin={isAdmin} canUpload={canUpload} api={API} />}
+        {activePage === "papers" && <Papers isAdmin={isAdmin} canUpload={canUpload} api={API} />}
+        {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} canUpload={canUpload} api={API} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} api={API} />}
         {activePage === "attendance" && facultyInfo?.role === "faculty" && <Attendance api={API} facultyInfo={facultyInfo} />}
         {activePage === "hodreport" && facultyInfo?.role === "hod" && <HodAttendanceReport api={API} facultyInfo={facultyInfo} />}
