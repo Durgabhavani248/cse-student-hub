@@ -1065,9 +1065,79 @@ app.get("/api/attendance/my", studentMiddleware, async (req, res) => {
     const present = records.filter(r => r.status === "present").length;
     const percentage = totalClasses > 0 ? ((present / totalClasses) * 100).toFixed(1) : "0.0";
 
-    res.json({ records, summary: { totalClasses, present, percentage } });
+    // Subject-wise breakdown
+    const bySubject = {};
+    for (const r of records) {
+      if (!bySubject[r.subject]) bySubject[r.subject] = { total: 0, present: 0 };
+      bySubject[r.subject].total++;
+      if (r.status === "present") bySubject[r.subject].present++;
+    }
+    const subjectSummary = Object.entries(bySubject).map(([subject, s]) => ({
+      subject,
+      total: s.total,
+      present: s.present,
+      percentage: ((s.present / s.total) * 100).toFixed(1)
+    }));
+
+    res.json({ records, summary: { totalClasses, present, percentage }, subjectSummary });
   } catch (err) {
     console.error("Get my attendance error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// HOD/Admin: branch-wide attendance report — per-student percentage, flags low attendance (<75%)
+app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const { branch } = req.params;
+    if (!canAccess(req.user, branch)) {
+      return res.status(403).json({ message: "Not authorized for this branch" });
+    }
+
+    const report = await Attendance.aggregate([
+      { $match: { branch } },
+      {
+        $group: {
+          _id: { rollNo: "$rollNo", section: "$section" },
+          studentName: { $first: "$studentName" },
+          total: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] } }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          rollNo: "$_id.rollNo",
+          section: "$_id.section",
+          studentName: 1,
+          total: 1,
+          present: 1,
+          percentage: { $round: [{ $multiply: [{ $divide: ["$present", "$total"] }, 100] }, 1] }
+        }
+      },
+      { $sort: { section: 1, rollNo: 1 } }
+    ]);
+
+    const sectionSummaryMap = {};
+    for (const r of report) {
+      if (!sectionSummaryMap[r.section]) sectionSummaryMap[r.section] = { total: 0, sumPct: 0, count: 0 };
+      sectionSummaryMap[r.section].sumPct += r.percentage;
+      sectionSummaryMap[r.section].count += 1;
+    }
+    const sectionSummary = Object.entries(sectionSummaryMap).map(([section, s]) => ({
+      section,
+      studentsTracked: s.count,
+      avgPercentage: (s.sumPct / s.count).toFixed(1)
+    }));
+
+    res.json({
+      branch,
+      students: report,
+      sectionSummary,
+      lowAttendance: report.filter(r => r.percentage < 75)
+    });
+  } catch (err) {
+    console.error("Branch attendance report error:", err);
     res.status(500).json({ message: err.message });
   }
 });
