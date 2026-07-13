@@ -1550,6 +1550,28 @@ app.get("/api/admin/debug-branches", adminMiddleware, async (req, res) => {
   });
 });
 
+// Runs the branch-backfill migration directly on THIS server's live DB connection
+// (guaranteed to hit production, unlike running the standalone script locally
+// which may point at a different MONGO_URI).
+app.post("/api/admin/migrate-branch-now", adminMiddleware, async (req, res) => {
+  try {
+    const collections = ["notes", "assignments", "papers", "materials", "timetables", "users"];
+    const results = {};
+    for (const name of collections) {
+      const coll = mongoose.connection.collection(name);
+      const result = await coll.updateMany(
+        { $or: [{ branch: { $exists: false } }, { branch: null }] },
+        { $set: { branch: "CSE" } }
+      );
+      results[name] = result.modifiedCount;
+    }
+    res.json({ message: "Migration complete", results });
+  } catch (err) {
+    console.error("Migration error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ============== HEALTH CHECK ==============
 
 app.get("/api/health", (req, res) => {
