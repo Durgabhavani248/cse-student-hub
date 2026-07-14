@@ -31,8 +31,11 @@ const SUBJECTS = [
   "EXAM",
 ];
 
-function Timetable({ isAdmin, studentSection, api }) {
-  const [mode, setMode] = useState(isAdmin ? "select" : "view");
+function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
+  const isHod = facultyInfo?.role === "hod";
+  const canManage = isAdmin || isHod;
+  const managedBranch = isHod ? facultyInfo.branch : "CSE";
+  const [mode, setMode] = useState(canManage ? "select" : "view");
 
   const [selectedSection, setSelectedSection] = useState("");
 
@@ -49,7 +52,7 @@ function Timetable({ isAdmin, studentSection, api }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const section = isAdmin ? selectedSection : studentSection;
+    const section = canManage ? selectedSection : studentSection;
 
     if (!section) {
       setTimetable(null);
@@ -126,9 +129,11 @@ function Timetable({ isAdmin, studentSection, api }) {
   const saveTimetable = async () => {
     try {
 
-      const section = isAdmin
+      const section = canManage
         ? selectedSection
         : studentSection;
+
+      const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 
       const res = await fetch(
         `${api}/api/timetable`,
@@ -138,13 +143,11 @@ function Timetable({ isAdmin, studentSection, api }) {
           headers: {
             "Content-Type": "application/json",
 
-            Authorization:
-              "Bearer " +
-              localStorage.getItem("token"),
+            Authorization: `Bearer ${authToken}`,
           },
 
           body: JSON.stringify({
-            branch: "CSE",
+            branch: managedBranch,
             section,
             timings: timetable.timings,
             schedule: editedSchedule,
@@ -171,7 +174,7 @@ function Timetable({ isAdmin, studentSection, api }) {
     }
   };
 
-  if (isAdmin && mode === "select") {
+  if (canManage && mode === "select") {
     return (
       <div
         style={{
@@ -270,10 +273,10 @@ function Timetable({ isAdmin, studentSection, api }) {
             margin: 0,
           }}
         >
-          Section {isAdmin ? selectedSection : studentSection}
+          Section {canManage ? selectedSection : studentSection}
         </h2>
 
-        {!editing && isAdmin && (
+        {!editing && canManage && (
           <button
             onClick={() => setEditing(true)}
             style={{
@@ -487,7 +490,7 @@ function Timetable({ isAdmin, studentSection, api }) {
           </button>
         </div>
       ) : (
-        isAdmin && (
+        canManage && (
           <div
             style={{
               textAlign: "center",
