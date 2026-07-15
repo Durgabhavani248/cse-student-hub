@@ -144,6 +144,10 @@ const AttendanceSchema = new mongoose.Schema({
 const NoticeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
+  branch: {
+    type: String,
+    default: "CSE",
+},
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -596,7 +600,9 @@ app.post("/api/student/forgot-password", async (req, res) => {
 
 app.get("/api/notices", async (req, res) => {
   try {
-    const notices = await Notice.find().sort({ createdAt: -1 });
+    const notices = await Notice.find({
+    branch: req.user.branch
+}).sort({ createdAt: -1 });
     res.json(notices);
   } catch (err) {
     console.error("Get notices error:", err);
@@ -604,15 +610,28 @@ app.get("/api/notices", async (req, res) => {
   }
 });
 
-app.post("/api/notices", adminMiddleware, async (req, res) => {
+app.post("/api/notices", verifyAnyToken, async (req, res) => {
   try {
+    // Only Admin and HOD can add notices
+    if (req.user.role !== "admin" && req.user.role !== "hod") {
+      return res.status(403).json({
+        message: "Only Admin and HOD can add notices",
+      });
+    }
+
     const { title, description } = req.body;
 
     if (!title || !description) {
-      return res.status(400).json({ message: "Title and description required" });
+      return res.status(400).json({
+        message: "Title and description required",
+      });
     }
 
-    const notice = new Notice({ title, description });
+    const notice = new Notice({
+      title,
+      description,
+    });
+
     await notice.save();
 
     notifyUsers({}, `📢 ${title}`, description);
@@ -624,16 +643,23 @@ app.post("/api/notices", adminMiddleware, async (req, res) => {
   }
 });
 
-app.delete("/api/notices/:id", adminMiddleware, async (req, res) => {
+app.delete("/api/notices/:id", verifyAnyToken, async (req, res) => {
   try {
+    // Only Admin and HOD can delete notices
+    if (req.user.role !== "admin" && req.user.role !== "hod") {
+      return res.status(403).json({
+        message: "Only Admin and HOD can delete notices",
+      });
+    }
+
     await Notice.deleteOne({ _id: req.params.id });
+
     res.json({ message: "Notice deleted" });
   } catch (err) {
     console.error("Delete notice error:", err);
     res.status(500).json({ message: err.message });
   }
 });
-
 // ============== NOTES ==============
 
 app.get("/api/notes", verifyAnyToken, async (req, res) => {

@@ -332,7 +332,9 @@ function App() {
     api={API}
   />
 )}
-            {isAdmin && <AddNotice onAdd={addNotice} />}
+            {(isAdmin || facultyInfo?.role === "hod") && (
+  <AddNotice onAdd={addNotice} />
+)}
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Notices</h2>
             {notices.length === 0 && <p style={{ color: "#999" }}>No notices yet!</p>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
@@ -345,11 +347,22 @@ function App() {
                     <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px 0" }}>{n.description}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <small style={{ color: "#999", fontSize: "12px" }}>{n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</small>
-                      {isAdmin && (
-                        <button onClick={() => deleteNotice(n._id)} style={{ background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
-                          Delete
-                        </button>
-                      )}
+                   {(isAdmin || facultyInfo?.role === "hod") && (
+  <button
+    onClick={() => deleteNotice(n._id)}
+    style={{
+      background: "#fff0ee",
+      color: "#F15A29",
+      border: "1px solid #F15A29",
+      padding: "4px 12px",
+      borderRadius: "6px",
+      cursor: "pointer",
+      fontSize: "12px"
+    }}
+  >
+    Delete
+  </button>
+)}
                     </div>
                   </div>
                 );
