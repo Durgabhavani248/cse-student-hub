@@ -1,8 +1,10 @@
 import { useState } from "react";
 
-function AddNotice({ onAdd }) {
+function AddNotice({ onAdd, api, facultyInfo }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+
+  const isHod = facultyInfo?.role === "hod";
 
   const inputStyle = {
     width: "100%",
@@ -23,9 +25,9 @@ function AddNotice({ onAdd }) {
       return;
     }
 
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("facultyToken");
 
-    fetch("https://cse-student-hub.onrender.com/api/notices", {
+    fetch(`${api}/api/notices`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -44,7 +46,10 @@ function AddNotice({ onAdd }) {
 
   return (
     <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "28px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-      <h2 style={{ margin: "0 0 20px 0", color: "#F15A29", fontSize: "18px", fontWeight: "700" }}>Add Notice</h2>
+      <h2 style={{ margin: "0 0 4px 0", color: "#F15A29", fontSize: "18px", fontWeight: "700" }}>Add Notice</h2>
+      <p style={{ margin: "0 0 16px 0", color: "#999", fontSize: "12px" }}>
+        {isHod ? `Visible to ${facultyInfo.branch} students only` : "Visible to all branches"}
+      </p>
       <input
         placeholder="Notice Title"
         value={title}
