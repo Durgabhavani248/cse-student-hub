@@ -123,7 +123,10 @@ function App() {
   const [showFacultyChangePassword, setShowFacultyChangePassword] = useState(false);
 
   const fetchNotices = () => {
-    fetch(`${API}/api/notices`)
+    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+    fetch(`${API}/api/notices`, {
+      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {}
+    })
       .then(res => res.json())
       .then(data => setNotices(data))
       .catch(err => console.error(err));
@@ -156,6 +159,7 @@ function App() {
     if (user.isFirstLogin) {
       setShowChangePassword(true);
     }
+    fetchNotices();
   };
 
   const handlePasswordChanged = () => {
@@ -178,6 +182,7 @@ function App() {
     if (faculty.isFirstLogin) {
       setShowFacultyChangePassword(true);
     }
+    fetchNotices();
   };
 
   const handleFacultyPasswordChanged = () => {
@@ -200,7 +205,7 @@ function App() {
   const addNotice = (notice) => setNotices([notice, ...notices]);
 
   const deleteNotice = (id) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token") || localStorage.getItem("facultyToken");
     fetch(`${API}/api/notices/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
@@ -332,9 +337,9 @@ function App() {
     api={API}
   />
 )}
-            {(isAdmin || facultyInfo?.role === "hod") && (
-  <AddNotice onAdd={addNotice} />
-)}
+            {isAdmin || facultyInfo?.role === "hod" ? (
+              <AddNotice onAdd={addNotice} api={API} facultyInfo={facultyInfo} />
+            ) : null}
             <h2 style={{ color: "#1a1a1a", fontSize: "20px", fontWeight: "700", marginBottom: "16px" }}>Notices</h2>
             {notices.length === 0 && <p style={{ color: "#999" }}>No notices yet!</p>}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
@@ -346,23 +351,15 @@ function App() {
                     <h3 style={{ margin: "0 0 8px 0", color: "#1a1a1a", fontSize: "16px" }}>{n.title}</h3>
                     <p style={{ color: "#666", fontSize: "14px", margin: "0 0 12px 0" }}>{n.description}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <small style={{ color: "#999", fontSize: "12px" }}>{n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}</small>
-                   {(isAdmin || facultyInfo?.role === "hod") && (
-  <button
-    onClick={() => deleteNotice(n._id)}
-    style={{
-      background: "#fff0ee",
-      color: "#F15A29",
-      border: "1px solid #F15A29",
-      padding: "4px 12px",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontSize: "12px"
-    }}
-  >
-    Delete
-  </button>
-)}
+                      <small style={{ color: "#999", fontSize: "12px" }}>
+                        {n.createdAt ? new Date(n.createdAt).toLocaleDateString() : ""}
+                        {n.branch ? ` · ${n.branch} only` : ""}
+                      </small>
+                      {(isAdmin || facultyInfo?.role === "hod") && (
+                        <button onClick={() => deleteNotice(n._id)} style={{ background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "4px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </div>
                 );

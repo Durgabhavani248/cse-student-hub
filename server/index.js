@@ -144,10 +144,7 @@ const AttendanceSchema = new mongoose.Schema({
 const NoticeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
-  branch: {
-    type: String,
-    default: "CSE",
-},
+  branch: { type: String, default: null }, // null = visible to everyone; set = that branch only
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -241,6 +238,21 @@ const Timetable = mongoose.model("Timetable", TimetableSchema);
 
 
 // ============== MIDDLEWARE FUNCTIONS ==============
+
+// Attaches req.user if a valid token is present; never rejects the request.
+// Used for routes like /api/notices that work for logged-out visitors too,
+// but personalize/filter results when a role+branch is known.
+const optionalAuth = (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (token) {
+      req.user = jwt.verify(token, process.env.JWT_SECRET);
+    }
+  } catch (err) {
+    // invalid/expired token — just treat as logged-out
+  }
+  next();
+};
 
 const adminMiddleware = (req, res, next) => {
   try {
@@ -598,11 +610,20 @@ app.post("/api/student/forgot-password", async (req, res) => {
 
 // ============== NOTICES ==============
 
-app.get("/api/notices", async (req, res) => {
+app.get("/api/notices", optionalAuth, async (req, res) => {
   try {
-    const notices = await Notice.find({
-    branch: req.user.branch
-}).sort({ createdAt: -1 });
+    const u = req.user;
+    let filter;
+    if (u?.role === "admin") {
+      filter = {}; // admin sees everything
+    } else if (u?.branch) {
+      // logged-in student/faculty/hod: global notices + their own branch's
+      filter = { $or: [{ branch: null }, { branch: { $exists: false } }, { branch: u.branch }] };
+    } else {
+      // logged out / no branch context: global notices only
+      filter = { $or: [{ branch: null }, { branch: { $exists: false } }] };
+    }
+    const notices = await Notice.find(filter).sort({ createdAt: -1 });
     res.json(notices);
   } catch (err) {
     console.error("Get notices error:", err);
@@ -610,31 +631,21 @@ app.get("/api/notices", async (req, res) => {
   }
 });
 
-app.post("/api/notices", verifyAnyToken, async (req, res) => {
+app.post("/api/notices", hodOrAdminMiddleware, async (req, res) => {
   try {
-    // Only Admin and HOD can add notices
-    if (req.user.role !== "admin" && req.user.role !== "hod") {
-      return res.status(403).json({
-        message: "Only Admin and HOD can add notices",
-      });
-    }
-
     const { title, description } = req.body;
 
     if (!title || !description) {
-      return res.status(400).json({
-        message: "Title and description required",
-      });
+      return res.status(400).json({ message: "Title and description required" });
     }
 
-    const notice = new Notice({
-      title,
-      description,
-    });
+    // HOD notices are always scoped to their own branch; admin notices are global.
+    const branch = req.user.role === "hod" ? req.user.branch : null;
 
+    const notice = new Notice({ title, description, branch });
     await notice.save();
 
-    notifyUsers({}, `📢 ${title}`, description);
+    notifyUsers(branch ? { branch } : {}, `📢 ${title}`, description);
 
     res.json(notice);
   } catch (err) {
@@ -643,23 +654,21 @@ app.post("/api/notices", verifyAnyToken, async (req, res) => {
   }
 });
 
-app.delete("/api/notices/:id", verifyAnyToken, async (req, res) => {
+app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
   try {
-    // Only Admin and HOD can delete notices
-    if (req.user.role !== "admin" && req.user.role !== "hod") {
-      return res.status(403).json({
-        message: "Only Admin and HOD can delete notices",
-      });
+    const notice = await Notice.findById(req.params.id);
+    if (!notice) return res.status(404).json({ message: "Notice not found" });
+    if (req.user.role === "hod" && notice.branch !== req.user.branch) {
+      return res.status(403).json({ message: "You can only delete your own branch's notices" });
     }
-
     await Notice.deleteOne({ _id: req.params.id });
-
     res.json({ message: "Notice deleted" });
   } catch (err) {
     console.error("Delete notice error:", err);
     res.status(500).json({ message: err.message });
   }
 });
+
 // ============== NOTES ==============
 
 app.get("/api/notes", verifyAnyToken, async (req, res) => {
