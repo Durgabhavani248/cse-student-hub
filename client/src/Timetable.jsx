@@ -51,6 +51,10 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
 
   const [error, setError] = useState("");
 
+  const [bulkFile, setBulkFile] = useState(null);
+  const [bulkMessage, setBulkMessage] = useState("");
+  const [bulkUploading, setBulkUploading] = useState(false);
+
   useEffect(() => {
     const section = canManage ? selectedSection : studentSection;
 
@@ -106,6 +110,28 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
 
   const handleSectionChange = (e) => {
     setSelectedSection(e.target.value);
+  };
+
+  const bulkUploadTimetable = () => {
+    if (!bulkFile) { alert("Select an Excel file first!"); return; }
+    const authToken = localStorage.getItem("token") || localStorage.getItem("facultyToken");
+    const formData = new FormData();
+    formData.append("file", bulkFile);
+    formData.append("branch", managedBranch);
+    setBulkUploading(true);
+    setBulkMessage("");
+
+    fetch(`${api}/api/admin/upload-timetable`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${authToken}` },
+      body: formData
+    })
+      .then(res => res.json())
+      .then(data => {
+        setBulkUploading(false);
+        setBulkMessage(data.message || (data.sections ? `✅ Updated: ${data.sections.join(", ")}` : "❌ Upload failed"));
+      })
+      .catch(() => { setBulkUploading(false); setBulkMessage("❌ Server error!"); });
   };
 
   const updateSubject = (index, value) => {
@@ -182,42 +208,79 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
           background:
             "linear-gradient(135deg,#fff5f0,#fff)",
           borderRadius: 12,
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "32px",
         }}
       >
-        <h2
-          style={{
-            color: "#F15A29",
-            marginBottom: 20,
-          }}
-        >
-          Select Section
-        </h2>
+        <div>
+          <h2
+            style={{
+              color: "#F15A29",
+              marginBottom: 20,
+            }}
+          >
+            Select Section
+          </h2>
 
-        <select
-          value={selectedSection}
-          onChange={handleSectionChange}
-          style={{
-            padding: 12,
-            width: 220,
-            borderRadius: 8,
-          }}
-        >
-          <option value="">
-            -- Select Section --
-          </option>
+          <select
+            value={selectedSection}
+            onChange={handleSectionChange}
+            style={{
+              padding: 12,
+              width: 220,
+              borderRadius: 8,
+            }}
+          >
+            <option value="">
+              -- Select Section --
+            </option>
 
-          {Array.from(
-            { length: 24 },
-            (_, i) => (
-              <option
-                key={i}
-                value={String(i + 1)}
-              >
-                Section {i + 1}
-              </option>
-            )
+            {Array.from(
+              { length: 24 },
+              (_, i) => (
+                <option
+                  key={i}
+                  value={String(i + 1)}
+                >
+                  Section {i + 1}
+                </option>
+              )
+            )}
+          </select>
+          <p style={{ color: "#999", fontSize: "12px", marginTop: 10, maxWidth: 220 }}>
+            Edit one section's timetable manually, period by period.
+          </p>
+        </div>
+
+        <div style={{ background: "#fff", border: "1px solid #ffd9cc", borderRadius: 12, padding: 24, maxWidth: 380 }}>
+          <h3 style={{ color: "#F15A29", marginTop: 0, marginBottom: 6 }}>➕ Add New Timetable (Excel)</h3>
+          <p style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
+            Upload one Excel with <strong>all sections</strong> at once — every section in the file gets updated in one go, no need to edit each one manually.
+            <br /><br />
+            Sheet <strong>"Schedule"</strong> columns: <strong>section, day, period, subject</strong> (one row per period; day = MON/TUE/WED/THU/FRI/SAT)
+            <br />
+            Sheet <strong>"Timings"</strong> (optional, shared across all sections): <strong>period, label, start, end, type</strong>
+          </p>
+          <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={e => setBulkFile(e.target.files[0])}
+            style={{ width: "100%", marginBottom: 12 }}
+          />
+          <button
+            onClick={bulkUploadTimetable}
+            disabled={bulkUploading}
+            style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
+          >
+            {bulkUploading ? "Uploading..." : "Upload & Update All Sections"}
+          </button>
+          {bulkMessage && (
+            <p style={{ color: bulkMessage.startsWith("❌") ? "#F15A29" : "#4CAF50", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
+              {bulkMessage}
+            </p>
           )}
-        </select>
+        </div>
       </div>
     );
   }
