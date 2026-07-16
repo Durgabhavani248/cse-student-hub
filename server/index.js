@@ -1028,7 +1028,87 @@ app.get("/api/timetable/:section", verifyAnyToken, async (req, res) => {
   }
 });
 
-// Create/update timetable — HOD (own branch) or Admin
+// Bulk timetable upload — updates ALL sections of a branch in one go.
+// Excel: Sheet 1 "Schedule" columns = section, day, period, subject (one row per period)
+//        Sheet 2 "Timings" (optional) columns = period, label, start, end, type — shared across all sections
+app.post("/api/admin/upload-timetable", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    const branch = req.body.branch || req.user.branch;
+    if (!canAccess(req.user, branch)) {
+      return res.status(403).json({ message: "You can only manage your own branch's timetable" });
+    }
+
+    const workbook = XLSX.read(req.files.file.data, { type: "buffer" });
+
+    const scheduleSheetName = workbook.SheetNames.find(n => n.toLowerCase() === "schedule") || workbook.SheetNames[0];
+    const scheduleRows = XLSX.utils.sheet_to_json(workbook.Sheets[scheduleSheetName]);
+    if (!scheduleRows || scheduleRows.length === 0) {
+      return res.status(400).json({ message: "Schedule sheet is empty" });
+    }
+
+    // Optional Timings sheet, shared across every section in this upload
+    let timings = [];
+    const timingsSheetName = workbook.SheetNames.find(n => n.toLowerCase() === "timings");
+    if (timingsSheetName) {
+      const timingRows = XLSX.utils.sheet_to_json(workbook.Sheets[timingsSheetName]);
+      timings = timingRows
+        .sort((a, b) => Number(a.period) - Number(b.period))
+        .map(r => ({
+          label: String(r.label ?? r.period ?? ""),
+          start: String(r.start ?? ""),
+          end: String(r.end ?? ""),
+          type: String(r.type ?? "class")
+        }));
+    }
+
+    // Group rows by section -> day -> ordered-by-period subject list
+    const bySection = {};
+    for (const row of scheduleRows) {
+      const section = String(row.section || "").trim();
+      const day = String(row.day || "").trim().toUpperCase().slice(0, 3);
+      const period = Number(row.period);
+      const subject = String(row.subject || "").trim();
+      if (!section || !day || !period || !subject) continue;
+
+      if (!bySection[section]) bySection[section] = {};
+      if (!bySection[section][day]) bySection[section][day] = [];
+      bySection[section][day][period - 1] = subject;
+    }
+
+    const sectionsUpdated = Object.keys(bySection);
+    if (sectionsUpdated.length === 0) {
+      return res.status(400).json({ message: "No valid rows found (check section/day/period/subject columns)" });
+    }
+
+    for (const section of sectionsUpdated) {
+      // fill any gaps left by out-of-order periods with ""
+      const schedule = {};
+      for (const day of Object.keys(bySection[section])) {
+        schedule[day] = Array.from({ length: bySection[section][day].length }, (_, i) => bySection[section][day][i] || "");
+      }
+
+      const update = { branch, section, schedule };
+      if (timings.length > 0) update.timings = timings;
+
+      await Timetable.findOneAndUpdate(
+        { branch, section },
+        timings.length > 0 ? update : { branch, section, schedule }, // don't wipe existing timings if none provided
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    }
+
+    res.json({ message: `✅ Updated timetables for ${sectionsUpdated.length} sections`, sections: sectionsUpdated });
+  } catch (err) {
+    console.error("Bulk timetable upload error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Create/update a single section's timetable — HOD (own branch) or Admin
 app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
   try {
     const { branch, section, timings, schedule } = req.body;
@@ -1051,6 +1131,9 @@ app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+
+
+
 // List students in a branch+section — used by faculty/HOD to build attendance rosters
 app.get("/api/students/:branch/:section", facultyMiddleware, async (req, res) => {
   try {
