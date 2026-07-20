@@ -4,9 +4,11 @@ function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 }
 
-function Notes({ canUpload, api, studentSection, facultyInfo }) {
+const BRANCHES = ["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"];
+
+function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
   const [notes, setNotes] = useState([]);
-  const [form, setForm] = useState({ section: "", subject: "", title: "", description: "" });
+  const [form, setForm] = useState({ section: "", subject: "", title: "", description: "", branch: "CSE" });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -52,7 +54,7 @@ function Notes({ canUpload, api, studentSection, facultyInfo }) {
       }
 
       // Step 2: save the note with that file URL attached
-      const branch = facultyInfo?.branch || "CSE";
+      const branch = facultyInfo?.branch || form.branch || "CSE";
       const saveRes = await fetch(`${api}/api/notes`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
@@ -67,7 +69,7 @@ function Notes({ canUpload, api, studentSection, facultyInfo }) {
       }
 
       setMessage("✅ Note added successfully!");
-      setForm({ section: "", subject: "", title: "", description: "" });
+      setForm({ section: "", subject: "", title: "", description: "", branch: form.branch });
       setFile(null);
       fetchNotes();
     } catch (err) {
@@ -101,6 +103,11 @@ function Notes({ canUpload, api, studentSection, facultyInfo }) {
           {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
+            {isAdmin && !facultyInfo && (
+              <select name="branch" value={form.branch} onChange={handleChange} style={inputStyle}>
+                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            )}
             <select name="section" value={form.section} onChange={handleChange} style={inputStyle}>
               <option value="">-- Select Section --</option>
               {Array.from({ length: 24 }, (_, i) => (
@@ -135,6 +142,9 @@ function Notes({ canUpload, api, studentSection, facultyInfo }) {
         {filteredNotes.map(note => (
           <div key={note._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
             <h3 style={{ color: "#F15A29", margin: "0 0 8px 0", fontSize: "17px" }}>{note.title}</h3>
+            {isAdmin && !facultyInfo && note.branch && (
+              <span style={{ display: "inline-block", background: "#f0f7ff", color: "#2196F3", padding: "2px 10px", borderRadius: "10px", fontSize: "11px", fontWeight: "700", marginBottom: "6px" }}>{note.branch}</span>
+            )}
             <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Subject:</strong> {note.subject}</p>
             <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Section:</strong> {note.section}</p>
             {note.description && <p style={{ margin: "8px 0", fontSize: "13px", color: "#444" }}>{note.description}</p>}

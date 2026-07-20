@@ -4,9 +4,11 @@ function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 }
 
-function StudyMaterials({ canUpload, api, facultyInfo }) {
+const BRANCHES = ["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"];
+
+function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
   const [materials, setMaterials] = useState([]);
-  const [form, setForm] = useState({ subject: "", title: "" });
+  const [form, setForm] = useState({ subject: "", title: "", branch: "CSE" });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -49,7 +51,7 @@ function StudyMaterials({ canUpload, api, facultyInfo }) {
         return;
       }
 
-      const branch = facultyInfo?.branch || "CSE";
+      const branch = facultyInfo?.branch || form.branch || "CSE";
       const saveRes = await fetch(`${api}/api/materials`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
@@ -64,7 +66,7 @@ function StudyMaterials({ canUpload, api, facultyInfo }) {
       }
 
       setMessage("✅ Material added successfully!");
-      setForm({ subject: "", title: "" });
+      setForm({ subject: "", title: "", branch: form.branch });
       setFile(null);
       fetchMaterials();
     } catch (err) {
@@ -96,6 +98,11 @@ function StudyMaterials({ canUpload, api, facultyInfo }) {
           {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
+            {isAdmin && !facultyInfo && (
+              <select name="branch" value={form.branch} onChange={handleChange} style={inputStyle}>
+                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            )}
             <input type="text" name="subject" placeholder="Subject" value={form.subject} onChange={handleChange} style={inputStyle} />
             <input type="text" name="title" placeholder="Title (e.g. Lab Manual, Syllabus)" value={form.title} onChange={handleChange} style={inputStyle} />
 
@@ -122,6 +129,9 @@ function StudyMaterials({ canUpload, api, facultyInfo }) {
         {materials.map(m => (
           <div key={m._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
             <h3 style={{ color: "#F15A29", margin: "0 0 8px 0", fontSize: "17px" }}>{m.title}</h3>
+            {isAdmin && !facultyInfo && m.branch && (
+              <span style={{ display: "inline-block", background: "#f0f7ff", color: "#2196F3", padding: "2px 10px", borderRadius: "10px", fontSize: "11px", fontWeight: "700", marginBottom: "6px" }}>{m.branch}</span>
+            )}
             <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Subject:</strong> {m.subject}</p>
 
             {m.fileUrl ? (
