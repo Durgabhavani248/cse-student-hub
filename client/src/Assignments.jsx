@@ -1,91 +1,90 @@
 import { useEffect, useState } from "react";
 
-function Assignments({ isAdmin, canUpload, api }) {
-  const [assignments, setAssignments] = useState([]);
-  const [form, setForm] = useState({
-  section: "",
-  subject: "",
-  title: "",
-  description: "",
-});
-  const [message, setMessage] = useState("");
-  const [file, setFile] = useState(null);
+function getAuthToken() {
+  return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+}
 
-  useEffect(() => {
-    fetchAssignments();
-  }, []);
+function Assignments({ canUpload, api, facultyInfo }) {
+  const [assignments, setAssignments] = useState([]);
+  const [form, setForm] = useState({ section: "", subject: "", title: "", description: "", dueDate: "" });
+  const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   const fetchAssignments = () => {
-    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-    fetch(`${api}/api/assignments`, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    })
+    fetch(`${api}/api/assignments`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
       .then(res => res.json())
       .then(data => setAssignments(data.assignments || []))
       .catch(err => console.error(err));
   };
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+  useEffect(() => { fetchAssignments(); }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!form.section || !form.subject || !form.title || !form.description) {
-      setMessage("❌ All fields required!");
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const addAssignment = async () => {
+    setMessage("");
+    if (!form.section || !form.subject || !form.title) {
+      setMessage("❌ Section, Subject and Title are required!");
       return;
     }
 
-    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-
+    setSaving(true);
     try {
-      const formData = new FormData();
-
-formData.append("section", form.section);
-formData.append("subject", form.subject);
-formData.append("title", form.title);
-formData.append("description", form.description);
-
-if (file) {
-  formData.append("file", file);
-}
-
-const res = await fetch(`${api}/api/assignments`, {
-  method: "POST",
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-  body: formData,
-});
-
-      const data = await res.json();
-      
-      if (res.ok) {
-        setMessage("✅ Assignment added successfully!");
-        setForm({
-  section: "",
-  subject: "",
-  title: "",
-  description: "",
-});
-setFile(null);
-        fetchAssignments();
-      } else {
-        setMessage("❌ " + (data.message || "Error adding assignment"));
+      let fileUrl = "";
+      if (file) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const uploadRes = await fetch(`${api}/api/upload`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+          body: fd
+        });
+        const uploadData = await uploadRes.json();
+        if (!uploadRes.ok || !uploadData.url) {
+          setSaving(false);
+          setMessage(`❌ File upload failed: ${uploadData.message || "unknown error"}`);
+          return;
+        }
+        fileUrl = uploadData.url;
       }
+
+      const branch = facultyInfo?.branch || "CSE";
+      const saveRes = await fetch(`${api}/api/assignments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ ...form, branch, fileUrl })
+      });
+      const saveData = await saveRes.json();
+      setSaving(false);
+
+      if (!saveRes.ok) {
+        setMessage(`❌ ${saveData.message || "Failed to save assignment"}`);
+        return;
+      }
+
+      setMessage("✅ Assignment added successfully!");
+      setForm({ section: "", subject: "", title: "", description: "", dueDate: "" });
+      setFile(null);
+      fetchAssignments();
     } catch (err) {
-      setMessage("❌ Server error: " + err.message);
+      setSaving(false);
+      setMessage(`❌ Error: ${err.message}`);
     }
   };
 
-  const deleteAssignment = (id) => {
-    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-    fetch(`${api}/api/assignments/${id}`, {
+  const deleteAssignment = async (id) => {
+    if (!confirm("Delete this assignment?")) return;
+    const res = await fetch(`${api}/api/assignments/${id}`, {
       method: "DELETE",
-      headers: { "Authorization": `Bearer ${token}` }
-    }).then(() => fetchAssignments());
+      headers: { Authorization: `Bearer ${getAuthToken()}` }
+    });
+    const data = await res.json();
+    if (res.ok) fetchAssignments();
+    else alert(data.message || "Failed to delete");
   };
+
+  const inputStyle = { padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px", boxSizing: "border-box" };
 
   return (
     <div>
@@ -94,73 +93,69 @@ setFile(null);
       {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Assignment</h3>
-          {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : "#c0392b", fontWeight: "600" }}>{message}</p>}
-          
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
-            <select name="section" value={form.section} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }}>
+          {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
+
+          <div style={{ display: "grid", gap: "12px" }}>
+            <select name="section" value={form.section} onChange={handleChange} style={inputStyle}>
               <option value="">-- Select Section --</option>
               {Array.from({ length: 24 }, (_, i) => (
                 <option key={i} value={String(i + 1)}>Section {i + 1}</option>
               ))}
             </select>
 
-            <input type="text" name="subject" placeholder="Subject" value={form.subject} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }} />
-            <input type="text" name="title" placeholder="Title" value={form.title} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0" }} />
-            <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", minHeight: "100px" }} />
-            
-<input
-  type="file"
-  accept=".pdf"
-  onChange={(e) => setFile(e.target.files[0])}
-  style={{
-    padding: "12px",
-    borderRadius: "8px",
-    border: "1px solid #e0e0e0",
-  }}
-/>
-            <button type="submit" style={{ padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", cursor: "pointer", fontWeight: "600" }}>
-              ➕ Add Assignment
+            <input type="text" name="subject" placeholder="Subject" value={form.subject} onChange={handleChange} style={inputStyle} />
+            <input type="text" name="title" placeholder="Title" value={form.title} onChange={handleChange} style={inputStyle} />
+            <textarea name="description" placeholder="Description" value={form.description} onChange={handleChange} style={{ ...inputStyle, minHeight: "80px" }} />
+            <input type="date" name="dueDate" value={form.dueDate} onChange={handleChange} style={inputStyle} />
+
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", color: "#666", fontWeight: "600" }}>PDF/File (optional)</label>
+              <input type="file" onChange={e => setFile(e.target.files[0])} style={{ width: "100%" }} />
+              {file && <p style={{ fontSize: "12px", color: "#4CAF50", marginTop: "4px" }}>Selected: {file.name}</p>}
+            </div>
+
+            <button
+              onClick={addAssignment}
+              disabled={saving}
+              style={{ padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
+            >
+              {saving ? "Saving..." : "➕ Add Assignment"}
             </button>
-          </form>
+          </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
-        {assignments.map(assignment => (
-          <div key={assignment._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-            <h3 style={{ margin: "0 0 8px 0", color: "#F15A29", fontSize: "16px" }}>{assignment.title}</h3>
-            <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Subject:</strong> {assignment.subject}</p>
-            <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Section:</strong> {assignment.section}</p>
-            <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "14px" }}>{assignment.description}</p>
-            {assignment.fileUrl && (
-  <a
-    href={assignment.fileUrl}
-    target="_blank"
-    rel="noopener noreferrer"
-    style={{
-      display: "inline-block",
-      color: "#F15A29",
-      textDecoration: "none",
-      fontWeight: "600",
-      marginBottom: "10px",
-    }}
-  >
-    📄 View PDF
-  </a>
-)}
-            
-            
+      {assignments.length === 0 && <p style={{ color: "#999" }}>No assignments yet.</p>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+        {assignments.map(a => (
+          <div key={a._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
+            <h3 style={{ color: "#F15A29", margin: "0 0 8px 0", fontSize: "17px" }}>{a.title}</h3>
+            <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Subject:</strong> {a.subject}</p>
+            <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Section:</strong> {a.section}</p>
+            {a.dueDate && <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Due:</strong> {a.dueDate}</p>}
+            {a.description && <p style={{ margin: "8px 0", fontSize: "13px", color: "#444" }}>{a.description}</p>}
+
+            {a.fileUrl ? (
+              <a href={a.fileUrl} target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-block", marginTop: "10px", padding: "8px 16px", background: "#fff0ee", color: "#F15A29", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                📄 View File
+              </a>
+            ) : (
+              <p style={{ marginTop: "10px", fontSize: "12px", color: "#bbb", fontStyle: "italic" }}>No file attached</p>
+            )}
 
             {canUpload && (
-              <button onClick={() => deleteAssignment(assignment._id)} style={{ marginLeft: "auto", display: "block", marginTop: "12px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "6px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" }}>
-                Delete
+              <button
+                onClick={() => deleteAssignment(a._id)}
+                style={{ display: "block", marginTop: "12px", padding: "6px 14px", background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+              >
+                🗑️ Delete
               </button>
             )}
           </div>
         ))}
       </div>
-
-      {assignments.length === 0 && <p style={{ color: "#999", textAlign: "center", padding: "40px" }}>No assignments available</p>}
     </div>
   );
 }
