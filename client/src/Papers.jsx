@@ -1,249 +1,148 @@
 import { useEffect, useState } from "react";
 
-function Papers({ isAdmin, canUpload, api }) {
-  const [papers, setPapers] = useState([]);
-  const [form, setForm] = useState({
-  subject: "",
-  title: "",
-  fileUrl: ""
-});
-  const [message, setMessage] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
+function getAuthToken() {
+  return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
+}
 
-  useEffect(() => {
-    fetchPapers();
-  }, []);
+function Papers({ canUpload, api, facultyInfo }) {
+  const [papers, setPapers] = useState([]);
+  const [form, setForm] = useState({ subject: "", title: "" });
+  const [file, setFile] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
 
   const fetchPapers = () => {
-    const authToken = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-    fetch(`${api}/api/papers`, {
-      headers: { Authorization: `Bearer ${authToken}` }
-    })
+    fetch(`${api}/api/papers`, { headers: { Authorization: `Bearer ${getAuthToken()}` } })
       .then(res => res.json())
-      .then(data => setPapers(data))
+      .then(data => setPapers(Array.isArray(data) ? data : []))
       .catch(err => console.error(err));
   };
 
-  const handleChange = (e) => {
-  setForm({
-    ...form,
-    [e.target.name]: e.target.value,
-  });
-};
+  useEffect(() => { fetchPapers(); }, []);
 
-  const handleFileChange = (e) => {
-    setSelectedFile(e.target.files[0]);
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+
+  const addPaper = async () => {
     setMessage("");
-  };
-
-  const uploadFile = async () => {
-    if (!selectedFile) {
-      setMessage("❌ Select a file first!");
+    if (!form.subject || !form.title) {
+      setMessage("❌ Subject and Title are required!");
+      return;
+    }
+    if (!file) {
+      setMessage("❌ Please select a file!");
       return;
     }
 
-    setUploading(true);
-    setMessage("⏳ Uploading...");
-
-    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-
+    setSaving(true);
     try {
-      const res = await fetch(`${api}/api/upload`, {
+      const fd = new FormData();
+      fd.append("file", file);
+      const uploadRes = await fetch(`${api}/api/upload`, {
         method: "POST",
-        headers: { "Authorization": `Bearer ${token}` },
-        body: formData
+        headers: { Authorization: `Bearer ${getAuthToken()}` },
+        body: fd
       });
-
-      const data = await res.json();
-      console.log("Response:", data);
-      if (res.ok && data.url) {
-        setForm({ ...form, fileUrl: data.url });
-        setMessage("✅ File uploaded! Ready to add paper.");
-        setSelectedFile(null);
-        document.getElementById("fileInput").value = "";
-      } else {
-        setMessage("❌ Upload failed: " + (data.message || "Error"));
+      const uploadData = await uploadRes.json();
+      if (!uploadRes.ok || !uploadData.url) {
+        setSaving(false);
+        setMessage(`❌ File upload failed: ${uploadData.message || "unknown error"}`);
+        return;
       }
-    } catch (err) {
-      setMessage("❌ Upload error: " + err.message);
-    } finally {
-      setUploading(false);
-    }
-  };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!form.subject || !form.title || !form.fileUrl) {
-  setMessage("❌ Enter subject, title and upload file!");
-  return;
-}
-
-    const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-
-    try {
-      const res = await fetch(`${api}/api/papers`, {
+      const branch = facultyInfo?.branch || "CSE";
+      const saveRes = await fetch(`${api}/api/papers`, {
         method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(form)
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ ...form, branch, fileUrl: uploadData.url })
       });
+      const saveData = await saveRes.json();
+      setSaving(false);
 
-      const data = await res.json();
-      
-      if (res.ok) {
-        setMessage("✅ Paper added successfully!");
-        setForm({
-  subject: "",
-  title: "",
-  fileUrl: "",
-});
-        fetchPapers();
-        setTimeout(() => setMessage(""), 3000);
-      } else {
-        setMessage("❌ " + (data.message || "Error adding paper"));
+      if (!saveRes.ok) {
+        setMessage(`❌ ${saveData.message || "Failed to save paper"}`);
+        return;
       }
+
+      setMessage("✅ Paper added successfully!");
+      setForm({ subject: "", title: "" });
+      setFile(null);
+      fetchPapers();
     } catch (err) {
-      setMessage("❌ Server error: " + err.message);
+      setSaving(false);
+      setMessage(`❌ Error: ${err.message}`);
     }
   };
 
   const deletePaper = async (id) => {
-  console.log("Deleting ID:", id);
+    if (!confirm("Delete this paper?")) return;
+    const res = await fetch(`${api}/api/papers/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getAuthToken()}` }
+    });
+    const data = await res.json();
+    if (res.ok) fetchPapers();
+    else alert(data.message || "Failed to delete");
+  };
 
-  const token = localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
-
-  const res = await fetch(`${api}/api/papers/${id}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await res.json();
-
-  console.log("Status:", res.status);
-  console.log("Response:", data);
-
-  if (res.ok) {
-    fetchPapers();
-  }
-};
+  const inputStyle = { padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px", boxSizing: "border-box" };
 
   return (
     <div>
-      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📄 Papers</h2>
+      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📄 Question Papers</h2>
 
       {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Paper</h3>
-          {message && <p style={{ color: message.includes("✅") ? "#4CAF50" : message.includes("⏳") ? "#FF9800" : "#c0392b", fontWeight: "600", padding: "10px", background: "#f9f9f9", borderRadius: "6px" }}>{message}</p>}
-          
-          <form onSubmit={handleSubmit} style={{ display: "grid", gap: "16px" }}>
-            
+          {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
-            <input type="text" name="subject" placeholder="Subject (DBMS, OS, CN, etc)" value={form.subject} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
-            <input type="text" name="title" placeholder="Paper Title" value={form.title} onChange={handleChange} style={{ padding: "12px", borderRadius: "8px", border: "1px solid #e0e0e0", fontSize: "14px" }} />
+          <div style={{ display: "grid", gap: "12px" }}>
+            <input type="text" name="subject" placeholder="Subject" value={form.subject} onChange={handleChange} style={inputStyle} />
+            <input type="text" name="title" placeholder="Title (e.g. Mid-1 2025)" value={form.title} onChange={handleChange} style={inputStyle} />
 
-            {/* FILE UPLOAD SECTION */}
-            <div style={{ background: "#f9f9f9", padding: "20px", borderRadius: "8px", border: "2px dashed #F15A29" }}>
-              <p style={{ margin: "0 0 12px 0", fontWeight: "600", color: "#333" }}>📤 Upload Paper (PDF, DOC, DOCX)</p>
-              
-              <input 
-                id="fileInput"
-                type="file" 
-                accept=".pdf,.doc,.docx" 
-                onChange={handleFileChange}
-                style={{ 
-                  marginBottom: "12px", 
-                  padding: "10px",
-                  borderRadius: "6px",
-                  border: "1px solid #e0e0e0",
-                  width: "100%",
-                  cursor: "pointer"
-                }}
-              />
-              
-              {selectedFile && (
-                <p style={{ color: "#666", fontSize: "13px", margin: "0 0 12px 0" }}>
-                  Selected: <strong>{selectedFile.name}</strong>
-                </p>
-              )}
-              
-              <button 
-                type="button"
-                onClick={uploadFile}
-                disabled={uploading || !selectedFile}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: uploading || !selectedFile ? "#ccc" : "#F15A29",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "6px",
-                  cursor: uploading || !selectedFile ? "not-allowed" : "pointer",
-                  fontWeight: "600",
-                  fontSize: "14px"
-                }}
-              >
-                {uploading ? "⏳ Uploading..." : "📤 Upload File"}
-              </button>
-
-              {form.fileUrl && (
-                <p style={{ color: "#4CAF50", marginTop: "12px", fontWeight: "600", fontSize: "13px" }}>
-                  ✅ File ready! Click "Add Paper" below.
-                </p>
-              )}
+            <div>
+              <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", color: "#666", fontWeight: "600" }}>PDF File</label>
+              <input type="file" onChange={e => setFile(e.target.files[0])} style={{ width: "100%" }} />
+              {file && <p style={{ fontSize: "12px", color: "#4CAF50", marginTop: "4px" }}>Selected: {file.name}</p>}
             </div>
 
-            <button 
-              type="submit" 
-              disabled={!form.fileUrl || uploading}
-              style={{ 
-                padding: "12px", 
-                background: !form.fileUrl || uploading ? "#ccc" : "#F15A29", 
-                color: "#fff", 
-                border: "none", 
-                borderRadius: "8px", 
-                cursor: !form.fileUrl || uploading ? "not-allowed" : "pointer", 
-                fontWeight: "600",
-                fontSize: "14px"
-              }}>
-              ➕ Add Paper
+            <button
+              onClick={addPaper}
+              disabled={saving}
+              style={{ padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
+            >
+              {saving ? "Saving..." : "➕ Add Paper"}
             </button>
-          </form>
+          </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
-        {papers.length === 0 ? (
-          <p style={{ color: "#999", gridColumn: "1/-1", textAlign: "center", padding: "40px" }}>No papers available</p>
-        ) : (
-          papers.map(paper => (
-            <div key={paper._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-              <h3 style={{ margin: "0 0 8px 0", color: "#F15A29", fontSize: "16px" }}>{paper.title}</h3>
-              <p style={{ margin: "0 0 8px 0", color: "#666", fontSize: "13px" }}><strong>Subject:</strong> {paper.subject}</p>
-        
-              
-              {paper.fileUrl && (
-                <a href={paper.fileUrl} target="_blank" rel="noopener noreferrer" style={{ display: "inline-block", color: "#fff", background: "#F15A29", textDecoration: "none", fontWeight: "600", fontSize: "13px", padding: "8px 16px", borderRadius: "6px" }}>
-                  📥 Download Paper
-                </a>
-              )}
+      {papers.length === 0 && <p style={{ color: "#999" }}>No papers yet.</p>}
 
-              {canUpload && (
-                <button onClick={() => deletePaper(paper._id)} style={{ marginLeft: "8px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", padding: "8px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" }}>
-                  Delete
-                </button>
-              )}
-            </div>
-          ))
-        )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+        {papers.map(p => (
+          <div key={p._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
+            <h3 style={{ color: "#F15A29", margin: "0 0 8px 0", fontSize: "17px" }}>{p.title}</h3>
+            <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Subject:</strong> {p.subject}</p>
+
+            {p.fileUrl ? (
+              <a href={p.fileUrl} target="_blank" rel="noopener noreferrer"
+                style={{ display: "inline-block", marginTop: "10px", padding: "8px 16px", background: "#fff0ee", color: "#F15A29", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
+                📄 View File
+              </a>
+            ) : (
+              <p style={{ marginTop: "10px", fontSize: "12px", color: "#bbb", fontStyle: "italic" }}>No file attached</p>
+            )}
+
+            {canUpload && (
+              <button
+                onClick={() => deletePaper(p._id)}
+                style={{ display: "block", marginTop: "12px", padding: "6px 14px", background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
+              >
+                🗑️ Delete
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
