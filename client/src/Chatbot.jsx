@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 
 function Chatbot({ api }) {
   const [messages, setMessages] = useState([
-    { role: "assistant", text: "Hi! 👋 I'm NRI Hub AI Assistant. Ask me anything about DBMS, OS, CN, DS, and other CSE subjects! 🎓" }
+    { role: "assistant", text: "Hi! 👋 I'm NRI Academic Hub AI Assistant. Ask me anything about your subjects! 🎓" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -69,7 +69,7 @@ function Chatbot({ api }) {
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
           <span style={{ fontSize: "24px" }}>🤖</span>
           <div>
-            <h3 style={{ margin: 0, color: "#fff", fontSize: "16px", fontWeight: "600" }}>NRI Hub AI Assistant</h3>
+            <h3 style={{ margin: 0, color: "#fff", fontSize: "16px", fontWeight: "600" }}>NRI Academic Hub AI Assistant</h3>
             <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>Ask any subject doubt</p>
           </div>
         </div>
