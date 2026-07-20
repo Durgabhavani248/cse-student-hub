@@ -1,7 +1,7 @@
 {
-  "name": "NRI University CSE Hub",
-  "short_name": "CSE Hub",
-  "description": "NRI University CSE Student Hub",
+  "name": "NRI University Academic Hub",
+  "short_name": "Academic Hub",
+  "description": "NRI University Academic Hub — All Branches",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
