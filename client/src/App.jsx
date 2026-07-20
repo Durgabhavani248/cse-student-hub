@@ -368,10 +368,10 @@ function App() {
           </div>
         )}
 
-        {activePage === "notes" && facultyInfo?.role !== "hod" && <Notes canUpload={canUpload} api={API} studentSection={studentInfo?.section} facultyInfo={facultyInfo} />}
-        {activePage === "assignments" && facultyInfo?.role !== "hod" && <Assignments canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
-        {activePage === "papers" && <Papers canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
-        {activePage === "materials" && <StudyMaterials canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
+        {activePage === "notes" && facultyInfo?.role !== "hod" && <Notes isAdmin={isAdmin} canUpload={canUpload} api={API} studentSection={studentInfo?.section} facultyInfo={facultyInfo} />}
+        {activePage === "assignments" && facultyInfo?.role !== "hod" && <Assignments isAdmin={isAdmin} canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
+        {activePage === "papers" && <Papers isAdmin={isAdmin} canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
+        {activePage === "materials" && <StudyMaterials isAdmin={isAdmin} canUpload={canUpload} api={API} facultyInfo={facultyInfo} />}
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} facultyInfo={facultyInfo} api={API} />}
         {activePage === "attendance" && facultyInfo?.role === "faculty" && <Attendance api={API} facultyInfo={facultyInfo} />}
         {activePage === "hodreport" && facultyInfo?.role === "hod" && <HodAttendanceReport api={API} facultyInfo={facultyInfo} />}

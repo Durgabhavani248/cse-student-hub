@@ -4,9 +4,11 @@ function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
 }
 
-function Assignments({ canUpload, api, facultyInfo }) {
+const BRANCHES = ["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"];
+
+function Assignments({ canUpload, isAdmin, api, facultyInfo }) {
   const [assignments, setAssignments] = useState([]);
-  const [form, setForm] = useState({ section: "", subject: "", title: "", description: "", dueDate: "" });
+  const [form, setForm] = useState({ section: "", subject: "", title: "", description: "", dueDate: "", branch: "CSE" });
   const [file, setFile] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -49,7 +51,7 @@ function Assignments({ canUpload, api, facultyInfo }) {
         fileUrl = uploadData.url;
       }
 
-      const branch = facultyInfo?.branch || "CSE";
+      const branch = facultyInfo?.branch || form.branch || "CSE";
       const saveRes = await fetch(`${api}/api/assignments`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}` },
@@ -64,7 +66,7 @@ function Assignments({ canUpload, api, facultyInfo }) {
       }
 
       setMessage("✅ Assignment added successfully!");
-      setForm({ section: "", subject: "", title: "", description: "", dueDate: "" });
+      setForm({ section: "", subject: "", title: "", description: "", dueDate: "", branch: form.branch });
       setFile(null);
       fetchAssignments();
     } catch (err) {
@@ -96,6 +98,11 @@ function Assignments({ canUpload, api, facultyInfo }) {
           {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
+            {isAdmin && !facultyInfo && (
+              <select name="branch" value={form.branch} onChange={handleChange} style={inputStyle}>
+                {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+              </select>
+            )}
             <select name="section" value={form.section} onChange={handleChange} style={inputStyle}>
               <option value="">-- Select Section --</option>
               {Array.from({ length: 24 }, (_, i) => (
@@ -131,6 +138,9 @@ function Assignments({ canUpload, api, facultyInfo }) {
         {assignments.map(a => (
           <div key={a._id} style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
             <h3 style={{ color: "#F15A29", margin: "0 0 8px 0", fontSize: "17px" }}>{a.title}</h3>
+            {isAdmin && !facultyInfo && a.branch && (
+              <span style={{ display: "inline-block", background: "#f0f7ff", color: "#2196F3", padding: "2px 10px", borderRadius: "10px", fontSize: "11px", fontWeight: "700", marginBottom: "6px" }}>{a.branch}</span>
+            )}
             <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Subject:</strong> {a.subject}</p>
             <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Section:</strong> {a.section}</p>
             {a.dueDate && <p style={{ margin: "4px 0", fontSize: "13px", color: "#666" }}><strong>Due:</strong> {a.dueDate}</p>}
