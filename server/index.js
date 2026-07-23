@@ -1149,6 +1149,29 @@ app.get("/api/students/:branch/:section", facultyMiddleware, async (req, res) =>
   }
 });
 
+// Set/unset a student as CR (Class Representative) — HOD (own branch) or Admin
+app.post("/api/admin/set-cr", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const { rollNo, isCR } = req.body;
+    if (!rollNo || typeof isCR !== "boolean") {
+      return res.status(400).json({ message: "rollNo and isCR (true/false) are required" });
+    }
+
+    const student = await User.findOne({ rollNo });
+    if (!student) return res.status(404).json({ message: "Student not found" });
+
+    if (!canAccess(req.user, student.branch, student.section)) {
+      return res.status(403).json({ message: "Not authorized for this student's branch/section" });
+    }
+
+    await User.updateOne({ rollNo }, { isCR });
+    res.json({ message: `${student.name} (${rollNo}) is ${isCR ? "now a CR ⭐" : "no longer a CR"}` });
+  } catch (err) {
+    console.error("Set CR error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // ============== ATTENDANCE ==============
 
 // Faculty/HOD marks attendance for a whole section, one subject, one date.

@@ -17,6 +17,7 @@ import FacultyChangePassword from "./FacultyChangePassword";
 import Attendance from "./Attendance";
 import MyAttendance from "./MyAttendance";
 import HodAttendanceReport from "./HodAttendanceReport";
+import ManageCR from "./ManageCR";
 
 
 const API = "https://cse-student-hub.onrender.com";
@@ -319,6 +320,7 @@ function App() {
         <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
         {facultyInfo?.role === "faculty" && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>📋 Attendance</button>}
         {facultyInfo?.role === "hod" && <button style={navBtnStyle("hodreport")} onClick={() => setActivePage("hodreport")}>📊 Branch Report</button>}
+        {(facultyInfo?.role === "hod" || isAdmin) && <button style={navBtnStyle("managecr")} onClick={() => setActivePage("managecr")}>⭐ Manage CRs</button>}
         {!isAdmin && !facultyInfo && studentInfo && <button style={navBtnStyle("myattendance")} onClick={() => setActivePage("myattendance")}>📊 My Attendance</button>}
         {!isAdmin && !facultyInfo && <button style={navBtnStyle("notifications")} onClick={() => setActivePage("notifications")}>🔔 Notifications</button>}
         {isAdmin && <button style={navBtnStyle("admin")} onClick={() => setActivePage("admin")}>⚙️ Admin</button>}
@@ -375,6 +377,7 @@ function App() {
         {activePage === "timetable" && <Timetable isAdmin={isAdmin} studentSection={studentInfo?.section} facultyInfo={facultyInfo} api={API} />}
         {activePage === "attendance" && facultyInfo?.role === "faculty" && <Attendance api={API} facultyInfo={facultyInfo} />}
         {activePage === "hodreport" && facultyInfo?.role === "hod" && <HodAttendanceReport api={API} facultyInfo={facultyInfo} />}
+        {activePage === "managecr" && (facultyInfo?.role === "hod" || isAdmin) && <ManageCR api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} />}
         {activePage === "myattendance" && !isAdmin && !facultyInfo && <MyAttendance api={API} />}
         {activePage === "chatbot" && <Chatbot api={API} />}
         {activePage === "search" && <Search api={API} />}
