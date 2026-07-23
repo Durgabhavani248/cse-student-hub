@@ -1135,8 +1135,11 @@ app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
 
 
 // List students in a branch+section — used by faculty/HOD to build attendance rosters
-app.get("/api/students/:branch/:section", facultyMiddleware, async (req, res) => {
+app.get("/api/students/:branch/:section", verifyAnyToken, async (req, res) => {
   try {
+    if (!["faculty", "hod", "admin"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
     const { branch, section } = req.params;
     if (!canAccess(req.user, branch, section)) {
       return res.status(403).json({ message: "Not authorized for this branch/section" });
