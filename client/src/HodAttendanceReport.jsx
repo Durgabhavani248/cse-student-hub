@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 function HodAttendanceReport({ api, facultyInfo }) {
   const [data, setData] = useState(null);
+  const [allSections, setAllSections] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterSection, setFilterSection] = useState("all");
@@ -10,14 +11,22 @@ function HodAttendanceReport({ api, facultyInfo }) {
   const token = localStorage.getItem("facultyToken");
 
   useEffect(() => {
-    fetch(`${api}/api/attendance/branch-report/${facultyInfo.branch}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(d => {
+    Promise.all([
+      fetch(`${api}/api/attendance/branch-report/${facultyInfo.branch}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.json()),
+      fetch(`${api}/api/hod/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => res.json())
+    ])
+      .then(([reportData, statsData]) => {
         setLoading(false);
-        if (d.students) setData(d);
-        else setError(d.message || "Failed to load report");
+        if (reportData.students) setData(reportData);
+        else setError(reportData.message || "Failed to load report");
+
+        if (Array.isArray(statsData.sectionCounts)) {
+          setAllSections(statsData.sectionCounts.map(s => s._id).filter(Boolean).sort());
+        }
       })
       .catch(() => { setLoading(false); setError("Server error!"); });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -27,7 +36,11 @@ function HodAttendanceReport({ api, facultyInfo }) {
   if (error) return <p style={{ color: "#F15A29" }}>{error}</p>;
   if (!data) return null;
 
-  const sections = ["all", ...data.sectionSummary.map(s => s.section)];
+  // Union of sections that actually have students AND sections that have attendance
+  // records, so the dropdown always shows every real section — even ones with
+  // zero attendance marked yet.
+  const reportSections = data.sectionSummary.map(s => s.section);
+  const sections = ["all", ...Array.from(new Set([...allSections, ...reportSections])).sort()];
   let rows = filterSection === "all" ? data.students : data.students.filter(s => s.section === filterSection);
   if (showOnlyLow) rows = rows.filter(s => s.percentage < 75);
 
