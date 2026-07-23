@@ -856,6 +856,22 @@ app.get("/api/papers", verifyAnyToken, async (req, res) => {
   }
 });
 
+app.get("/api/debug/my-papers-filter", verifyAnyToken, async (req, res) => {
+  const u = req.user;
+  const filter = u.role === "admin" ? {} : { branch: u.branch };
+  const matchingCount = await Paper.countDocuments(filter);
+  const totalCount = await Paper.countDocuments({});
+  const allBranchValues = await Paper.distinct("branch");
+
+  res.json({
+    decodedTokenUser: u,
+    filterUsed: filter,
+    matchingPapersCount: matchingCount,
+    totalPapersInDB: totalCount,
+    allDistinctBranchValuesInPapers: allBranchValues
+  });
+});
+
 // Add paper
 app.post("/api/papers", uploaderMiddleware, async (req, res) => {
   try {
