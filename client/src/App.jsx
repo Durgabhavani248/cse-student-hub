@@ -520,14 +520,24 @@ function AdminPanel({ api }) {
 
           {stats.sectionCounts?.length > 0 && (
             <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
-              <h4 style={{ margin: "0 0 12px 0", color: "#1a1a1a" }}>Students by Section</h4>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-                {stats.sectionCounts.map(s => (
-                  <div key={s._id} style={{ background: "#fff0ee", color: "#F15A29", padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
-                    Sec {s._id}: {s.count}
+              <h4 style={{ margin: "0 0 12px 0", color: "#1a1a1a" }}>Students by Branch & Section</h4>
+              {Object.entries(
+                stats.sectionCounts.reduce((acc, s) => {
+                  (acc[s.branch] = acc[s.branch] || []).push(s);
+                  return acc;
+                }, {})
+              ).map(([branch, rows]) => (
+                <div key={branch} style={{ marginBottom: "14px" }}>
+                  <p style={{ margin: "0 0 6px 0", fontSize: "12px", fontWeight: "700", color: "#2196F3" }}>{branch}</p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                    {rows.map(s => (
+                      <div key={`${s.branch}-${s.section}`} style={{ background: "#fff0ee", color: "#F15A29", padding: "6px 14px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
+                        Sec {s.section}: {s.count}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
