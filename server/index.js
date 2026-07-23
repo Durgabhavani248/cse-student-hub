@@ -1688,12 +1688,20 @@ app.get("/api/admin/stats", adminMiddleware, async (req, res) => {
     const sectionCounts = await User.aggregate([
       {
         $group: {
-          _id: "$section",
+          _id: { branch: "$branch", section: "$section" },
           count: { $sum: 1 }
         }
       },
       {
-        $sort: { _id: 1 }
+        $sort: { "_id.branch": 1, "_id.section": 1 }
+      },
+      {
+        $project: {
+          _id: 0,
+          branch: "$_id.branch",
+          section: "$_id.section",
+          count: 1
+        }
       }
     ]);
 
