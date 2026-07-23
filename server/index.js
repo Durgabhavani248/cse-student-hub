@@ -1843,7 +1843,8 @@ app.post("/api/admin/migrate-branch-now", adminMiddleware, async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({
     status: "OK",
-    timestamp: new Date()
+    timestamp: new Date(),
+    version: "v-branch-fix-2026-07-23"
   });
 });
 app.get("/api/test123", (req, res) => {
