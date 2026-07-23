@@ -1432,26 +1432,46 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
       return res.status(400).json({ message: "Excel file is empty" });
     }
 
-    let added = 0, skipped = 0;
+    let added = 0, updated = 0, skipped = 0;
 
     for (const row of data) {
-      const existing = await User.findOne({ rollNo: row.rollNo });
+      const rollNo = String(row.rollNo || "").trim();
+      if (!rollNo) { skipped++; continue; }
+
+      const newBranch = String(row.branch || "CSE").trim();
+      const newSection = String(row.section || "").trim();
+      const newName = String(row.name || "").trim();
+
+      const existing = await User.findOne({ rollNo });
       if (!existing) {
         const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
         await User.create({
-          rollNo: String(row.rollNo).trim(),
-          name: String(row.name).trim(),
-          section: String(row.section).trim(),
-          branch: String(row.branch || "CSE").trim(),
+          rollNo,
+          name: newName,
+          section: newSection,
+          branch: newBranch,
           password: hashedPassword
         });
         added++;
       } else {
-        skipped++;
+        // Update branch/section/name if this row has different values —
+        // lets you re-upload a corrected sheet to fix mislabeled branches
+        // (e.g. CSM/CSD students that were defaulted to CSE by migration).
+        const changes = {};
+        if (newBranch && existing.branch !== newBranch) changes.branch = newBranch;
+        if (newSection && existing.section !== newSection) changes.section = newSection;
+        if (newName && existing.name !== newName) changes.name = newName;
+
+        if (Object.keys(changes).length > 0) {
+          await User.updateOne({ rollNo }, changes);
+          updated++;
+        } else {
+          skipped++;
+        }
       }
     }
 
-    res.json({ message: `✅ Added: ${added} ⏭️ Skipped: ${skipped}` });
+    res.json({ message: `✅ Added: ${added} 🔄 Updated: ${updated} ⏭️ Skipped: ${skipped}` });
   } catch (err) {
     console.error("Upload students error:", err);
     res.status(500).json({ message: err.message });
