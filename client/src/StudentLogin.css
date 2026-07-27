@@ -6,7 +6,7 @@
   width: 100%;
   overflow: hidden;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   font-family: "Segoe UI", sans-serif;
   background: #1a1a1a; /* fallback while video loads / if it fails */
@@ -21,44 +21,49 @@
   z-index: 0;
 }
 
-/* Dark gradient so the form stays legible over any footage,
-   with a warm tint pulled from the brand orange. */
+/* Light vignette — mostly transparent so the video reads clearly,
+   just enough darkening at the bottom for the card to sit on. */
 .login-bg-overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background:
-    linear-gradient(180deg, rgba(10, 8, 6, 0.55) 0%, rgba(10, 8, 6, 0.75) 100%),
-    radial-gradient(ellipse at 50% 100%, rgba(241, 90, 41, 0.25), transparent 60%);
+  background: linear-gradient(
+    180deg,
+    rgba(8, 6, 5, 0.08) 0%,
+    rgba(8, 6, 5, 0.12) 45%,
+    rgba(8, 6, 5, 0.55) 82%,
+    rgba(8, 6, 5, 0.72) 100%
+  );
 }
 
 .login-card-wrap {
   position: relative;
   z-index: 2;
-  padding: 24px;
+  padding: 20px;
+  padding-bottom: 5vh;
   width: 100%;
   display: flex;
   justify-content: center;
 }
 
 .login-card {
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 22px;
-  padding: 40px;
-  max-width: 420px;
+  background: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 18px;
+  padding: 26px 28px;
+  max-width: 340px;
   width: 100%;
   text-align: center;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
   animation: card-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes card-enter {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.97);
+    transform: translateY(20px) scale(0.98);
   }
   to {
     opacity: 1;
@@ -73,55 +78,58 @@
 }
 
 .login-logo {
-  width: 72px;
-  margin-bottom: 14px;
+  width: 48px;
+  margin-bottom: 8px;
   filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.4));
 }
 
 .login-title {
   color: #fff;
-  font-size: 19px;
+  font-size: 15px;
   font-weight: 700;
-  margin: 0 0 4px 0;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  margin: 0 0 2px 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  line-height: 1.3;
 }
 
 .login-subtitle {
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
-  margin-bottom: 26px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 11px;
+  margin-bottom: 16px;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 
 .login-error {
   color: #fff;
   background: rgba(241, 90, 41, 0.85);
-  padding: 8px 12px;
+  padding: 7px 10px;
   border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 12px;
+  font-size: 13px;
+  margin-bottom: 10px;
 }
 
 .login-label {
   display: block;
   text-align: left;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   text-transform: uppercase;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .login-select,
 .login-input {
   width: 100%;
-  padding: 12px 16px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 9px;
   border: 1.5px solid rgba(255, 255, 255, 0.4);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.95);
   color: #1a1a1a;
-  font-size: 15px;
-  margin-bottom: 14px;
+  font-size: 14px;
+  margin-bottom: 10px;
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -132,7 +140,7 @@
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23F15A29' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
   background-repeat: no-repeat;
-  background-position: right 14px center;
+  background-position: right 12px center;
   cursor: pointer;
   font-weight: 600;
   color: #F15A29;
@@ -146,24 +154,24 @@
 
 .login-button {
   width: 100%;
-  padding: 14px;
+  padding: 12px;
   background: #F15A29;
   color: #fff;
   border: none;
-  border-radius: 10px;
-  font-size: 16px;
+  border-radius: 9px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 16px;
-  margin-top: 4px;
+  margin-bottom: 10px;
+  margin-top: 2px;
   transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  box-shadow: 0 8px 20px rgba(241, 90, 41, 0.35);
+  box-shadow: 0 6px 16px rgba(241, 90, 41, 0.4);
 }
 
 .login-button:hover:not(:disabled) {
   background: #d94e20;
   transform: translateY(-1px);
-  box-shadow: 0 10px 26px rgba(241, 90, 41, 0.45);
+  box-shadow: 0 8px 20px rgba(241, 90, 41, 0.5);
 }
 
 .login-button:active:not(:disabled) {
@@ -173,8 +181,9 @@
 .login-forgot-link {
   color: #ffd9c9;
   cursor: pointer;
-  font-size: 13px;
-  margin-bottom: 12px;
+  font-size: 12px;
+  margin-bottom: 8px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
 .login-forgot-link:hover {
@@ -183,21 +192,22 @@
 }
 
 .login-forgot-box {
-  background: rgba(255, 255, 255, 0.16);
-  padding: 16px;
-  border-radius: 12px;
-  margin-bottom: 15px;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 12px;
   border: 1px solid rgba(255, 255, 255, 0.3);
   text-align: left;
 }
 
 .login-forgot-title {
   color: #fff;
-  margin: 0 0 12px 0;
-  font-size: 15px;
+  margin: 0 0 10px 0;
+  font-size: 14px;
 }
 
 .login-default-hint {
-  color: rgba(255, 255, 255, 0.65);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
