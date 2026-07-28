@@ -1,5 +1,4 @@
 import { useState } from "react";
-import "./StudentLogin.css";
 
 // Edit this list to match your college's actual branches.
 const BRANCHES = [
@@ -13,7 +12,7 @@ const BRANCHES = [
   "CIVIL"
 ];
 
-function StudentLogin({ onLogin, api }) {
+function StudentLogin({ onLogin, api, onSwitchToAdmin, onSwitchToFaculty }) {
   const [branch, setBranch] = useState("CSE");
   const [rollNo, setRollNo] = useState("");
   const [password, setPassword] = useState("");
@@ -78,82 +77,71 @@ function StudentLogin({ onLogin, api }) {
   };
 
   return (
-    <div className="login-stage">
-      <video
-        className="login-bg-video"
-        autoPlay
-        loop
-        muted
-        playsInline
-        poster="/college-poster.jpg"
+    <>
+      <img src="/icon-192.png" alt="NRI Logo" className="login-logo" />
+      <h1 className="login-title">Dr. RVR NRI Institute of Technology</h1>
+      <p className="login-subtitle">Student Portal — All Branches</p>
+
+      {error && <p className="login-error">{error}</p>}
+
+      <label className="login-label">Branch</label>
+      <select
+        value={branch}
+        onChange={e => setBranch(e.target.value)}
+        className="login-select"
       >
-        <source src="/college-video.mp4" type="video/mp4" />
-      </video>
-      <div className="login-bg-overlay" />
+        {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
+      </select>
 
-      <div className="login-card-wrap">
-        <div className="login-card">
-          <img src="/icon-192.png" alt="NRI Logo" className="login-logo" />
-          <h1 className="login-title">Dr. RVR NRI Institute of Technology</h1>
-          <p className="login-subtitle">Student Portal — All Branches</p>
+      <label className="login-label">Roll Number</label>
+      <input
+        placeholder="e.g. 25KN1A0507"
+        value={rollNo}
+        onChange={e => setRollNo(e.target.value.toUpperCase())}
+        className="login-input"
+        onKeyDown={e => e.key === "Enter" && handleLogin()}
+      />
 
-          {error && <p className="login-error">{error}</p>}
+      <label className="login-label">Password</label>
+      <input
+        type="password"
+        placeholder="Password (default: nri@2024)"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+        className="login-input"
+        onKeyDown={e => e.key === "Enter" && handleLogin()}
+      />
 
-          <label className="login-label">Branch</label>
-          <select
-            value={branch}
-            onChange={e => setBranch(e.target.value)}
-            className="login-select"
-          >
-            {BRANCHES.map(b => <option key={b} value={b}>{b}</option>)}
-          </select>
+      <button onClick={handleLogin} disabled={loading} className="login-button">
+        {loading ? "Logging in..." : "Login →"}
+      </button>
 
-          <label className="login-label">Roll Number</label>
-          <input
-            placeholder="e.g. 25KN1A0507"
-            value={rollNo}
-            onChange={e => setRollNo(e.target.value.toUpperCase())}
-            className="login-input"
-            onKeyDown={e => e.key === "Enter" && handleLogin()}
-          />
+      <p onClick={() => setShowForgot(!showForgot)} className="login-forgot-link">
+        Forgot Password?
+      </p>
 
-          <label className="login-label">Password</label>
-          <input
-            type="password"
-            placeholder="Password (default: nri@2024)"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="login-input"
-            onKeyDown={e => e.key === "Enter" && handleLogin()}
-          />
-
-          <button onClick={handleLogin} disabled={loading} className="login-button">
-            {loading ? "Logging in..." : "Login →"}
+      {showForgot && (
+        <div className="login-forgot-box">
+          <h3 className="login-forgot-title">Reset Password</h3>
+          <input placeholder="Roll Number" value={fpRollNo} onChange={(e) => setFpRollNo(e.target.value.toUpperCase())} className="login-input" />
+          <input placeholder="Name" value={fpName} onChange={(e) => setFpName(e.target.value)} className="login-input" />
+          <input placeholder="Section" value={fpSection} onChange={(e) => setFpSection(e.target.value)} className="login-input" />
+          <input type="password" placeholder="New Password" value={fpPassword} onChange={(e) => setFpPassword(e.target.value)} className="login-input" />
+          <button onClick={handleForgotPassword} className="login-button">
+            Reset Password
           </button>
-
-          <p onClick={() => setShowForgot(!showForgot)} className="login-forgot-link">
-            Forgot Password?
-          </p>
-
-          {showForgot && (
-            <div className="login-forgot-box">
-              <h3 className="login-forgot-title">Reset Password</h3>
-              <input placeholder="Roll Number" value={fpRollNo} onChange={(e) => setFpRollNo(e.target.value.toUpperCase())} className="login-input" />
-              <input placeholder="Name" value={fpName} onChange={(e) => setFpName(e.target.value)} className="login-input" />
-              <input placeholder="Section" value={fpSection} onChange={(e) => setFpSection(e.target.value)} className="login-input" />
-              <input type="password" placeholder="New Password" value={fpPassword} onChange={(e) => setFpPassword(e.target.value)} className="login-input" />
-              <button onClick={handleForgotPassword} className="login-button">
-                Reset Password
-              </button>
-            </div>
-          )}
-
-          <p className="login-default-hint">
-            Default password: <strong>nri@2024</strong>
-          </p>
         </div>
+      )}
+
+      <p className="login-default-hint" style={{ marginBottom: "12px" }}>
+        Default password: <strong>nri@2024</strong>
+      </p>
+
+      <div className="login-switch-links">
+        <p onClick={onSwitchToAdmin} className="login-switch-link">Admin? Click here</p>
+        <p onClick={onSwitchToFaculty} className="login-switch-link">Faculty / HOD? Click here</p>
       </div>
-    </div>
+    </>
   );
 }
 
