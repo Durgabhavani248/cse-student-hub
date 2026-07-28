@@ -186,6 +186,41 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
 }
 
+.login-back-link {
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  font-size: 12px;
+  margin-bottom: 14px;
+  text-align: left;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.login-back-link:hover {
+  color: #fff;
+}
+
+.login-switch-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.login-switch-link {
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  font-size: 12px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.login-switch-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
 .login-forgot-link:hover {
   color: #fff;
   text-decoration: underline;
@@ -210,4 +245,38 @@
   color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+.login-back-link {
+  text-align: left;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin: 0 0 14px 0;
+  transition: color 0.15s ease;
+}
+
+.login-back-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.login-switch-row {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.login-switch-link {
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  font-size: 12px;
+  margin: 6px 0;
+  transition: color 0.15s ease;
+}
+
+.login-switch-link:hover {
+  color: #fff;
+  text-decoration: underline;
 }
