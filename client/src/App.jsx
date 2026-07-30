@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import AddNotice from "./AddNotice";
-import Login from "./Login";
+import LoginPage from "./LoginPage";
 import Notes from "./Notes";
 import Timetable from "./Timetable";
 import Search from "./Search";
-import StudentLogin from "./StudentLogin";
 import ChangePassword from "./ChangePassword";
 import Chatbot from "./Chatbot";
 import Assignments from "./Assignments";
@@ -12,7 +11,6 @@ import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
-import FacultyLogin from "./FacultyLogin";
 import FacultyChangePassword from "./FacultyChangePassword";
 import Attendance from "./Attendance";
 import MyAttendance from "./MyAttendance";
@@ -228,41 +226,15 @@ function App() {
 
   if (!studentInfo && !isAdmin && !facultyInfo) {
     return (
-      <div>
-        <StudentLogin onLogin={handleStudentLogin} api={API} />
-        <p
-          onClick={() => setShowAdminLogin(true)}
-          style={{ textAlign: "center", color: "#999", fontSize: "12px", cursor: "pointer", marginTop: "-20px" }}
-        >
-          Admin? Click here
-        </p>
-        <p
-          onClick={() => setShowFacultyLogin(true)}
-          style={{ textAlign: "center", color: "#999", fontSize: "12px", cursor: "pointer", marginTop: "8px" }}
-        >
-          Faculty / HOD? Click here
-        </p>
-        {showAdminLogin && (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", maxWidth: "400px", width: "90%" }}>
-              <Login onLogin={() => {
-                setIsAdmin(true);
-                setShowAdminLogin(false);
-                setStudentInfo({ name: "Admin", section: "" });
-              }} />
-              <button onClick={() => setShowAdminLogin(false)} style={{ width: "100%", padding: "10px", background: "#f5f5f5", border: "none", borderRadius: "8px", cursor: "pointer", marginTop: "8px" }}>Cancel</button>
-            </div>
-          </div>
-        )}
-        {showFacultyLogin && (
-          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-            <div style={{ background: "#fff", borderRadius: "16px", padding: "0", maxWidth: "420px", width: "90%", overflow: "hidden" }}>
-              <FacultyLogin api={API} onLogin={handleFacultyLogin} />
-              <button onClick={() => setShowFacultyLogin(false)} style={{ width: "100%", padding: "12px", background: "#f5f5f5", border: "none", cursor: "pointer" }}>Cancel</button>
-            </div>
-          </div>
-        )}
-      </div>
+      <LoginPage
+        api={API}
+        onStudentLogin={handleStudentLogin}
+        onFacultyLogin={handleFacultyLogin}
+        onAdminLogin={() => {
+          setIsAdmin(true);
+          setStudentInfo({ name: "Admin", section: "" });
+        }}
+      />
     );
   }
 
