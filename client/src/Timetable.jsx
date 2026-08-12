@@ -33,9 +33,12 @@ const SUBJECTS = [
 
 function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
   const isHod = facultyInfo?.role === "hod";
+  const isFacultyPlain = facultyInfo?.role === "faculty";
   const canManage = isAdmin || isHod;
-  const managedBranch = isHod ? facultyInfo.branch : "CSE";
-  const [mode, setMode] = useState(canManage ? "select" : "view");
+  // Faculty can browse/view any section's timetable in their branch, but only HOD/Admin can edit.
+  const canBrowse = canManage || isFacultyPlain;
+  const managedBranch = (isHod || isFacultyPlain) ? facultyInfo.branch : "CSE";
+  const [mode, setMode] = useState(canBrowse ? "select" : "view");
 
   const [selectedSection, setSelectedSection] = useState("");
 
@@ -56,7 +59,7 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
   const [bulkUploading, setBulkUploading] = useState(false);
 
   useEffect(() => {
-    const section = canManage ? selectedSection : studentSection;
+    const section = canBrowse ? selectedSection : studentSection;
 
     if (!section) {
       setTimetable(null);
@@ -155,7 +158,7 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
   const saveTimetable = async () => {
     try {
 
-      const section = canManage
+      const section = canBrowse
         ? selectedSection
         : studentSection;
 
@@ -200,7 +203,7 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
     }
   };
 
-  if (canManage && mode === "select") {
+  if (canBrowse && mode === "select") {
     return (
       <div
         style={{
@@ -249,38 +252,42 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
             )}
           </select>
           <p style={{ color: "#999", fontSize: "12px", marginTop: 10, maxWidth: 220 }}>
-            Edit one section's timetable manually, period by period.
+            {canManage
+              ? "Edit one section's timetable manually, period by period."
+              : `View any section's timetable in ${managedBranch}.`}
           </p>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #ffd9cc", borderRadius: 12, padding: 24, maxWidth: 380 }}>
-          <h3 style={{ color: "#F15A29", marginTop: 0, marginBottom: 6 }}>➕ Add New Timetable (Excel)</h3>
-          <p style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
-            Upload one Excel with <strong>all sections</strong> at once — every section in the file gets updated in one go, no need to edit each one manually.
-            <br /><br />
-            Sheet <strong>"Schedule"</strong> columns: <strong>section, day, period, subject</strong> (one row per period; day = MON/TUE/WED/THU/FRI/SAT)
-            <br />
-            Sheet <strong>"Timings"</strong> (optional, shared across all sections): <strong>period, label, start, end, type</strong>
-          </p>
-          <input
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={e => setBulkFile(e.target.files[0])}
-            style={{ width: "100%", marginBottom: 12 }}
-          />
-          <button
-            onClick={bulkUploadTimetable}
-            disabled={bulkUploading}
-            style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
-          >
-            {bulkUploading ? "Uploading..." : "Upload & Update All Sections"}
-          </button>
-          {bulkMessage && (
-            <p style={{ color: bulkMessage.startsWith("❌") ? "#F15A29" : "#4CAF50", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
-              {bulkMessage}
+        {canManage && (
+          <div style={{ background: "#fff", border: "1px solid #ffd9cc", borderRadius: 12, padding: 24, maxWidth: 380 }}>
+            <h3 style={{ color: "#F15A29", marginTop: 0, marginBottom: 6 }}>➕ Add New Timetable (Excel)</h3>
+            <p style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
+              Upload one Excel with <strong>all sections</strong> at once — every section in the file gets updated in one go, no need to edit each one manually.
+              <br /><br />
+              Sheet <strong>"Schedule"</strong> columns: <strong>section, day, period, subject</strong> (one row per period; day = MON/TUE/WED/THU/FRI/SAT)
+              <br />
+              Sheet <strong>"Timings"</strong> (optional, shared across all sections): <strong>period, label, start, end, type</strong>
             </p>
-          )}
-        </div>
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={e => setBulkFile(e.target.files[0])}
+              style={{ width: "100%", marginBottom: 12 }}
+            />
+            <button
+              onClick={bulkUploadTimetable}
+              disabled={bulkUploading}
+              style={{ width: "100%", padding: "12px", background: "#F15A29", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}
+            >
+              {bulkUploading ? "Uploading..." : "Upload & Update All Sections"}
+            </button>
+            {bulkMessage && (
+              <p style={{ color: bulkMessage.startsWith("❌") ? "#F15A29" : "#4CAF50", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
+                {bulkMessage}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }
@@ -336,7 +343,7 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
             margin: 0,
           }}
         >
-          Section {canManage ? selectedSection : studentSection}
+          Section {canBrowse ? selectedSection : studentSection}
         </h2>
 
         {!editing && canManage && (
