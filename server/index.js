@@ -332,6 +332,17 @@ function canAccess(user, branch, section) {
   return false;
 }
 
+// Timetable viewing is branch-wide for Faculty (they can look up any section
+// in their own branch, not just the ones they're assigned to teach) — unlike
+// canAccess() above, which scopes Faculty to assignedSections for uploads/attendance.
+function canViewTimetable(user, branch, section) {
+  if (user.role === "admin") return true;
+  if (user.role === "hod") return user.branch === branch;
+  if (user.role === "faculty") return user.branch === branch;
+  if (user.role === "student") return user.branch === branch && (!section || user.section === section);
+  return false;
+}
+
 // ============== AUTH ROUTES ==============
 
 app.post("/api/login", async (req, res) => {
@@ -1004,7 +1015,7 @@ app.delete("/api/materials/:id", uploaderMiddleware, async (req, res) => {
 app.get("/api/timetable/:branch/:section", verifyAnyToken, async (req, res) => {
   try {
     const { branch, section } = req.params;
-    if (!canAccess(req.user, branch, section)) {
+    if (!canViewTimetable(req.user, branch, section)) {
       return res.status(403).json({ message: "Not authorized for this branch/section" });
     }
 
@@ -1032,7 +1043,7 @@ app.get("/api/timetable/:section", verifyAnyToken, async (req, res) => {
   try {
     const branch = req.user.branch || "CSE";
     const { section } = req.params;
-    if (!canAccess(req.user, branch, section)) {
+    if (!canViewTimetable(req.user, branch, section)) {
       return res.status(403).json({ message: "Not authorized for this branch/section" });
     }
     const timetable = await Timetable.findOne({ branch, section }).lean();
