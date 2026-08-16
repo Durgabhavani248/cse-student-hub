@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AddNotice from "./AddNotice";
 import LoginPage from "./LoginPage";
+import { requestPermission } from "./firebase";
 import Notes from "./Notes";
 import Timetable from "./Timetable";
 import Search from "./Search";
@@ -159,6 +160,7 @@ function App() {
       setShowChangePassword(true);
     }
     fetchNotices();
+    requestPermission(API, user.rollNo, user.name);
   };
 
   const handlePasswordChanged = () => {

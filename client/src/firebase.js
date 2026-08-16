@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
+import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDEWQHws9UPDoXat4ge7H8BiysQgRyPtOA",
@@ -10,86 +10,116 @@ const firebaseConfig = {
   appId: "1:595280271547:web:2f4e8e4f5e8f4a8e8f4a8e"
 };
 
-let messaging = null;
+const VAPID_KEY = "BHbsYMqNjlGJZMFf5OHkUoGpNHTI-momRRB3OGAIkFVjcSZFPU8dVXZ2mOdq1Gk8hSeUEl8Mpn0L-KQ0OKJeicw";
 
-try {
-  const app = initializeApp(firebaseConfig);
-  messaging = getMessaging(app);
-} catch (err) {
-  console.log('Firebase initialization info:', err.message);
+let messagingInstance = null;
+
+// Returns the current browser notification permission: "granted" | "denied" | "default"
+// ("default" means the user hasn't been asked yet, or the browser doesn't support it)
+export function getNotificationPermissionStatus() {
+  if (typeof Notification === "undefined") return "unsupported";
+  return Notification.permission;
 }
 
-export const requestPermission = async (API) => {
-  try {
-    console.log('Starting notification setup...');
-
-    // Check if Service Workers supported
-    if (!('serviceWorker' in navigator)) {
-      console.log('Service Workers not supported');
-      return;
-    }
-
-    // Register Service Worker
-    try {
-      await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-      console.log('✅ Service Worker registered');
-    } catch (err) {
-      console.error('Service Worker registration failed:', err);
-      return;
-    }
-
-    // Request permission
-    const permission = await Notification.requestPermission();
-    console.log('Notification permission:', permission);
-
-    if (permission === 'granted' && messaging) {
-      // Get FCM token
-      const token = await getToken(messaging, {
-        vapidPublicKey: "BHbsYMqNjlGJZMFf5OHkUoGpNHTI-momRRB3OGAIkFVjcSZFPU8dVXZ2mOdq1Gk8hSeUEl8Mpn0L-KQ0OKJeicw"
-      });
-
-      console.log('✅ FCM Token:', token);
-
-      // Save to backend
-      if (token) {
-        try {
-          const studentInfo = JSON.parse(localStorage.getItem("studentInfo"));
-          const response = await fetch(`${API}/api/notifications/subscribe`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token,
-              rollNo: studentInfo?.rollNo,
-              name: studentInfo?.name
-            })
-          });
-
-          const data = await response.json();
-          console.log('✅ Token saved to backend:', data);
-        } catch (err) {
-          console.error('Error saving token:', err);
-        }
-      }
-
-      // Listen for foreground messages
-      onMessage(messaging, (payload) => {
-        console.log('Foreground message:', payload);
-        
-        navigator.serviceWorker.ready.then((registration) => {
-          registration.showNotification(
-            payload.notification.title,
-            {
-              body: payload.notification.body,
-              icon: '/icon-192.png',
-              badge: '/icon-192.png',
-              tag: 'nri-notification',
-              requireInteraction: true
-            }
-          );
-        });
-      });
-    }
-  } catch (error) {
-    console.error('Notification setup error:', error);
+async function getMessagingInstance() {
+  if (messagingInstance) return messagingInstance;
+  const supported = await isSupported().catch(() => false);
+  if (!supported) {
+    console.warn("⚠️ Firebase Messaging is not supported in this browser");
+    return null;
   }
+  const app = initializeApp(firebaseConfig);
+  messagingInstance = getMessaging(app);
+  return messagingInstance;
+}
+
+// Call this from a real user click (a button), not automatically on page load —
+// most browsers silently ignore Notification.requestPermission() unless it's
+// triggered directly by a user gesture like a click.
+export const requestPermission = async (api, rollNo, name) => {
+  console.log("🔔 [notifications] Starting setup...");
+
+  if (!("serviceWorker" in navigator)) {
+    console.warn("🔔 [notifications] Service Workers not supported in this browser");
+    return { ok: false, reason: "no-service-worker" };
+  }
+  if (typeof Notification === "undefined") {
+    console.warn("🔔 [notifications] Notification API not supported in this browser");
+    return { ok: false, reason: "no-notification-api" };
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    console.log("🔔 [notifications] Service Worker registered:", registration.scope);
+  } catch (err) {
+    console.error("🔔 [notifications] Service Worker registration FAILED:", err);
+    return { ok: false, reason: "sw-registration-failed", error: err.message };
+  }
+
+  let permission;
+  try {
+    permission = await Notification.requestPermission();
+    console.log("🔔 [notifications] Permission result:", permission);
+  } catch (err) {
+    console.error("🔔 [notifications] requestPermission() threw:", err);
+    return { ok: false, reason: "permission-request-failed", error: err.message };
+  }
+
+  if (permission !== "granted") {
+    console.warn("🔔 [notifications] Permission not granted:", permission);
+    return { ok: false, reason: "permission-not-granted", permission };
+  }
+
+  const messaging = await getMessagingInstance();
+  if (!messaging) {
+    return { ok: false, reason: "messaging-unsupported" };
+  }
+
+  let token;
+  try {
+    token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    console.log("🔔 [notifications] FCM token obtained:", token ? token.slice(0, 20) + "..." : token);
+  } catch (err) {
+    console.error("🔔 [notifications] getToken() FAILED:", err);
+    return { ok: false, reason: "get-token-failed", error: err.message };
+  }
+
+  if (!token) {
+    console.warn("🔔 [notifications] getToken() returned empty token");
+    return { ok: false, reason: "empty-token" };
+  }
+
+  try {
+    const response = await fetch(`${api}/api/notifications/subscribe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, rollNo, name })
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      console.error("🔔 [notifications] Backend rejected token save:", data);
+      return { ok: false, reason: "backend-save-failed", error: data.message };
+    }
+    console.log("🔔 [notifications] Token saved to backend ✅", data);
+  } catch (err) {
+    console.error("🔔 [notifications] Network error saving token:", err);
+    return { ok: false, reason: "network-error", error: err.message };
+  }
+
+  // Foreground messages (app open and visible) — show as a native notification too
+  onMessage(messaging, (payload) => {
+    console.log("🔔 [notifications] Foreground message received:", payload);
+    navigator.serviceWorker.ready.then((registration) => {
+      registration.showNotification(payload.notification?.title || "NRI Hub", {
+        body: payload.notification?.body || "",
+        icon: "/icon-192.png",
+        badge: "/icon-192.png",
+        tag: "nri-notification",
+        requireInteraction: true
+      });
+    });
+  });
+
+  console.log("🔔 [notifications] Setup complete ✅");
+  return { ok: true, token };
 };
