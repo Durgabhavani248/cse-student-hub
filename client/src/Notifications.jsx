@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./Notifications.css";
+import { requestPermission, getNotificationPermissionStatus } from "./firebase";
 
 const API = "https://cse-student-hub.onrender.com";
 
@@ -9,7 +10,25 @@ export default function Notifications({ studentInfo }) {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("all"); // all, unread, low-attendance, assignments, notices
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pushStatus, setPushStatus] = useState(getNotificationPermissionStatus());
+  const [pushMessage, setPushMessage] = useState("");
+  const [pushLoading, setPushLoading] = useState(false);
   const token = localStorage.getItem("studentToken");
+
+  const handleEnablePush = async () => {
+    setPushLoading(true);
+    setPushMessage("");
+    const result = await requestPermission(API, studentInfo?.rollNo, studentInfo?.name);
+    setPushLoading(false);
+    setPushStatus(getNotificationPermissionStatus());
+    if (result.ok) {
+      setPushMessage("✅ Notifications enabled! You'll get alerts for new notes, assignments, and papers.");
+    } else if (result.reason === "permission-not-granted") {
+      setPushMessage("❌ Permission denied. Enable notifications for this site in your browser settings, then try again.");
+    } else {
+      setPushMessage(`❌ Couldn't enable notifications (${result.reason}). Try refreshing the page.`);
+    }
+  };
 
   useEffect(() => {
     loadNotifications();
@@ -187,6 +206,24 @@ allNotifications.push(
         <h2>🔔 Notifications</h2>
         <div className="notification-badge">{unreadCount}</div>
       </div>
+
+      {pushStatus !== "granted" && (
+        <div style={{ background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: "10px", padding: "14px 16px", marginBottom: "16px" }}>
+          <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#666" }}>
+            {pushStatus === "denied"
+              ? "Push notifications are blocked for this site. Allow them in your browser's site settings, then tap below."
+              : "Turn on push notifications to get alerts the moment new notes, assignments, or papers are added."}
+          </p>
+          <button
+            onClick={handleEnablePush}
+            disabled={pushLoading}
+            style={{ padding: "8px 16px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
+          >
+            {pushLoading ? "Enabling..." : "🔔 Enable Push Notifications"}
+          </button>
+          {pushMessage && <p style={{ margin: "8px 0 0 0", fontSize: "12px", fontWeight: "600" }}>{pushMessage}</p>}
+        </div>
+      )}
 
       <div className="notification-controls">
         <div className="filter-tabs">
