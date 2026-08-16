@@ -2,12 +2,13 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDEWQHws9UPDoXat4ge7H8BiysQgRyPtOA",
+  apiKey: "AIzaSyBHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
   authDomain: "nri-cse-hub.firebaseapp.com",
   projectId: "nri-cse-hub",
-  storageBucket: "nri-cse-hub.appspot.com",
-  messagingSenderId: "595280271547",
-  appId: "1:595280271547:web:2f4e8e4f5e8f4a8e8f4a8e"
+  storageBucket: "nri-cse-hub.firebasestorage.app",
+  messagingSenderId: "217692003992",
+  appId: "1:217692003992:web:1fd087ac4d905bb83e7aed",
+  measurementId: "G-LHGYL4S4WS"
 };
 
 const VAPID_KEY = "BHbsYMqNjlGJZMFf5OHkUoGpNHTI-momRRB3OGAIkFVjcSZFPU8dVXZ2mOdq1Gk8hSeUEl8Mpn0L-KQ0OKJeicw";
