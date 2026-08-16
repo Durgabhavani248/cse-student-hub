@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
+  apiKey: "AIzaSyBrHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
   authDomain: "nri-cse-hub.firebaseapp.com",
   projectId: "nri-cse-hub",
   storageBucket: "nri-cse-hub.firebasestorage.app",

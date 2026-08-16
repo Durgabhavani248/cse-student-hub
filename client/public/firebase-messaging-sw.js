@@ -3,7 +3,7 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js');
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
+  apiKey: "AIzaSyBrHw1QoS_7gzxMbbjjy3B0v68BClDw6c0",
   authDomain: "nri-cse-hub.firebaseapp.com",
   projectId: "nri-cse-hub",
   storageBucket: "nri-cse-hub.firebasestorage.app",
