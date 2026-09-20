@@ -236,7 +236,8 @@ const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
 const Timetable = mongoose.model("Timetable", TimetableSchema);
 
-
+console.log("TIMINGS PATH:", Timetable.schema.path("timings")?.instance);
+console.log("TIMINGS CASTER:", Timetable.schema.path("timings")?.caster?.instance);
 // ============== MIDDLEWARE FUNCTIONS ==============
 
 // Attaches req.user if a valid token is present; never rejects the request.
