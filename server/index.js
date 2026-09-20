@@ -1096,7 +1096,7 @@ app.post("/api/admin/upload-timetable", hodOrAdminMiddleware, async (req, res) =
     // Group rows by section -> day -> ordered-by-period subject list
     const bySection = {};
     for (const row of scheduleRows) {
-      const section = String(row.section || "").trim();
+      const section = String(row.section || "").replace(/[^0-9]/g, "").trim();
       const day = String(row.day || "").trim().toUpperCase().slice(0, 3);
       const period = Number(row.period);
       const subject = String(row.subject || "").trim();
