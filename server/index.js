@@ -1875,6 +1875,12 @@ app.get("/api/health", (req, res) => {
     version: "v-branch-fix-2026-07-23"
   });
 });
+app.get("/api/debug/schema", (req, res) => {
+  res.json({
+    timingsPath: Timetable.schema.path("timings")?.instance,
+    timingsCaster: Timetable.schema.path("timings")?.caster?.instance,
+  });
+});
 app.get("/api/test123", (req, res) => {
   res.json({ message: "working" });
 });
