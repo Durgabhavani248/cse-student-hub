@@ -1119,13 +1119,13 @@ app.post("/api/admin/upload-timetable", hodOrAdminMiddleware, async (req, res) =
         schedule[day] = Array.from({ length: bySection[section][day].length }, (_, i) => bySection[section][day][i] || "");
       }
 
-      const update = { branch, section, schedule };
+            const update = { branch, section, schedule };
       if (timings.length > 0) update.timings = timings;
 
-      await Timetable.findOneAndUpdate(
+      await mongoose.connection.collection("timetables").updateOne(
         { branch, section },
-        timings.length > 0 ? update : { branch, section, schedule }, // don't wipe existing timings if none provided
-        { upsert: true, new: true, setDefaultsOnInsert: true }
+        { $set: timings.length > 0 ? update : { branch, section, schedule } },
+        { upsert: true }
       );
     }
 
@@ -1147,11 +1147,14 @@ app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
       return res.status(403).json({ message: "You can only manage your own branch's timetable" });
     }
 
-    const timetable = await Timetable.findOneAndUpdate(
+    await mongoose.connection.collection("timetables").updateOne(
       { branch, section },
-      { branch, section, timings: timings || [], schedule },
-      { upsert: true, new: true }
+      { $set: { branch, section, timings: timings || [], schedule } },
+      { upsert: true }
     );
+
+    const timetable = await Timetable.findOne({ branch, section }).lean();
+    res.status(201).json(timetable);
 
     res.status(201).json(timetable);
   } catch (err) {
