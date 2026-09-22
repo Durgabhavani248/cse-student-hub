@@ -25,7 +25,7 @@ function Login({ onLogin, onBack }) {
 
   return (
     <>
-      <p onClick={onBack} className="login-back-link">← Back to Student Login</p>
+      <p onClick={onBack} className="login-back-link">← Back</p>
 
       <img src="/icon-192.png" alt="NRI Logo" className="login-logo" />
       <h1 className="login-title">Admin Login</h1>
