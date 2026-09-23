@@ -8,8 +8,8 @@ import StudentLogin from "./StudentLogin";
 import FacultyLogin from "./FacultyLogin";
 import Login from "./Login";
 import LoginStage from "./LoginStage";
-import RoleSelect from "./RoleSelect";
-import { triggerInstallPrompt } from "./App";
+import RoleSelect from "./RoleSelector";
+import { triggerInstallPrompt } from "./installPrompt";
 
 function LoginPage({ onStudentLogin, onFacultyLogin, onAdminLogin, api }) {
   const [mode, setMode] = useState(

@@ -19,6 +19,7 @@ import Search from "./Search";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
 import ManageCR from "./ManageCR";
+import LoginPage from "./LoginPage";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -55,8 +56,15 @@ function App() {
   };
 
   if (!isAdmin && !studentLoggedIn && !facultyLoggedIn) {
-    return <RoleSelector api={API} onLoginSuccess={() => window.location.reload()} />;
-  }
+  return (
+    <LoginPage
+      api={API}
+      onStudentLogin={() => window.location.reload()}
+      onFacultyLogin={() => window.location.reload()}
+      onAdminLogin={() => window.location.reload()}
+    />
+  );
+}
 
   const navBtnStyle = (page) => ({
     padding: "10px 16px",
