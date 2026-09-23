@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Login from "./Login";
 import StudentLogin from "./StudentLogin";
 import RoleSelector from "./RoleSelector";
@@ -530,32 +530,39 @@ const canUploadContent =
   </div>
 );
 }
+
 function AdminPanel({ api, onOpenManageCR }) {
   const [stats, setStats] = useState(null);
-  const [faculty, setFaculty] = useState([]);
 
   const [studentFile, setStudentFile] = useState(null);
   const [facultyFile, setFacultyFile] = useState(null);
 
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [studentMessage, setStudentMessage] = useState("");
+  const [facultyMessage, setFacultyMessage] = useState("");
 
-  const getToken = () => localStorage.getItem("token");
+  const [facultyList, setFacultyList] = useState([]);
+  const studentFileInputRef = useRef(null);
+const facultyFileInputRef = useRef(null);
 
-  const loadAdminData = async () => {
+  const token = localStorage.getItem("token");
+
+  const authHeaders = {
+    Authorization: `Bearer ${token}`
+  };
+
+  // =========================
+  // LOAD ADMIN DATA
+  // =========================
+
+  const fetchAdminData = async () => {
     try {
-      const token = getToken();
-
       const [statsRes, facultyRes] = await Promise.all([
         fetch(`${api}/api/admin/stats`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          headers: authHeaders
         }),
+
         fetch(`${api}/api/faculty`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
+          headers: authHeaders
         })
       ]);
 
@@ -564,97 +571,154 @@ function AdminPanel({ api, onOpenManageCR }) {
 
       if (statsRes.ok) {
         setStats(statsData);
+      } else {
+        console.error("Stats error:", statsData);
       }
 
       if (facultyRes.ok) {
-        setFaculty(facultyData);
+        setFacultyList(
+          Array.isArray(facultyData)
+            ? facultyData
+            : []
+        );
+      } else {
+        console.error("Faculty list error:", facultyData);
       }
-    } catch (err) {
-      console.error("Admin data error:", err);
+
+    } catch (error) {
+      console.error("Admin data error:", error);
     }
   };
 
   useEffect(() => {
-    loadAdminData();
+    fetchAdminData();
   }, []);
 
+  // =========================
+  // UPLOAD STUDENTS
+  // =========================
+
   const uploadStudents = async () => {
-    if (!studentFile) {
-      alert("Please select Students Excel file!");
+  if (!studentFile) {
+    alert("Please select Students Excel file!");
+    return;
+  }
+
+  setStudentMessage("Uploading...");
+
+  try {
+    const formData = new FormData();
+
+    // Backend expects req.files.file
+    formData.append("file", studentFile);
+
+    const response = await fetch(
+      `${api}/api/admin/upload-students`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setStudentMessage(
+        `❌ ${data.message || "Upload failed"}`
+      );
       return;
     }
 
-    setLoading(true);
-    setMessage("");
+    setStudentMessage(
+      data.message || "Students uploaded successfully!"
+    );
 
-    try {
-      const formData = new FormData();
-      formData.append("file", studentFile);
+    // Clear selected file after successful upload
+    setStudentFile(null);
 
-      const response = await fetch(
-        `${api}/api/admin/upload-students`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          },
-          body: formData
-        }
-      );
-
-      const data = await response.json();
-
-      setMessage(data.message || "Student upload completed");
-
-      if (response.ok) {
-        setStudentFile(null);
-        loadAdminData();
-      }
-    } catch (err) {
-      setMessage("Student upload failed");
-    } finally {
-      setLoading(false);
+    if (studentFileInputRef.current) {
+      studentFileInputRef.current.value = "";
     }
-  };
 
-  const uploadFaculty = async () => {
-    if (!facultyFile) {
-      alert("Please select Faculty/HOD Excel file!");
+    // Refresh admin data
+    await fetchAdminData();
+
+  } catch (error) {
+    console.error("Student upload error:", error);
+    setStudentMessage("❌ Server error during upload");
+  }
+};
+
+  // =========================
+  // UPLOAD FACULTY / HOD
+  // =========================
+const uploadFaculty = async () => {
+  if (!facultyFile) {
+    alert("Please select Faculty/HOD Excel file!");
+    return;
+  }
+
+  setFacultyMessage("Uploading...");
+
+  try {
+    const formData = new FormData();
+
+    // Backend expects req.files.file
+    formData.append("file", facultyFile);
+
+    const response = await fetch(
+      `${api}/api/admin/upload-faculty`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      setFacultyMessage(
+        `❌ ${data.message || "Upload failed"}`
+      );
       return;
     }
 
-    setLoading(true);
-    setMessage("");
+    setFacultyMessage(
+      data.message || "Faculty uploaded successfully!"
+    );
 
-    try {
-      const formData = new FormData();
-      formData.append("file", facultyFile);
-
-      const response = await fetch(
-        `${api}/api/admin/upload-faculty`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          },
-          body: formData
-        }
+    if (data.skippedReasons?.length) {
+      console.log(
+        "Skipped faculty rows:",
+        data.skippedReasons
       );
-
-      const data = await response.json();
-
-      setMessage(data.message || "Faculty upload completed");
-
-      if (response.ok) {
-        setFacultyFile(null);
-        loadAdminData();
-      }
-    } catch (err) {
-      setMessage("Faculty upload failed");
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Clear selected file after successful upload
+    setFacultyFile(null);
+
+    if (facultyFileInputRef.current) {
+      facultyFileInputRef.current.value = "";
+    }
+
+    // Refresh faculty list + stats
+    await fetchAdminData();
+
+  } catch (error) {
+    console.error("Faculty upload error:", error);
+    setFacultyMessage("❌ Server error during upload");
+  }
+};
+
+  // =========================
+  // RESET FACULTY PASSWORD
+  // =========================
 
   const resetFacultyPassword = async (facultyId) => {
     const confirmReset = window.confirm(
@@ -665,181 +729,432 @@ function AdminPanel({ api, onOpenManageCR }) {
 
     try {
       const response = await fetch(
-        `${api}/api/admin/reset-faculty-password/${facultyId}`,
+        `${api}/api/admin/reset-faculty-password/${encodeURIComponent(
+          facultyId
+        )}`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${getToken()}`
-          }
+          headers: authHeaders
         }
       );
 
       const data = await response.json();
 
-      alert(data.message || "Password reset completed");
-    } catch (err) {
-      alert("Password reset failed");
+      if (!response.ok) {
+        alert(
+          `❌ ${data.message || "Password reset failed"}`
+        );
+        return;
+      }
+
+      alert(
+        data.message ||
+        "Faculty password reset successfully!"
+      );
+
+    } catch (error) {
+      console.error("Reset password error:", error);
+      alert("❌ Server error");
     }
   };
 
-  const cardStyle = {
-    background: "#fff",
-    border: "1px solid #e5e5e5",
-    borderRadius: "12px",
-    padding: "20px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
-  };
+  // =========================
+  // STAT CARD
+  // =========================
 
-  const buttonStyle = {
-    background: "#F15A29",
-    color: "#fff",
-    border: "none",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600"
-  };
+  const statCard = (label, value, color) => (
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e0e0e0",
+        borderRadius: "12px",
+        padding: "20px 24px",
+        flex: 1,
+        minWidth: "180px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+      }}
+    >
+      <p
+        style={{
+          margin: 0,
+          color: "#999",
+          fontSize: "13px"
+        }}
+      >
+        {label}
+      </p>
+
+      <h2
+        style={{
+          margin: "5px 0 0",
+          color: color || "#1a1a1a",
+          fontSize: "30px",
+          fontWeight: "700"
+        }}
+      >
+        {value ?? 0}
+      </h2>
+    </div>
+  );
+
+  // =========================
+  // GROUP BRANCH + SECTION
+  // =========================
+
+  const branchGroups = {};
+
+  (stats?.sectionCounts || []).forEach((item) => {
+    const branch = item.branch || "UNKNOWN";
+
+    if (!branchGroups[branch]) {
+      branchGroups[branch] = [];
+    }
+
+    branchGroups[branch].push({
+      section: item.section,
+      count: item.count
+    });
+  });
 
   return (
     <div>
 
-      <div style={{ marginBottom: "24px" }}>
-        <h2
-          style={{
-            color: "#F15A29",
-            marginBottom: "6px"
-          }}
-        >
-          ⚙️ Admin Panel
-        </h2>
-
-        <p style={{ color: "#777", marginTop: 0 }}>
-          Central management of students, faculty, HODs and academic data.
-        </p>
-      </div>
-
-      {/* STATS */}
+      {/* ================= OVERVIEW ================= */}
 
       {stats && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit,minmax(150px,1fr))",
-            gap: "16px",
-            marginBottom: "24px"
-          }}
-        >
-          {[
-            ["Students", stats.totalStudents],
-            ["Notices", stats.totalNotices],
-            ["Notes", stats.totalNotes],
-            ["Assignments", stats.totalAssignments],
-            ["Papers", stats.totalPapers],
-            ["Materials", stats.totalMaterials]
-          ].map(([label, value]) => (
-            <div key={label} style={cardStyle}>
-              <div
-                style={{
-                  color: "#888",
-                  fontSize: "13px"
-                }}
-              >
-                {label}
-              </div>
+        <>
+          <h3
+            style={{
+              color: "#1a1a1a",
+              marginBottom: "12px"
+            }}
+          >
+            Overview
+          </h3>
 
-              <div
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "700",
-                  color: "#F15A29",
-                  marginTop: "5px"
-                }}
-              >
-                {value ?? 0}
-              </div>
-            </div>
-          ))}
-        </div>
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px",
+              marginBottom: "12px"
+            }}
+          >
+            {statCard(
+              "Total Students",
+              stats.totalStudents,
+              "#F15A29"
+            )}
+
+            {statCard(
+              "Logged In (Ever)",
+              stats.everLoggedIn,
+              "#2196F3"
+            )}
+
+            {statCard(
+              "Active Today",
+              stats.activeToday,
+              "#4CAF50"
+            )}
+
+            {statCard(
+              "Active This Week",
+              stats.activeThisWeek,
+              "#9C27B0"
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "12px",
+              marginBottom: "16px"
+            }}
+          >
+            {statCard(
+              "Notices",
+              stats.totalNotices
+            )}
+
+            {statCard(
+              "Notes",
+              stats.totalNotes
+            )}
+
+            {statCard(
+              "Assignments",
+              stats.totalAssignments
+            )}
+
+            {statCard(
+              "Papers",
+              stats.totalPapers
+            )}
+
+            {statCard(
+              "Study Materials",
+              stats.totalMaterials
+            )}
+          </div>
+
+          {/* ================= BRANCH + SECTION ================= */}
+
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #e0e0e0",
+              borderRadius: "12px",
+              padding: "24px",
+              marginBottom: "24px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 18px",
+                color: "#1a1a1a"
+              }}
+            >
+              Students by Branch & Section
+            </h3>
+
+            {Object.keys(branchGroups).length === 0 ? (
+              <p style={{ color: "#999" }}>
+                No student data available.
+              </p>
+            ) : (
+              Object.entries(branchGroups).map(
+                ([branch, sections]) => (
+                  <div
+                    key={branch}
+                    style={{
+                      marginBottom: "18px"
+                    }}
+                  >
+                    <h4
+                      style={{
+                        margin: "0 0 8px",
+                        color: "#2196F3",
+                        fontSize: "15px"
+                      }}
+                    >
+                      {branch}
+                    </h4>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        gap: "8px"
+                      }}
+                    >
+                      {sections.map((s) => (
+                        <span
+                          key={`${branch}-${s.section}`}
+                          style={{
+                            background: "#fff0ee",
+                            color: "#F15A29",
+                            padding: "8px 16px",
+                            borderRadius: "20px",
+                            fontSize: "13px",
+                            fontWeight: "600"
+                          }}
+                        >
+                          Sec {s.section}: {s.count}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )
+              )
+            )}
+          </div>
+        </>
       )}
 
-      {/* STUDENT UPLOAD */}
+      {/* ================= UPLOAD CARDS ================= */}
 
-      <div style={{ ...cardStyle, marginBottom: "20px" }}>
-        <h3>👨‍🎓 Student Management</h3>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fit, minmax(420px, 1fr))",
+          gap: "24px",
+          marginBottom: "24px"
+        }}
+      >
 
-        <p style={{ color: "#777" }}>
-          Upload or update student accounts using Excel.
-        </p>
 
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={(e) =>
-            setStudentFile(e.target.files?.[0] || null)
-          }
-        />
+       {/* FACULTY / HOD */}
 
-        <button
-          style={{ ...buttonStyle, marginLeft: "10px" }}
-          onClick={uploadStudents}
-          disabled={loading}
+<div
+  style={{
+    background: "#fff",
+    border: "1px solid #e0e0e0",
+    borderRadius: "12px",
+    padding: "28px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+  }}
+>
+  <h3
+    style={{
+      color: "#F15A29",
+      marginTop: 0,
+      fontSize: "20px"
+    }}
+  >
+    Upload Faculty / HOD Excel
+  </h3>
+
+  <p
+    style={{
+      color: "#666",
+      fontSize: "14px",
+      lineHeight: "1.5",
+      marginBottom: "4px"
+    }}
+  >
+    Excel format:{" "}
+    <strong>
+      facultyId, name, branch, role, sections
+    </strong>
+  </p>
+
+  <p
+    style={{
+      color: "#999",
+      fontSize: "14px",
+      marginTop: 0
+    }}
+  >
+    role = faculty / hod (default faculty) | sections = comma-separated, e.g. "A,B" (ignored for hod)
+  </p>
+
+  <p
+    style={{
+      color: "#999",
+      fontSize: "14px",
+      marginTop: 0
+    }}
+  >
+    Default password for everyone:{" "}
+    <strong>nri@2024</strong>{" "}
+    (forced change on first login)
+  </p>
+
+  <input
+    ref={facultyFileInputRef}
+    type="file"
+    accept=".xlsx,.xls"
+    onChange={(e) =>
+      setFacultyFile(
+        e.target.files?.[0] || null
+      )
+    }
+    style={{
+      margin: "10px 0 16px"
+    }}
+  />
+
+  <button
+    onClick={uploadFaculty}
+    style={{
+      width: "100%",
+      padding: "12px",
+      background: "#F15A29",
+      color: "#fff",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "15px",
+      fontWeight: "600",
+      cursor: "pointer"
+    }}
+  >
+    Upload Faculty
+  </button>
+
+  {facultyMessage && (
+    <p
+      style={{
+        color: facultyMessage.startsWith("❌")
+          ? "#d32f2f"
+          : "#4CAF50",
+        marginTop: "12px",
+        fontWeight: "600"
+      }}
+    >
+      {facultyMessage}
+    </p>
+  )}
+</div>
+</div>
+
+      {/* ================= MANAGE CR ================= */}
+
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e0e0e0",
+          borderRadius: "12px",
+          padding: "22px",
+          marginBottom: "24px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+        }}
+      >
+        <h3
+          style={{
+            marginTop: 0,
+            color: "#1a1a1a"
+          }}
         >
-          📤 Upload Students
-        </button>
-      </div>
-
-      {/* FACULTY UPLOAD */}
-
-      <div style={{ ...cardStyle, marginBottom: "20px" }}>
-        <h3>👨‍🏫 Faculty & HOD Management</h3>
-
-        <p style={{ color: "#777" }}>
-          Upload Faculty/HOD accounts using Excel.
-        </p>
-
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={(e) =>
-            setFacultyFile(e.target.files?.[0] || null)
-          }
-        />
-
-        <button
-          style={{ ...buttonStyle, marginLeft: "10px" }}
-          onClick={uploadFaculty}
-          disabled={loading}
-        >
-          📤 Upload Faculty / HOD
-        </button>
-      </div>
-
-      {/* MANAGE CR */}
-
-      <div style={{ ...cardStyle, marginBottom: "20px" }}>
-        <h3>⭐ Class Representatives</h3>
+          ⭐ Class Representatives
+        </h3>
 
         <p style={{ color: "#777" }}>
           Assign or remove CRs across branches and sections.
         </p>
 
         <button
-          style={buttonStyle}
           onClick={onOpenManageCR}
+          style={{
+            background: "#F15A29",
+            color: "#fff",
+            border: "none",
+            padding: "11px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "600"
+          }}
         >
           ⭐ Manage CRs
         </button>
       </div>
 
-      {/* FACULTY TABLE */}
+      {/* ================= FACULTY TABLE ================= */}
 
-      <div style={cardStyle}>
-        <h3>👥 Faculty & HOD Accounts</h3>
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #e0e0e0",
+          borderRadius: "12px",
+          padding: "24px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+        }}
+      >
+        <h3
+          style={{
+            marginTop: 0,
+            color: "#1a1a1a"
+          }}
+        >
+          Faculty & HOD Accounts ({facultyList.length})
+        </h3>
 
-        {faculty.length === 0 ? (
+        {facultyList.length === 0 ? (
           <p style={{ color: "#999" }}>
-            No faculty accounts found.
+            No Faculty/HOD accounts found.
           </p>
         ) : (
           <div style={{ overflowX: "auto" }}>
@@ -850,60 +1165,94 @@ function AdminPanel({ api, onOpenManageCR }) {
               }}
             >
               <thead>
-                <tr>
-                  <th style={{ padding: "10px", textAlign: "left" }}>
-                    Faculty ID
-                  </th>
-                  <th style={{ padding: "10px", textAlign: "left" }}>
-                    Name
-                  </th>
-                  <th style={{ padding: "10px", textAlign: "left" }}>
-                    Branch
-                  </th>
-                  <th style={{ padding: "10px", textAlign: "left" }}>
-                    Role
-                  </th>
-                  <th style={{ padding: "10px" }}>
-                    Action
-                  </th>
+                <tr
+                  style={{
+                    borderBottom: "1px solid #ddd"
+                  }}
+                >
+                  <th style={thStyle}>Faculty ID</th>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Branch</th>
+                  <th style={thStyle}>Role</th>
+                  <th style={thStyle}>Sections</th>
+                  <th style={thStyle}>Action</th>
                 </tr>
               </thead>
 
               <tbody>
-                {faculty.map((f) => (
-                  <tr key={f.facultyId}>
-                    <td style={{ padding: "10px" }}>
-                      {f.facultyId}
+                {facultyList.map((faculty) => (
+                  <tr
+                    key={faculty.facultyId}
+                    style={{
+                      borderBottom:
+                        "1px solid #eee"
+                    }}
+                  >
+                    <td style={tdStyle}>
+                      <strong>
+                        {faculty.facultyId}
+                      </strong>
                     </td>
 
-                    <td style={{ padding: "10px" }}>
-                      {f.name}
+                    <td style={tdStyle}>
+                      {faculty.name}
                     </td>
 
-                    <td style={{ padding: "10px" }}>
-                      {f.branch}
+                    <td style={tdStyle}>
+                      {faculty.branch}
                     </td>
 
-                    <td style={{ padding: "10px" }}>
-                      {f.role === "hod"
-                        ? "HOD"
-                        : "Faculty"}
-                    </td>
-
-                    <td style={{ padding: "10px" }}>
-                      <button
+                    <td style={tdStyle}>
+                      <span
                         style={{
-                          ...buttonStyle,
-                          padding: "7px 12px",
-                          fontSize: "12px"
+                          background:
+                            faculty.role === "hod"
+                              ? "#fff0ee"
+                              : "#eef6ff",
+                          color:
+                            faculty.role === "hod"
+                              ? "#F15A29"
+                              : "#2196F3",
+                          padding: "6px 12px",
+                          borderRadius: "15px",
+                          fontSize: "12px",
+                          fontWeight: "600"
                         }}
+                      >
+                        {faculty.role === "hod"
+                          ? "HOD"
+                          : "FACULTY"}
+                      </span>
+                    </td>
+
+                    <td style={tdStyle}>
+                      {faculty.role === "hod"
+                        ? "All"
+                        : (
+                          faculty.assignedSections || []
+                        ).join(", ") || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      <button
                         onClick={() =>
                           resetFacultyPassword(
-                            f.facultyId
+                            faculty.facultyId
                           )
                         }
+                        style={{
+                          background: "#fff",
+                          color: "#F15A29",
+                          border:
+                            "1px solid #F15A29",
+                          padding: "7px 14px",
+                          borderRadius: "7px",
+                          cursor: "pointer",
+                          fontWeight: "600",
+                          fontSize: "12px"
+                        }}
                       >
-                        🔑 Reset Password
+                        Reset Password
                       </button>
                     </td>
                   </tr>
@@ -914,19 +1263,6 @@ function AdminPanel({ api, onOpenManageCR }) {
         )}
       </div>
 
-      {message && (
-        <div
-          style={{
-            marginTop: "16px",
-            padding: "12px",
-            background: "#fff7f3",
-            border: "1px solid #F15A29",
-            borderRadius: "8px"
-          }}
-        >
-          {message}
-        </div>
-      )}
     </div>
   );
 }
