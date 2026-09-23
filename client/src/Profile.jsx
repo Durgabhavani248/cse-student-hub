@@ -1,6 +1,13 @@
 import { useState } from "react";
 
-function Profile({ studentInfo, isAdmin, api, onLogout }) {
+function Profile({
+  studentInfo,
+  facultyInfo,
+  isAdmin,
+  isFaculty,
+  api,
+  onLogout
+}) {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -82,7 +89,148 @@ function Profile({ studentInfo, isAdmin, api, onLogout }) {
       </div>
     );
   }
+if (isFaculty) {
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: "1px solid #e0e0e0",
+        borderRadius: "16px",
+        padding: "32px",
+        maxWidth: "450px",
+        boxShadow: "0 2px 12px rgba(0,0,0,0.08)"
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "16px",
+          marginBottom: "24px"
+        }}
+      >
+        <div
+          style={{
+            width: "64px",
+            height: "64px",
+            borderRadius: "50%",
+            background: "#F15A29",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontSize: "24px",
+            fontWeight: "700"
+          }}
+        >
+          {facultyInfo?.name?.charAt(0)?.toUpperCase() || "F"}
+        </div>
 
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              color: "#1a1a1a",
+              fontSize: "18px"
+            }}
+          >
+            {facultyInfo?.name || "Faculty"}
+          </h2>
+
+          <p
+            style={{
+              margin: "4px 0 0 0",
+              color: "#666",
+              fontSize: "13px"
+            }}
+          >
+            NRI Institute of Technology
+          </p>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            background: "#f9f9f9",
+            borderRadius: "10px"
+          }}
+        >
+          <span style={{ color: "#666", fontSize: "13px" }}>
+            Faculty ID
+          </span>
+
+          <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>
+            {facultyInfo?.employeeId || facultyInfo?.facultyId || "-"}
+          </strong>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            background: "#f9f9f9",
+            borderRadius: "10px"
+          }}
+        >
+          <span style={{ color: "#666", fontSize: "13px" }}>
+            Branch
+          </span>
+
+          <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>
+            {facultyInfo?.branch || "CSE"}
+          </strong>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            background: "#f9f9f9",
+            borderRadius: "10px"
+          }}
+        >
+          <span style={{ color: "#666", fontSize: "13px" }}>
+            Role
+          </span>
+
+          <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>
+            {facultyInfo?.role || "Faculty"}
+          </strong>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "12px 16px",
+            background: "#f9f9f9",
+            borderRadius: "10px"
+          }}
+        >
+          <span style={{ color: "#666", fontSize: "13px" }}>
+            Sections
+          </span>
+
+          <strong style={{ color: "#1a1a1a", fontSize: "13px" }}>
+            {facultyInfo?.assignedSections?.join(", ") || "-"}
+          </strong>
+        </div>
+      </div>
+    </div>
+  );
+}
   return (
     <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "32px", maxWidth: "450px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
 

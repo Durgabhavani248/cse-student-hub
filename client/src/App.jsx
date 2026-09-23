@@ -163,34 +163,33 @@ function App() {
       </button>
 
 
-      {isAdmin && (
-        <button
-          className={navBtnClass("attendance")}
-          onClick={() => setActivePage("attendance")}
-        >
-          👥 Attendance
-        </button>
-      )}
+    {facultyLoggedIn && (
+  <button
+    className={navBtnClass("attendance")}
+    onClick={() => setActivePage("attendance")}
+  >
+    👥 Mark Attendance
+  </button>
+)}
 
 
-      {facultyLoggedIn && (
-        <button
-          className={navBtnClass("my-attendance")}
-          onClick={() => setActivePage("my-attendance")}
-        >
-          ✅ My Attendance
-        </button>
-      )}
+    {studentLoggedIn && (
+  <button
+    className={navBtnClass("my-attendance")}
+    onClick={() => setActivePage("my-attendance")}
+  >
+    ✅ My Attendance
+  </button>
+)}
 
-
-      {(isAdmin || facultyInfo?.role === "hod") && (
-        <button
-          className={navBtnClass("hod-report")}
-          onClick={() => setActivePage("hod-report")}
-        >
-          📊 Report
-        </button>
-      )}
+{facultyInfo?.role === "hod" && (
+  <button
+    className={navBtnClass("hod-report")}
+    onClick={() => setActivePage("hod-report")}
+  >
+    📊 Branch Report
+  </button>
+)}
 
 
       {(isAdmin || facultyInfo?.role === "hod") && (
@@ -297,9 +296,12 @@ function App() {
         />
       )}
 
-      {activePage === "attendance" && isAdmin && (
-        <Attendance api={API} />
-      )}
+      {activePage === "attendance" && facultyLoggedIn && (
+  <Attendance
+    api={API}
+    facultyInfo={facultyInfo}
+  />
+)}
 
       {activePage === "my-attendance" && facultyInfo && (
         <MyAttendance
@@ -342,11 +344,26 @@ function App() {
         <Search api={API} />
       )}
 
-      {activePage === "profile" && (
-        isAdmin
-          ? <Profile api={API} isAdmin={isAdmin} />
-          : <Profile api={API} studentData={studentData} />
-      )}
+     {activePage === "profile" && (
+  isAdmin ? (
+    <Profile
+      api={API}
+      isAdmin={true}
+    />
+  ) : facultyLoggedIn ? (
+    <Profile
+      api={API}
+      facultyInfo={facultyInfo}
+      isFaculty={true}
+    />
+  ) : (
+    <Profile
+      api={API}
+      studentInfo={studentData}
+      isFaculty={false}
+    />
+  )
+)}
 
       {activePage === "notifications" && (
         <Notifications
