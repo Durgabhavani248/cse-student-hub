@@ -13,7 +13,10 @@ export default function Notifications({ studentInfo }) {
   const [pushStatus, setPushStatus] = useState(getNotificationPermissionStatus());
   const [pushMessage, setPushMessage] = useState("");
   const [pushLoading, setPushLoading] = useState(false);
-  const token = localStorage.getItem("studentToken");
+const token =
+  localStorage.getItem("facultyToken") ||
+  localStorage.getItem("studentToken") ||
+  localStorage.getItem("token");
 
   const handleEnablePush = async () => {
     setPushLoading(true);

@@ -38,17 +38,33 @@ function App() {
 });
   const [facultyInfo, setFacultyInfo] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [notices, setNotices] = useState([]);
 const canUploadContent =
   isAdmin ||
   facultyLoggedIn ||
   studentData?.isCR === true;
 
   useEffect(() => {
-    const storedFacultyInfo = localStorage.getItem("facultyInfo");
-    if (storedFacultyInfo) {
-      setFacultyInfo(JSON.parse(storedFacultyInfo));
-    }
-  }, []);
+  const storedFacultyInfo = localStorage.getItem("facultyInfo");
+
+  if (storedFacultyInfo) {
+    setFacultyInfo(JSON.parse(storedFacultyInfo));
+  }
+
+  fetch(`${API}/api/notices`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("Failed to load notices");
+      }
+      return res.json();
+    })
+    .then((data) => {
+      setNotices(Array.isArray(data) ? data : []);
+    })
+    .catch((err) => {
+      console.error("Error loading notices:", err);
+    });
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -257,9 +273,73 @@ const canUploadContent =
     {/* MAIN CONTENT */}
     <main className="main-content">
 
-    {activePage === "notices" &&
-  (isAdmin || facultyInfo?.role === "hod") && (
-    <AddNotice api={API} />
+{activePage === "notices" && (
+  <div style={{ marginTop: "24px" }}>
+
+    <h2
+      style={{
+        color: "#F15A29",
+        fontSize: "22px",
+        marginBottom: "16px"
+      }}
+    >
+      📢 Notices
+    </h2>
+
+    {notices.length === 0 ? (
+      <p style={{ color: "#999" }}>
+        No notices yet!
+      </p>
+    ) : (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "repeat(auto-fill, minmax(300px, 1fr))",
+          gap: "16px"
+        }}
+      >
+        {notices.map((notice) => (
+          <div
+            key={notice._id}
+            style={{
+              background: "#fff",
+              border: "1px solid #eee",
+              borderLeft: "4px solid #F15A29",
+              borderRadius: "12px",
+              padding: "18px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 8px",
+                color: "#222"
+              }}
+            >
+              {notice.title}
+            </h3>
+
+            <p
+              style={{
+                margin: "0 0 10px",
+                color: "#666"
+              }}
+            >
+              {notice.description}
+            </p>
+
+            <small style={{ color: "#999" }}>
+              {notice.createdAt
+                ? new Date(notice.createdAt).toLocaleDateString()
+                : ""}
+            </small>
+          </div>
+        ))}
+      </div>
+    )}
+
+  </div>
 )}
 
       {activePage === "notes" && (
@@ -377,12 +457,13 @@ const canUploadContent =
   )
 )}
 
-      {activePage === "notifications" && (
-        <Notifications
-          api={API}
-          onUnreadCountChange={setUnreadNotifications}
-        />
-      )}
+   {activePage === "notifications" && (
+  <Notifications
+    api={API}
+    studentInfo={studentData}
+    onUnreadCountChange={setUnreadNotifications}
+  />
+)}
 
     </main>
 
