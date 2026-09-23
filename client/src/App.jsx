@@ -80,7 +80,7 @@ function App() {
         <p style={{ margin: 0, fontSize: "13px", opacity: 0.9 }}>Student Portal & Resource Management</p>
       </div>
 
-      {/* NAVIGATION */}
+            {/* NAVIGATION */}
       <div style={{ background: "#fff", padding: "16px", display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center", borderBottom: "1px solid #e0e0e0", overflowX: "auto" }}>
         {/* All Users */}
         <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
@@ -95,10 +95,10 @@ function App() {
 
         {/* Attendance */}
         {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>👥 Attendance</button>}
-        {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📊 HOD Attendance</button>}
+        {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📊 Attendance Report</button>}
         {(facultyInfo?.role === "hod" || isAdmin) && <button style={navBtnStyle("attendance-export")} onClick={() => setActivePage("attendance-export")}>📊 Export Attendance</button>}
         {facultyLoggedIn && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>✅ My Attendance</button>}
-        {facultyInfo?.role === "hod" && <button style={navBtnStyle("manage-cr")} onClick={() => setActivePage("manage-cr")}>👨‍💼 Manage CR</button>}
+        {facultyInfo?.role === "hod" && <button style={navBtnStyle("manage-cr")} onClick={() => setActivePage("manage-cr")}>⭐ Manage CR</button>}
 
         {/* Other */}
         <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 Chatbot</button>
