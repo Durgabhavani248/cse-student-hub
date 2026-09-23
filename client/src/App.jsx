@@ -329,6 +329,16 @@ const canUploadContent =
 {activePage === "notices" && (
   <div style={{ marginTop: "24px" }}>
 
+    {/* HOD / ADMIN - ADD NOTICE */}
+    {(isAdmin || facultyInfo?.role === "hod") && (
+      <AddNotice
+        api={API}
+        onAdd={(newNotice) => {
+          setNotices((prev) => [newNotice, ...prev]);
+        }}
+      />
+    )}
+
     <h2
       style={{
         color: "#F15A29",
