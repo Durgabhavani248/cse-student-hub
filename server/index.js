@@ -1,12 +1,14 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const jwt = require("jsonwebtoken");
-const bcrypt = require("bcryptjs");
-const cors = require("cors");
-const multer = require("multer");
-const cloudinary = require("cloudinary").v2;
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-require("dotenv").config();
+import express from "express";
+import mongoose from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import cors from "cors";
+import multer from "multer";
+import cloudinary from "cloudinary";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const app = express();
 
@@ -16,7 +18,7 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb" }));
 
 // Cloudinary config
-cloudinary.config({
+cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
@@ -106,9 +108,9 @@ const AttendanceSchema = new mongoose.Schema({
   section: String,
   branch: { type: String, default: "CS-Allied" },
   subject: String,
-  date: String, // "YYYY-MM-DD"
+  date: String,
   status: { type: String, enum: ["present", "absent"], default: "present" },
-  markedBy: String, // facultyId
+  markedBy: String,
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -486,7 +488,6 @@ app.get("/api/attendance/export/:branch", hodOrAdminMiddleware, async (req, res)
     const { branch } = req.params;
     const { section, subject, startDate, endDate } = req.query;
 
-    // HOD can only export own branch; Admin can export any
     if (req.user.role === "hod" && req.user.branch !== branch) {
       return res.status(403).json({ message: "You can only export your own branch's attendance" });
     }
@@ -519,7 +520,6 @@ app.delete("/api/attendance/delete/:branch", hodOrAdminMiddleware, async (req, r
     const { branch } = req.params;
     const { section, subject, startDate, endDate } = req.query;
 
-    // HOD can only delete own branch; Admin can delete any
     if (req.user.role === "hod" && req.user.branch !== branch) {
       return res.status(403).json({ message: "You can only delete your own branch's attendance" });
     }
@@ -578,7 +578,7 @@ app.post("/api/upload", async (req, res) => {
     
     if (!file) return res.status(400).json({ message: "No file provided" });
     
-    const result = await cloudinary.uploader.upload(file, {
+    const result = await cloudinary.v2.uploader.upload(file, {
       resource_type: "auto",
       folder: "nri-hub"
     });
