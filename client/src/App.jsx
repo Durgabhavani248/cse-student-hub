@@ -28,7 +28,13 @@ function App() {
   const [studentLoggedIn, setStudentLoggedIn] = useState(!!localStorage.getItem("studentToken"));
   const [facultyLoggedIn, setFacultyLoggedIn] = useState(!!localStorage.getItem("facultyToken"));
   const [activePage, setActivePage] = useState("notices");
-  const [studentData, setStudentData] = useState(null);
+  const [studentData, setStudentData] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem("studentInfo"));
+  } catch {
+    return null;
+  }
+});
   const [facultyInfo, setFacultyInfo] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
@@ -48,6 +54,7 @@ function App() {
     localStorage.removeItem("studentSection");
     localStorage.removeItem("studentName");
     localStorage.removeItem("facultyInfo");
+    localStorage.removeItem("studentInfo");
     setIsAdmin(false);
     setStudentLoggedIn(false);
     setFacultyLoggedIn(false);
@@ -130,7 +137,7 @@ function App() {
         {activePage === "materials" && isAdmin && <StudyMaterials isAdmin={isAdmin} api={API} />}
 
         {/* Timetable */}
-        {activePage === "timetable" && <Timetable api={API} studentSection={studentData?.section || "1"} />}
+    {activePage === "timetable" && <Timetable api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} studentSection={studentData?.section} />}
 
         {/* Attendance */}
         {activePage === "attendance" && isAdmin && <Attendance api={API} />}
