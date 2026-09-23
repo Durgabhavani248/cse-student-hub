@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import Login from "./Login";
 import StudentLogin from "./StudentLogin";
 import RoleSelector from "./RoleSelector";
@@ -31,7 +30,7 @@ function App() {
   const [studentData, setStudentData] = useState(null);
   const [facultyInfo, setFacultyInfo] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-  const navigate = useNavigate();
+
 
   useEffect(() => {
     const storedFacultyInfo = localStorage.getItem("facultyInfo");
@@ -52,8 +51,7 @@ function App() {
     setStudentLoggedIn(false);
     setFacultyLoggedIn(false);
     setFacultyInfo(null);
-    setActivePage("notices");
-    navigate("/");
+        setActivePage("notices");
   };
 
   if (!isAdmin && !studentLoggedIn && !facultyLoggedIn) {
