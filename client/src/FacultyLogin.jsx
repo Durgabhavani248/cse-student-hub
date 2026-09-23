@@ -33,7 +33,7 @@ function FacultyLogin({ onLogin, api, onBack }) {
 
   return (
     <>
-      <p onClick={onBack} className="login-back-link">← Back</p>
+      <p onClick={onBack} className="login-back-link">← Not you? Change role</p>
 
       <img src="/icon-192.png" alt="NRI Logo" className="login-logo" />
       <h1 className="login-title">Faculty / HOD Login</h1>

@@ -20,7 +20,22 @@ import ManageCR from "./ManageCR";
 
 
 const API = "https://cse-student-hub.onrender.com";
+// Captures the browser's PWA install prompt so it can be triggered
+// programmatically right after role selection (Android/Chromium only —
+// iOS Safari has no equivalent event; those users still use manual
+// "Add to Home Screen", which is handled separately via localStorage).
+let deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
 
+export function triggerInstallPrompt() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt = null;
+  }
+}
 function CurrentClassCard({ studentSection, api }) {
   const [timetable, setTimetable] = useState(null);
   const [now, setNow] = useState(new Date());

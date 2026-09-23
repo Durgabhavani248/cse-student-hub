@@ -12,7 +12,10 @@ const BRANCHES = [
   "CIVIL"
 ];
 
-function StudentLogin({ onLogin, api, onSwitchToAdmin, onSwitchToFaculty }) {
+// onSwitchToAdmin/onSwitchToFaculty removed — role choice now happens
+// once on the RoleSelect screen (see LoginPage.jsx); onBack lets the
+// user return there if they picked the wrong role.
+function StudentLogin({ onLogin, api, onBack }) {
   const [branch, setBranch] = useState("CSE");
   const [rollNo, setRollNo] = useState("");
   const [password, setPassword] = useState("");
@@ -137,10 +140,7 @@ function StudentLogin({ onLogin, api, onSwitchToAdmin, onSwitchToFaculty }) {
         Default password: <strong>nri@2024</strong>
       </p>
 
-      <div className="login-switch-links">
-        <p onClick={onSwitchToAdmin} className="login-switch-link">Admin? Click here</p>
-        <p onClick={onSwitchToFaculty} className="login-switch-link">Faculty / HOD? Click here</p>
-      </div>
+      <p onClick={onBack} className="login-back-link">← Not you? Change role</p>
     </>
   );
 }
