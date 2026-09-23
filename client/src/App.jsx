@@ -28,7 +28,7 @@ function App() {
   const [studentLoggedIn, setStudentLoggedIn] = useState(!!localStorage.getItem("studentToken"));
   const [facultyLoggedIn, setFacultyLoggedIn] = useState(!!localStorage.getItem("facultyToken"));
   const [activePage, setActivePage] = useState("notices");
-  const [studentData, setStudentData] = useState(() => {
+ const [studentData, setStudentData] = useState(() => {
   try {
     return JSON.parse(localStorage.getItem("studentInfo"));
   } catch {
@@ -53,7 +53,7 @@ function App() {
     localStorage.removeItem("studentRollNo");
     localStorage.removeItem("studentSection");
     localStorage.removeItem("studentName");
-    localStorage.removeItem("facultyInfo");
+    localStorage.removeItem("studentInfo");
     localStorage.removeItem("studentInfo");
     setIsAdmin(false);
     setStudentLoggedIn(false);
@@ -73,17 +73,18 @@ function App() {
   );
 }
 
-  const navBtnStyle = (page) => ({
-    padding: "10px 16px",
-    background: activePage === page ? "#F15A29" : "#fff",
-    color: activePage === page ? "#fff" : "#F15A29",
-    border: "1px solid #F15A29",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "13px",
-    transition: "all 0.2s"
-  });
+ const navBtnStyle = (page) => ({
+  padding: "14px 4px",
+  background: "transparent",
+  color: activePage === page ? "#F15A29" : "#555",
+  border: "none",
+  borderBottom: activePage === page ? "3px solid #F15A29" : "3px solid transparent",
+  cursor: "pointer",
+  fontWeight: activePage === page ? "700" : "500",
+  fontSize: "15px",
+  whiteSpace: "nowrap",
+  transition: "all 0.2s"
+});
 
   return (
     <div style={{ fontFamily: "Segoe UI, sans-serif", background: "#f5f5f5", minHeight: "100vh" }}>
@@ -93,48 +94,36 @@ function App() {
         <p style={{ margin: 0, fontSize: "13px", opacity: 0.9 }}>Student Portal & Resource Management</p>
       </div>
 
-            {/* NAVIGATION */}
-      <div style={{ background: "#fff", padding: "16px", display: "flex", gap: "8px", flexWrap: "wrap", justifyContent: "center", borderBottom: "1px solid #e0e0e0", overflowX: "auto" }}>
-        {/* All Users */}
-        <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
-        <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>📅 Timetable</button>
-        <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
+           {/* NAVIGATION */}
+<div style={{ background: "#fff", padding: "0 20px", display: "flex", gap: "28px", justifyContent: "flex-start", borderBottom: "1px solid #e0e0e0", overflowX: "auto", whiteSpace: "nowrap" }}>
+  <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
+  <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
+  <button style={navBtnStyle("assignments")} onClick={() => setActivePage("assignments")}>📝 Assignments</button>
+  <button style={navBtnStyle("papers")} onClick={() => setActivePage("papers")}>📄 Papers</button>
+  <button style={navBtnStyle("materials")} onClick={() => setActivePage("materials")}>📖 Materials</button>
+  <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>📅 Timetable</button>
 
-        {/* Admin Only */}
-        {isAdmin && <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>}
-        {isAdmin && <button style={navBtnStyle("assignments")} onClick={() => setActivePage("assignments")}>📝 Assignments</button>}
-        {isAdmin && <button style={navBtnStyle("papers")} onClick={() => setActivePage("papers")}>📄 Papers</button>}
-        {isAdmin && <button style={navBtnStyle("materials")} onClick={() => setActivePage("materials")}>📚 Materials</button>}
+  {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>👥 Attendance</button>}
+  {facultyLoggedIn && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>✅ My Attendance</button>}
+  {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📊 Report</button>}
+  {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("attendance-export")} onClick={() => setActivePage("attendance-export")}>📤 Export</button>}
+  {facultyInfo?.role === "hod" && <button style={navBtnStyle("manage-cr")} onClick={() => setActivePage("manage-cr")}>⭐ Manage CR</button>}
 
-        {/* Attendance */}
-        {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>👥 Attendance</button>}
-        {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📊 Attendance Report</button>}
-        {(facultyInfo?.role === "hod" || isAdmin) && <button style={navBtnStyle("attendance-export")} onClick={() => setActivePage("attendance-export")}>📊 Export Attendance</button>}
-        {facultyLoggedIn && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>✅ My Attendance</button>}
-        {facultyInfo?.role === "hod" && <button style={navBtnStyle("manage-cr")} onClick={() => setActivePage("manage-cr")}>⭐ Manage CR</button>}
-
-        {/* Other */}
-        <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 Chatbot</button>
-        <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-        <button onClick={handleLogout} style={{ padding: "10px 16px", background: "#fff0ee", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", cursor: "pointer", fontWeight: "600", fontSize: "13px" }}>🔓 Logout</button>
-      </div>
+  <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
+  <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 Chatbot</button>
+  <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
+  <button onClick={handleLogout} style={{ ...navBtnStyle("logout"), color: "#F15A29" }}>🔓 Logout</button>
+</div>
 
       {/* MAIN CONTENT */}
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
         {/* Notices */}
         {activePage === "notices" && isAdmin && <AddNotice api={API} />}
 
-        {/* Notes */}
-        {activePage === "notes" && isAdmin && <Notes isAdmin={isAdmin} api={API} studentSection={studentData?.section} />}
-
-        {/* Assignments */}
-        {activePage === "assignments" && isAdmin && <Assignments isAdmin={isAdmin} api={API} />}
-
-        {/* Papers */}
-        {activePage === "papers" && isAdmin && <Papers isAdmin={isAdmin} api={API} />}
-
-        {/* Materials */}
-        {activePage === "materials" && isAdmin && <StudyMaterials isAdmin={isAdmin} api={API} />}
+        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentData?.section} />}
+{activePage === "assignments" && <Assignments isAdmin={isAdmin} api={API} />}
+{activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
+{activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
 
         {/* Timetable */}
     {activePage === "timetable" && <Timetable api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} studentSection={studentData?.section} />}
