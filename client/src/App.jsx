@@ -20,6 +20,7 @@ import Profile from "./Profile";
 import Notifications from "./Notifications";
 import ManageCR from "./ManageCR";
 import LoginPage from "./LoginPage";
+import "./App.css";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
