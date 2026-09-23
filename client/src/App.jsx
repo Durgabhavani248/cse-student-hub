@@ -73,86 +73,297 @@ function App() {
   );
 }
 
- const navBtnStyle = (page) => ({
-  padding: "14px 4px",
-  background: "transparent",
-  color: activePage === page ? "#F15A29" : "#555",
-  border: "none",
-  borderBottom: activePage === page ? "3px solid #F15A29" : "3px solid transparent",
-  cursor: "pointer",
-  fontWeight: activePage === page ? "700" : "500",
-  fontSize: "15px",
-  whiteSpace: "nowrap",
-  transition: "all 0.2s"
-});
+ const navBtnClass = (page) =>
+  `nav-btn ${activePage === page ? "active" : ""}`;
 
   return (
-    <div style={{ fontFamily: "Segoe UI, sans-serif", background: "#f5f5f5", minHeight: "100vh" }}>
-      {/* HEADER */}
-      <div style={{ background: "#F15A29", color: "#fff", padding: "20px", textAlign: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}>
-        <h1 style={{ margin: "0 0 8px 0", fontSize: "28px", fontWeight: "800" }}>🏛️ NRI Hub</h1>
-        <p style={{ margin: 0, fontSize: "13px", opacity: 0.9 }}>Student Portal & Resource Management</p>
-      </div>
+  <div className="app">
 
-           {/* NAVIGATION */}
-<div style={{ background: "#fff", padding: "0 20px", display: "flex", gap: "28px", justifyContent: "flex-start", borderBottom: "1px solid #e0e0e0", overflowX: "auto", whiteSpace: "nowrap" }}>
-  <button style={navBtnStyle("notices")} onClick={() => setActivePage("notices")}>📢 Notices</button>
-  <button style={navBtnStyle("notes")} onClick={() => setActivePage("notes")}>📚 Notes</button>
-  <button style={navBtnStyle("assignments")} onClick={() => setActivePage("assignments")}>📝 Assignments</button>
-  <button style={navBtnStyle("papers")} onClick={() => setActivePage("papers")}>📄 Papers</button>
-  <button style={navBtnStyle("materials")} onClick={() => setActivePage("materials")}>📖 Materials</button>
-  <button style={navBtnStyle("timetable")} onClick={() => setActivePage("timetable")}>📅 Timetable</button>
+    {/* HEADER */}
+    <header className="top-header">
 
-  {isAdmin && <button style={navBtnStyle("attendance")} onClick={() => setActivePage("attendance")}>👥 Attendance</button>}
-  {facultyLoggedIn && <button style={navBtnStyle("my-attendance")} onClick={() => setActivePage("my-attendance")}>✅ My Attendance</button>}
-  {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("hod-report")} onClick={() => setActivePage("hod-report")}>📊 Report</button>}
-  {(isAdmin || facultyInfo?.role === "hod") && <button style={navBtnStyle("attendance-export")} onClick={() => setActivePage("attendance-export")}>📤 Export</button>}
-  {facultyInfo?.role === "hod" && <button style={navBtnStyle("manage-cr")} onClick={() => setActivePage("manage-cr")}>⭐ Manage CR</button>}
+      <div className="brand-section">
 
-  <button style={navBtnStyle("search")} onClick={() => setActivePage("search")}>🔍 Search</button>
-  <button style={navBtnStyle("chatbot")} onClick={() => setActivePage("chatbot")}>🤖 Chatbot</button>
-  <button style={navBtnStyle("profile")} onClick={() => setActivePage("profile")}>👤 Profile</button>
-  <button onClick={handleLogout} style={{ ...navBtnStyle("logout"), color: "#F15A29" }}>🔓 Logout</button>
+       <div className="nri-logo">
+  <img src="/icon-192.png" alt="DR RVR NRI UNIVERSTY" />
 </div>
 
-      {/* MAIN CONTENT */}
-      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "20px" }}>
-        {/* Notices */}
-        {activePage === "notices" && isAdmin && <AddNotice api={API} />}
+        <div className="college-info">
+          <h1>NRI Institute of Technology</h1>
 
-        {activePage === "notes" && <Notes isAdmin={isAdmin} api={API} studentSection={studentData?.section} />}
-{activePage === "assignments" && <Assignments isAdmin={isAdmin} api={API} />}
-{activePage === "papers" && <Papers isAdmin={isAdmin} api={API} />}
-{activePage === "materials" && <StudyMaterials isAdmin={isAdmin} api={API} />}
+          {studentData && (
+            <p>
+              {studentData.name || "Student"} | Roll:{" "}
+              {studentData.rollNo || "-"} | Sec:{" "}
+              {studentData.section || "-"}
+            </p>
+          )}
 
-        {/* Timetable */}
-    {activePage === "timetable" && <Timetable api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} studentSection={studentData?.section} />}
+          {facultyInfo && (
+            <p>
+              {facultyInfo.name || "Faculty"} |{" "}
+              {facultyInfo.role || "Faculty"}
+            </p>
+          )}
+        </div>
 
-        {/* Attendance */}
-        {activePage === "attendance" && isAdmin && <Attendance api={API} />}
-        {activePage === "my-attendance" && facultyInfo && <MyAttendance api={API} facultyInfo={facultyInfo} />}
-        {activePage === "hod-report" && (isAdmin || facultyInfo?.role === "hod") && <HodAttendanceReport api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} />}
-        {activePage === "attendance-export" && (facultyInfo?.role === "hod" || isAdmin) && <AttendanceExport api={API} isAdmin={isAdmin} facultyInfo={facultyInfo} />}
-
-        {/* Manage CR */}
-        {activePage === "manage-cr" && facultyInfo?.role === "hod" && <ManageCR api={API} facultyInfo={facultyInfo} />}
-
-        {/* Chatbot */}
-        {activePage === "chatbot" && <Chatbot api={API} />}
-
-        {/* Search */}
-        {activePage === "search" && <Search api={API} />}
-
-        {/* Profile */}
-        {activePage === "profile" && (isAdmin ? <Profile api={API} isAdmin={isAdmin} /> : <Profile api={API} studentData={studentData} />)}
       </div>
 
-      {/* Footer */}
-      <div style={{ background: "#f5f5f5", borderTop: "1px solid #e0e0e0", padding: "20px", textAlign: "center", color: "#999", fontSize: "12px", marginTop: "40px" }}>
-        <p style={{ margin: 0 }}>© 2026 NRI Institute of Technology | CS-Allied Portal</p>
-      </div>
-    </div>
-  );
+      <button className="header-logout" onClick={handleLogout}>
+        Logout
+      </button>
+
+    </header>
+
+
+    {/* NAVIGATION */}
+    <nav className="main-nav">
+
+      <button
+        className={navBtnClass("notices")}
+        onClick={() => setActivePage("notices")}
+      >
+        📢 Notices
+      </button>
+
+      <button
+        className={navBtnClass("notes")}
+        onClick={() => setActivePage("notes")}
+      >
+        📚 Notes
+      </button>
+
+      <button
+        className={navBtnClass("assignments")}
+        onClick={() => setActivePage("assignments")}
+      >
+        📝 Assignments
+      </button>
+
+      <button
+        className={navBtnClass("papers")}
+        onClick={() => setActivePage("papers")}
+      >
+        📄 Papers
+      </button>
+
+      <button
+        className={navBtnClass("materials")}
+        onClick={() => setActivePage("materials")}
+      >
+        📖 Materials
+      </button>
+
+      <button
+        className={navBtnClass("timetable")}
+        onClick={() => setActivePage("timetable")}
+      >
+        📅 Timetable
+      </button>
+
+
+      {isAdmin && (
+        <button
+          className={navBtnClass("attendance")}
+          onClick={() => setActivePage("attendance")}
+        >
+          👥 Attendance
+        </button>
+      )}
+
+
+      {facultyLoggedIn && (
+        <button
+          className={navBtnClass("my-attendance")}
+          onClick={() => setActivePage("my-attendance")}
+        >
+          ✅ My Attendance
+        </button>
+      )}
+
+
+      {(isAdmin || facultyInfo?.role === "hod") && (
+        <button
+          className={navBtnClass("hod-report")}
+          onClick={() => setActivePage("hod-report")}
+        >
+          📊 Report
+        </button>
+      )}
+
+
+      {(isAdmin || facultyInfo?.role === "hod") && (
+        <button
+          className={navBtnClass("attendance-export")}
+          onClick={() => setActivePage("attendance-export")}
+        >
+          📤 Export
+        </button>
+      )}
+
+
+      {facultyInfo?.role === "hod" && (
+        <button
+          className={navBtnClass("manage-cr")}
+          onClick={() => setActivePage("manage-cr")}
+        >
+          ⭐ Manage CR
+        </button>
+      )}
+
+
+      <button
+        className={navBtnClass("search")}
+        onClick={() => setActivePage("search")}
+      >
+        🔍 Search
+      </button>
+
+
+      <button
+        className={navBtnClass("chatbot")}
+        onClick={() => setActivePage("chatbot")}
+      >
+        🤖 AI Assistant
+      </button>
+
+
+      <button
+        className={navBtnClass("profile")}
+        onClick={() => setActivePage("profile")}
+      >
+        👤 Profile
+      </button>
+
+
+      <button
+        className="notification-btn"
+        onClick={() => setActivePage("notifications")}
+      >
+        🔔 Notifications
+        {unreadNotifications > 0 && (
+          <span className="notification-badge">
+            {unreadNotifications}
+          </span>
+        )}
+      </button>
+
+    </nav>
+
+
+    {/* MAIN CONTENT */}
+    <main className="main-content">
+
+      {activePage === "notices" && isAdmin && (
+        <AddNotice api={API} />
+      )}
+
+      {activePage === "notes" && (
+        <Notes
+          isAdmin={isAdmin}
+          api={API}
+          studentSection={studentData?.section}
+        />
+      )}
+
+      {activePage === "assignments" && (
+        <Assignments
+          isAdmin={isAdmin}
+          api={API}
+        />
+      )}
+
+      {activePage === "papers" && (
+        <Papers
+          isAdmin={isAdmin}
+          api={API}
+        />
+      )}
+
+      {activePage === "materials" && (
+        <StudyMaterials
+          isAdmin={isAdmin}
+          api={API}
+        />
+      )}
+
+      {activePage === "timetable" && (
+        <Timetable
+          api={API}
+          isAdmin={isAdmin}
+          facultyInfo={facultyInfo}
+          studentSection={studentData?.section}
+        />
+      )}
+
+      {activePage === "attendance" && isAdmin && (
+        <Attendance api={API} />
+      )}
+
+      {activePage === "my-attendance" && facultyInfo && (
+        <MyAttendance
+          api={API}
+          facultyInfo={facultyInfo}
+        />
+      )}
+
+      {activePage === "hod-report" &&
+        (isAdmin || facultyInfo?.role === "hod") && (
+          <HodAttendanceReport
+            api={API}
+            isAdmin={isAdmin}
+            facultyInfo={facultyInfo}
+          />
+        )}
+
+      {activePage === "attendance-export" &&
+        (facultyInfo?.role === "hod" || isAdmin) && (
+          <AttendanceExport
+            api={API}
+            isAdmin={isAdmin}
+            facultyInfo={facultyInfo}
+          />
+        )}
+
+      {activePage === "manage-cr" &&
+        facultyInfo?.role === "hod" && (
+          <ManageCR
+            api={API}
+            facultyInfo={facultyInfo}
+          />
+        )}
+
+      {activePage === "chatbot" && (
+        <Chatbot api={API} />
+      )}
+
+      {activePage === "search" && (
+        <Search api={API} />
+      )}
+
+      {activePage === "profile" && (
+        isAdmin
+          ? <Profile api={API} isAdmin={isAdmin} />
+          : <Profile api={API} studentData={studentData} />
+      )}
+
+      {activePage === "notifications" && (
+        <Notifications
+          api={API}
+          onUnreadCountChange={setUnreadNotifications}
+        />
+      )}
+
+    </main>
+
+
+    {/* FOOTER */}
+    <footer className="footer">
+      © 2026 NRI Institute of Technology | CS-Allied Portal
+    </footer>
+
+  </div>
+);
 }
 
 export default App;

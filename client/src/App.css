@@ -1,33 +1,577 @@
+/* =========================================================
+   NRI HUB - APP GLOBAL STYLES
+   ========================================================= */
+
+/* ---------- RESET ---------- */
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background: #f5f5f5;
-  color: #1a1a1a;
+html,
+body,
+#root {
+  min-height: 100%;
+  width: 100%;
 }
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: #f5f5f5;
+  color: #333;
+}
+
+
+/* ---------- ROOT VARIABLES ---------- */
 
 :root {
-  --primary: #F15A29;
-  --primary-dark: #d44a1e;
-  --primary-light: #fff3ef;
-  --dark: #1a1a1a;
-  --gray: #666;
-  --light-gray: #f5f5f5;
+  --primary: #f15a29;
+  --primary-dark: #d94b1e;
+  --primary-light: #fff3ee;
+
+  --text: #333333;
+  --text-light: #666666;
+  --muted: #888888;
+
+  --background: #f5f5f5;
   --white: #ffffff;
-  --border: #e0e0e0;
-  --shadow: 0 2px 12px rgba(0,0,0,0.08);
-  --shadow-hover: 0 4px 20px rgba(241,90,41,0.15);
+
+  --border: #e3e3e3;
+
+  --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  --shadow-hover: 0 4px 15px rgba(241, 90, 41, 0.15);
 }
+
+
+/* ---------- COMMON ELEMENTS ---------- */
 
 button {
+  font-family: inherit;
   cursor: pointer;
+}
+
+input,
+textarea,
+select {
   font-family: inherit;
 }
 
-input, textarea, select {
-  font-family: inherit;
+
+/* =========================================================
+   MAIN APP
+   ========================================================= */
+
+.app {
+  min-height: 100vh;
+  width: 100%;
+  background: #f5f5f5;
+}
+
+
+/* =========================================================
+   TOP HEADER
+   ========================================================= */
+
+.top-header {
+  width: 100%;
+  height: 72px;
+
+  background: #ffffff;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 18px;
+
+  border-bottom: 1px solid #e1e1e1;
+
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+
+  position: relative;
+  z-index: 10;
+}
+
+
+/* ---------- BRAND ---------- */
+
+.brand-section {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  min-width: 0;
+}
+
+
+/* ---------- NRI LOGO ---------- */
+
+.nri-logo {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  overflow: hidden;
+}
+
+.nri-logo img {
+  width: 42px;
+  height: 42px;
+
+  object-fit: contain;
+
+  display: block;
+}
+
+
+/* ---------- COLLEGE INFORMATION ---------- */
+
+.college-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  min-width: 0;
+}
+
+.college-info h1 {
+  margin: 0;
+
+  font-size: 15px;
+  line-height: 18px;
+
+  font-weight: 700;
+
+  color: #333333;
+
+  white-space: nowrap;
+}
+
+.college-info p {
+  margin: 2px 0 0 0;
+
+  font-size: 9px;
+  line-height: 12px;
+
+  color: #777777;
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   HEADER LOGOUT
+   ========================================================= */
+
+.header-logout {
+  min-width: 67px;
+
+  height: 29px;
+
+  padding: 0 14px;
+
+  background: #ffffff;
+
+  border: 1px solid #ffb08e;
+
+  border-radius: 6px;
+
+  color: var(--primary);
+
+  font-size: 11px;
+  font-weight: 600;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.2s ease;
+
+  flex-shrink: 0;
+}
+
+.header-logout:hover {
+  background: var(--primary);
+  color: #ffffff;
+
+  border-color: var(--primary);
+}
+
+.header-logout:active {
+  transform: scale(0.98);
+}
+
+
+/* =========================================================
+   NAVIGATION
+   ========================================================= */
+
+.main-nav {
+  width: 100%;
+
+  min-height: 48px;
+
+  background: #ffffff;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 24px;
+
+  gap: 5px;
+
+  border-bottom: 1px solid #e1e1e1;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  white-space: nowrap;
+
+  scrollbar-width: thin;
+}
+
+
+/* ---------- NAVIGATION SCROLLBAR ---------- */
+
+.main-nav::-webkit-scrollbar {
+  height: 3px;
+}
+
+.main-nav::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+.main-nav::-webkit-scrollbar-thumb {
+  background: #d5d5d5;
+  border-radius: 10px;
+}
+
+
+/* =========================================================
+   NAVIGATION BUTTONS
+   ========================================================= */
+
+.nav-btn,
+.notification-btn {
+  position: relative;
+
+  height: 36px;
+
+  padding: 0 9px;
+
+  background: transparent;
+
+  border: none;
+
+  border-radius: 5px;
+
+  color: #666666;
+
+  font-size: 11px;
+
+  font-weight: 500;
+
+  white-space: nowrap;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 4px;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
+
+  flex-shrink: 0;
+}
+
+
+/* ---------- HOVER ---------- */
+
+.nav-btn:hover,
+.notification-btn:hover {
+  background: var(--primary-light);
+
+  color: var(--primary);
+}
+
+
+/* ---------- ACTIVE BUTTON ---------- */
+
+.nav-btn.active {
+  background: var(--primary);
+
+  color: #ffffff;
+
+  font-weight: 700;
+
+  box-shadow: 0 1px 4px rgba(241, 90, 41, 0.2);
+}
+
+
+/* Don't turn active button orange on click */
+.nav-btn.active:hover {
+  background: var(--primary-dark);
+
+  color: #ffffff;
+}
+
+
+/* =========================================================
+   NOTIFICATION BUTTON
+   ========================================================= */
+
+.notification-btn {
+  position: relative;
+}
+
+
+/* ---------- NOTIFICATION BADGE ---------- */
+
+.notification-badge {
+  position: absolute;
+
+  top: 1px;
+  right: 1px;
+
+  min-width: 15px;
+  height: 15px;
+
+  padding: 0 3px;
+
+  background: #e53935;
+
+  color: #ffffff;
+
+  border-radius: 50%;
+
+  font-size: 8px;
+  font-weight: 700;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  line-height: 15px;
+
+  border: 1px solid #ffffff;
+}
+
+
+/* =========================================================
+   MAIN CONTENT AREA
+   ========================================================= */
+
+.main-content {
+  width: 100%;
+
+  max-width: 1200px;
+
+  min-height: calc(100vh - 150px);
+
+  margin: 0 auto;
+
+  padding: 20px;
+}
+
+
+/* =========================================================
+   GENERIC CARD SUPPORT
+   ========================================================= */
+
+.card {
+  background: #ffffff;
+
+  border: 1px solid #eeeeee;
+
+  border-radius: 10px;
+
+  box-shadow: var(--shadow);
+}
+
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.footer {
+  width: 100%;
+
+  min-height: 70px;
+
+  background: #f5f5f5;
+
+  border-top: 1px solid #e0e0e0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  margin-top: 20px;
+
+  color: #999999;
+
+  font-size: 11px;
+
+  text-align: center;
+}
+
+
+/* =========================================================
+   FOCUS STATES
+   ========================================================= */
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid rgba(241, 90, 41, 0.35);
+
+  outline-offset: 2px;
+}
+
+
+/* =========================================================
+   MOBILE / TABLET
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+  .top-header {
+    height: 68px;
+
+    padding: 0 14px;
+  }
+
+  .main-nav {
+    padding: 0 14px;
+
+    gap: 4px;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+  .top-header {
+    height: 64px;
+
+    padding: 0 10px;
+  }
+
+  .nri-logo {
+    width: 36px;
+    height: 36px;
+  }
+
+  .nri-logo img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .college-info h1 {
+    font-size: 13px;
+    line-height: 16px;
+  }
+
+  .college-info p {
+    font-size: 8px;
+    line-height: 10px;
+  }
+
+  .header-logout {
+    height: 27px;
+
+    padding: 0 11px;
+
+    font-size: 10px;
+  }
+
+  .main-nav {
+    min-height: 45px;
+
+    padding: 0 8px;
+  }
+
+  .nav-btn,
+  .notification-btn {
+    height: 34px;
+
+    padding: 0 8px;
+
+    font-size: 10px;
+  }
+
+  .main-content {
+    padding: 12px;
+  }
+
+  .footer {
+    min-height: 60px;
+
+    padding: 15px;
+
+    font-size: 10px;
+  }
+}
+
+
+/* =========================================================
+   VERY SMALL SCREENS
+   ========================================================= */
+
+@media (max-width: 400px) {
+
+  .college-info h1 {
+    font-size: 12px;
+  }
+
+  .college-info p {
+    font-size: 7px;
+  }
+
+  .header-logout {
+    padding: 0 9px;
+  }
+
+  .nav-btn,
+  .notification-btn {
+    font-size: 9px;
+
+    padding: 0 7px;
+  }
 }
