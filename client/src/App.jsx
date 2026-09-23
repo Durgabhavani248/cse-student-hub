@@ -38,7 +38,10 @@ function App() {
 });
   const [facultyInfo, setFacultyInfo] = useState(null);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
-
+const canUploadContent =
+  isAdmin ||
+  facultyLoggedIn ||
+  studentData?.isCR === true;
 
   useEffect(() => {
     const storedFacultyInfo = localStorage.getItem("facultyInfo");
@@ -254,38 +257,48 @@ function App() {
     {/* MAIN CONTENT */}
     <main className="main-content">
 
-      {activePage === "notices" && isAdmin && (
-        <AddNotice api={API} />
-      )}
+    {activePage === "notices" &&
+  (isAdmin || facultyInfo?.role === "hod") && (
+    <AddNotice api={API} />
+)}
 
       {activePage === "notes" && (
-        <Notes
-          isAdmin={isAdmin}
-          api={API}
-          studentSection={studentData?.section}
-        />
-      )}
+  <Notes
+    canUpload={canUploadContent}
+    isAdmin={isAdmin}
+    api={API}
+    studentSection={studentData?.section}
+    facultyInfo={facultyInfo}
+  />
+)}
 
-      {activePage === "assignments" && (
-        <Assignments
-          isAdmin={isAdmin}
-          api={API}
-        />
-      )}
+{activePage === "assignments" && (
+  <Assignments
+    canUpload={canUploadContent}
+    isAdmin={isAdmin}
+    api={API}
+    studentSection={studentData?.section}
+    facultyInfo={facultyInfo}
+  />
+)}
 
       {activePage === "papers" && (
-        <Papers
-          isAdmin={isAdmin}
-          api={API}
-        />
-      )}
+  <Papers
+    canUpload={canUploadContent}
+    isAdmin={isAdmin}
+    api={API}
+    facultyInfo={facultyInfo}
+  />
+)}
 
-      {activePage === "materials" && (
-        <StudyMaterials
-          isAdmin={isAdmin}
-          api={API}
-        />
-      )}
+    {activePage === "materials" && (
+  <StudyMaterials
+    canUpload={canUploadContent}
+    isAdmin={isAdmin}
+    api={API}
+    facultyInfo={facultyInfo}
+  />
+)}
 
       {activePage === "timetable" && (
         <Timetable
@@ -303,12 +316,11 @@ function App() {
   />
 )}
 
-      {activePage === "my-attendance" && facultyInfo && (
-        <MyAttendance
-          api={API}
-          facultyInfo={facultyInfo}
-        />
-      )}
+    {activePage === "my-attendance" && studentLoggedIn && (
+  <MyAttendance
+    api={API}
+  />
+)}
 
       {activePage === "hod-report" &&
         (isAdmin || facultyInfo?.role === "hod") && (
