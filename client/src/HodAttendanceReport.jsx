@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import XLSX from "xlsx";
+import * as XLSX from "xlsx";
 
 // Admin has no facultyInfo/branch of their own, so admin picks a branch
 // manually and clicks Load; HOD's branch comes from their own account and
