@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-const BRANCHES = ["CSE", "CSE (AI & ML)", "CSE (Data Science)", "IT", "ECE", "EEE", "MECH", "CIVIL"];
+const BRANCHES = ["CS-Allied", "ECE", "EEE", "MECH", "CIVIL"];
 
 function ManageCR({ api, isAdmin, facultyInfo }) {
-  const [branch, setBranch] = useState(facultyInfo?.branch || "CSE");
+  const [branch, setBranch] = useState("CS-Allied");
   const [section, setSection] = useState("");
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(false);

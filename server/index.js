@@ -679,7 +679,31 @@ app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
 app.get("/api/health", (req, res) => {
   res.json({ status: "✅ Server running", timestamp: new Date() });
 });
+// Add this to server/index.js (before the PORT section)
 
+// ============== FACULTY ROUTES ==============
+app.get("/api/faculty", adminMiddleware, async (req, res) => {
+  try {
+    const faculty = await Faculty.find();
+    res.json(faculty);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ============== STUDENTS ROUTES ==============
+app.get("/api/students/:branch/:section", async (req, res) => {
+  try {
+    const { branch, section } = req.params;
+    const students = await User.find({ 
+      branch: branch === "CS-Allied" ? "CS-Allied" : branch,
+      section: String(section)
+    });
+    res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 // ============== SERVER START ==============
 
 const PORT = process.env.PORT || 3001;
