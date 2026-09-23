@@ -530,7 +530,19 @@ const canUploadContent =
   </div>
 );
 }
+const thStyle = {
+  padding: "12px 10px",
+  textAlign: "left",
+  color: "#999",
+  fontSize: "13px",
+  fontWeight: "600"
+};
 
+const tdStyle = {
+  padding: "12px 10px",
+  fontSize: "14px",
+  color: "#333"
+};
 function AdminPanel({ api, onOpenManageCR }) {
   const [stats, setStats] = useState(null);
 
