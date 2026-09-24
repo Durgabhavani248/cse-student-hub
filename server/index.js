@@ -1090,8 +1090,17 @@ app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
 
     const ops = [];
     for (const r of records) {
-      if (!r.rollNo || !r.status) continue;
-      const student = await User.findOne({ rollNo: r.rollNo });
+      if (
+  !r.rollNo ||
+  !["present", "absent"].includes(r.status)
+) {
+  continue;
+}
+      const student = await User.findOne({
+  rollNo: r.rollNo,
+  branch,
+  section
+});
       ops.push({
         updateOne: {
           filter: { rollNo: r.rollNo, subject, date },

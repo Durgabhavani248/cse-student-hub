@@ -53,27 +53,28 @@ const canUploadContent =
   facultyInfo?.role === "hod" ||
   studentData?.isCR === true;
 
-  useEffect(() => {
+ useEffect(() => {
   const adminToken = localStorage.getItem("token");
   const facultyToken = localStorage.getItem("facultyToken");
   const studentToken = localStorage.getItem("studentToken");
 
-  // Admin session is the highest priority
+  // Admin session is highest priority
   if (adminToken) {
     setIsAdmin(true);
     setFacultyLoggedIn(false);
     setStudentLoggedIn(false);
     setFacultyInfo(null);
     setStudentData(null);
-    return;
   }
 
-  if (facultyToken) {
+  // Faculty / HOD session
+  else if (facultyToken) {
     setIsAdmin(false);
     setFacultyLoggedIn(true);
     setStudentLoggedIn(false);
 
-    const storedFacultyInfo = localStorage.getItem("facultyInfo");
+    const storedFacultyInfo =
+      localStorage.getItem("facultyInfo");
 
     if (storedFacultyInfo) {
       try {
@@ -82,20 +83,22 @@ const canUploadContent =
         setFacultyInfo(null);
       }
     }
-
-    return;
   }
-   if (studentToken) {
+
+  // Student session
+  else if (studentToken) {
     setIsAdmin(false);
     setFacultyLoggedIn(false);
     setStudentLoggedIn(true);
   }
 
+  // Load notices for all logged-in users
   fetch(`${API}/api/notices`)
     .then((res) => {
       if (!res.ok) {
         throw new Error("Failed to load notices");
       }
+
       return res.json();
     })
     .then((data) => {
@@ -114,7 +117,7 @@ const canUploadContent =
     localStorage.removeItem("studentSection");
     localStorage.removeItem("studentName");
     localStorage.removeItem("studentInfo");
-    localStorage.removeItem("studentInfo");
+    
     setIsAdmin(false);
     setStudentLoggedIn(false);
     setFacultyLoggedIn(false);
@@ -241,7 +244,7 @@ const canUploadContent =
   </button>
 )}
 
-{facultyInfo?.role === "hod" && (
+{(isAdmin || facultyInfo?.role === "hod") && (
   <button
     className={navBtnClass("hod-report")}
     onClick={() => setActivePage("hod-report")}
@@ -452,11 +455,13 @@ const canUploadContent =
         />
       )}
 
-      {activePage === "attendance" && facultyLoggedIn && (
-  <Attendance
-    api={API}
-    facultyInfo={facultyInfo}
-  />
+ {activePage === "attendance" &&
+  facultyLoggedIn &&
+  facultyInfo?.role === "faculty" && (
+    <Attendance
+      api={API}
+      facultyInfo={facultyInfo}
+    />
 )}
 
     {activePage === "my-attendance" && studentLoggedIn && (
@@ -1007,6 +1012,96 @@ const uploadFaculty = async () => {
           marginBottom: "24px"
         }}
       >
+      {/* STUDENTS */}
+
+<div
+  style={{
+    background: "#fff",
+    border: "1px solid #e0e0e0",
+    borderRadius: "12px",
+    padding: "28px",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+  }}
+>
+  <h3
+    style={{
+      color: "#F15A29",
+      marginTop: 0,
+      fontSize: "20px"
+    }}
+  >
+    Upload Students Excel
+  </h3>
+
+  <p
+    style={{
+      color: "#666",
+      fontSize: "14px",
+      lineHeight: "1.5",
+      marginBottom: "4px"
+    }}
+  >
+    Excel format:{" "}
+    <strong>
+      rollNo, name, section, branch, year
+    </strong>
+  </p>
+
+  <p
+    style={{
+      color: "#999",
+      fontSize: "14px",
+      marginTop: 0
+    }}
+  >
+    (branch column optional — defaults to CSE if left blank)
+  </p>
+
+  <input
+    ref={studentFileInputRef}
+    type="file"
+    accept=".xlsx,.xls"
+    onChange={(e) =>
+      setStudentFile(
+        e.target.files?.[0] || null
+      )
+    }
+    style={{
+      margin: "10px 0 16px"
+    }}
+  />
+
+  <button
+    onClick={uploadStudents}
+    style={{
+      width: "100%",
+      padding: "12px",
+      background: "#F15A29",
+      color: "#fff",
+      border: "none",
+      borderRadius: "10px",
+      fontSize: "15px",
+      fontWeight: "600",
+      cursor: "pointer"
+    }}
+  >
+    Upload Students
+  </button>
+
+  {studentMessage && (
+    <p
+      style={{
+        color: studentMessage.startsWith("❌")
+          ? "#d32f2f"
+          : "#4CAF50",
+        marginTop: "12px",
+        fontWeight: "600"
+      }}
+    >
+      {studentMessage}
+    </p>
+  )}
+</div>
 
 
        {/* FACULTY / HOD */}
