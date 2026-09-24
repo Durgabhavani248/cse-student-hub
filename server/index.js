@@ -304,23 +304,17 @@ function canViewTimetable(user, branch, section) {
 // ============== AUTH ROUTES ==============
 
 app.post("/api/login", async (req, res) => {
-  try {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-      return res.status(400).json({ message: "Username and password required" });
-    }
-
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-      const token = jwt.sign({ username, role: "admin" }, process.env.JWT_SECRET, { expiresIn: "24h" });
-      return res.json({ token, role: "admin" });
-    }
-
-    res.status(401).json({ message: "Invalid credentials" });
-  } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: err.message });
+  const { username, password } = req.body;
+  
+  if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+    const token = jwt.sign({ 
+      username, 
+      role: "admin" 
+    }, process.env.JWT_SECRET);
+    return res.json({ token });
   }
+  
+  res.status(401).json({ message: "Invalid credentials" });
 });
 
 app.post("/api/student-login", async (req, res) => {
@@ -616,17 +610,19 @@ app.post("/api/notices", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
-app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
+app.delete("/api/notices/:id", async (req, res) => {
   try {
-    const notice = await Notice.findById(req.params.id);
-    if (!notice) return res.status(404).json({ message: "Notice not found" });
-    if (req.user.role === "hod" && notice.branch !== req.user.branch) {
-      return res.status(403).json({ message: "You can only delete your own branch's notices" });
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token" });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.username !== process.env.ADMIN_USERNAME) {
+      return res.status(403).json({ message: "Admin only" });
     }
-    await Notice.deleteOne({ _id: req.params.id });
-    res.json({ message: "Notice deleted" });
+
+    await Notice.findByIdAndDelete(req.params.id);
+    res.json({ message: "Deleted" });
   } catch (err) {
-    console.error("Delete notice error:", err);
     res.status(500).json({ message: err.message });
   }
 });
