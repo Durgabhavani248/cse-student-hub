@@ -117,9 +117,9 @@ const handleDeleteNotice = async (noticeId) => {
 
   if (!confirmDelete) return;
 
-  const token =
-    localStorage.getItem("token") ||
-    localStorage.getItem("facultyToken");
+  const token = isAdmin
+  ? localStorage.getItem("token")
+  : localStorage.getItem("facultyToken");
 
   try {
     const response = await fetch(
