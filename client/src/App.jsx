@@ -534,7 +534,7 @@ const canUploadContent =
 
     {/* FOOTER */}
     <footer className="footer">
-      © 2026 NRI Institute of Technology | CS-Allied Portal
+      © 2026 NRI Institute of Technology | acadamic Portal
     </footer>
 
   </div>

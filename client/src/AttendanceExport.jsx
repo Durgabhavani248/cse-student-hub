@@ -192,7 +192,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
               type="text"
               value={branch}
               onChange={(e) => setBranch(e.target.value)}
-              placeholder="e.g., CS-Allied"
+              placeholder="e.g., CSE"
               style={inputStyle}
               disabled={!isAdmin && facultyInfo?.branch}
             />
