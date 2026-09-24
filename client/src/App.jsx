@@ -57,6 +57,7 @@ const canUploadContent =
   const adminToken = localStorage.getItem("token");
   const facultyToken = localStorage.getItem("facultyToken");
   const studentToken = localStorage.getItem("studentToken");
+  
 
   // Admin session is highest priority
   if (adminToken) {
@@ -108,6 +109,45 @@ const canUploadContent =
       console.error("Error loading notices:", err);
     });
 }, []);
+
+const handleDeleteNotice = async (noticeId) => {
+  const confirmDelete = window.confirm(
+    "Are you sure you want to delete this notice?"
+  );
+
+  if (!confirmDelete) return;
+
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("facultyToken");
+
+  try {
+    const response = await fetch(
+      `${API}/api/notices/${noticeId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.message || "Failed to delete notice");
+      return;
+    }
+
+    setNotices((prev) =>
+      prev.filter((notice) => notice._id !== noticeId)
+    );
+
+  } catch (error) {
+    console.error("Delete notice error:", error);
+    alert("Server error while deleting notice");
+  }
+};
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -400,6 +440,53 @@ const canUploadContent =
                 ? new Date(notice.createdAt).toLocaleDateString()
                 : ""}
             </small>
+            {/* HOD / ADMIN ACTIONS */}
+{(isAdmin || facultyInfo?.role === "hod") && (
+  <div style={{ marginTop: "12px" }}>
+    
+    {/* VIEW BUTTON */}
+    <button
+      onClick={() => {
+        alert(
+          `Title: ${notice.title}\n\n${notice.description}`
+        );
+      }}
+      style={{
+        display: "block",
+        width: "100%",
+        padding: "9px 12px",
+        border: "none",
+        borderRadius: "7px",
+        background: "#F15A29",
+        color: "#fff",
+        cursor: "pointer",
+        fontWeight: "600"
+      }}
+    >
+      👁️ View
+    </button>
+
+    {/* DELETE BUTTON - BELOW VIEW */}
+    <button
+      onClick={() => handleDeleteNotice(notice._id)}
+      style={{
+        display: "block",
+        width: "100%",
+        padding: "9px 12px",
+        marginTop: "8px",
+        border: "none",
+        borderRadius: "7px",
+        background: "#dc3545",
+        color: "#fff",
+        cursor: "pointer",
+        fontWeight: "600"
+      }}
+    >
+      🗑️ Delete
+    </button>
+
+  </div>
+)}
           </div>
         ))}
       </div>
