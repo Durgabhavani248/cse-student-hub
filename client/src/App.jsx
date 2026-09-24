@@ -440,40 +440,17 @@ const handleDeleteNotice = async (noticeId) => {
                 ? new Date(notice.createdAt).toLocaleDateString()
                 : ""}
             </small>
-            {/* HOD / ADMIN ACTIONS */}
+                        {/* HOD / ADMIN ACTIONS */}
 {(isAdmin || facultyInfo?.role === "hod") && (
   <div style={{ marginTop: "12px" }}>
-    
-    {/* VIEW BUTTON */}
-    <button
-      onClick={() => {
-        alert(
-          `Title: ${notice.title}\n\n${notice.description}`
-        );
-      }}
-      style={{
-        display: "block",
-        width: "100%",
-        padding: "9px 12px",
-        border: "none",
-        borderRadius: "7px",
-        background: "#F15A29",
-        color: "#fff",
-        cursor: "pointer",
-        fontWeight: "600"
-      }}
-    >
-      👁️ View
-    </button>
 
-    {/* DELETE BUTTON - BELOW VIEW */}
+    {/* DELETE BUTTON */}
     <button
       onClick={() => handleDeleteNotice(notice._id)}
       style={{
         display: "block",
         width: "100%",
         padding: "9px 12px",
-        marginTop: "8px",
         border: "none",
         borderRadius: "7px",
         background: "#dc3545",
