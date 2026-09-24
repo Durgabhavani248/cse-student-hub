@@ -308,8 +308,8 @@ app.post("/api/login", async (req, res) => {
   
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     const token = jwt.sign({ 
-      username, 
-      role: "admin" 
+      username,
+      role: "admin"  // ✅ ADD THIS
     }, process.env.JWT_SECRET);
     return res.json({ token });
   }
@@ -616,13 +616,20 @@ app.delete("/api/notices/:id", async (req, res) => {
     if (!token) return res.status(401).json({ message: "No token" });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("🔐 Token decoded:", decoded);
+    
+    // Check if admin
     if (decoded.username !== process.env.ADMIN_USERNAME) {
+      console.log("❌ Not admin - username:", decoded.username);
       return res.status(403).json({ message: "Admin only" });
     }
 
-    await Notice.findByIdAndDelete(req.params.id);
-    res.json({ message: "Deleted" });
+    const result = await Notice.findByIdAndDelete(req.params.id);
+    console.log("✅ Deleted notice:", result);
+    
+    res.json({ message: "Deleted successfully" });
   } catch (err) {
+    console.error("❌ Delete error:", err.message);
     res.status(500).json({ message: err.message });
   }
 });
