@@ -36,6 +36,31 @@ const [studentLoggedIn, setStudentLoggedIn] = useState(
 const [facultyLoggedIn, setFacultyLoggedIn] = useState(
   !adminToken && !!facultyToken
 );
+const [studentNeedsPasswordChange, setStudentNeedsPasswordChange] =
+  useState(() => {
+    try {
+      const info = JSON.parse(
+        localStorage.getItem("studentInfo")
+      );
+
+      return info?.isFirstLogin === true;
+    } catch {
+      return false;
+    }
+  });
+
+const [facultyNeedsPasswordChange, setFacultyNeedsPasswordChange] =
+  useState(() => {
+    try {
+      const info = JSON.parse(
+        localStorage.getItem("facultyInfo")
+      );
+
+      return info?.isFirstLogin === true;
+    } catch {
+      return false;
+    }
+  });
   const [activePage, setActivePage] = useState("notices");
  const [studentData, setStudentData] = useState(() => {
   try {
@@ -44,7 +69,13 @@ const [facultyLoggedIn, setFacultyLoggedIn] = useState(
     return null;
   }
 });
-  const [facultyInfo, setFacultyInfo] = useState(null);
+  const [facultyInfo, setFacultyInfo] = useState(() => {
+  try {
+    return JSON.parse(localStorage.getItem("facultyInfo"));
+  } catch {
+    return null;
+  }
+});
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notices, setNotices] = useState([]);
 const canUploadContent =
@@ -153,6 +184,7 @@ const handleDeleteNotice = async (noticeId) => {
     localStorage.removeItem("token");
     localStorage.removeItem("studentToken");
     localStorage.removeItem("facultyToken");
+    localStorage.removeItem("facultyInfo");
     localStorage.removeItem("studentRollNo");
     localStorage.removeItem("studentSection");
     localStorage.removeItem("studentName");
@@ -162,20 +194,100 @@ const handleDeleteNotice = async (noticeId) => {
     setStudentLoggedIn(false);
     setFacultyLoggedIn(false);
     setFacultyInfo(null);
+    setStudentNeedsPasswordChange(false);
+setFacultyNeedsPasswordChange(false);
         setActivePage("notices");
   };
 
   if (!isAdmin && !studentLoggedIn && !facultyLoggedIn) {
   return (
-    <LoginPage
+   <LoginPage
+  api={API}
+
+  onStudentLogin={(student) => {
+    setStudentData(student);
+    setStudentLoggedIn(true);
+
+    setStudentNeedsPasswordChange(
+      student?.isFirstLogin === true
+    );
+  }}
+
+  onFacultyLogin={(faculty) => {
+    setFacultyInfo(faculty);
+    setFacultyLoggedIn(true);
+
+    setFacultyNeedsPasswordChange(
+      faculty?.isFirstLogin === true
+    );
+  }}
+
+  onAdminLogin={() => {
+    window.location.reload();
+  }}
+/>
+  );
+}
+// ===============================
+// STUDENT FIRST LOGIN
+// ===============================
+
+if (
+  studentLoggedIn &&
+  studentNeedsPasswordChange
+) {
+  return (
+    <ChangePassword
       api={API}
-      onStudentLogin={() => window.location.reload()}
-      onFacultyLogin={() => window.location.reload()}
-      onAdminLogin={() => window.location.reload()}
+      onSuccess={() => {
+
+        const updatedStudent = {
+          ...studentData,
+          isFirstLogin: false
+        };
+
+        localStorage.setItem(
+          "studentInfo",
+          JSON.stringify(updatedStudent)
+        );
+
+        setStudentData(updatedStudent);
+        setStudentNeedsPasswordChange(false);
+      }}
     />
   );
 }
 
+
+// ===============================
+// FACULTY / HOD FIRST LOGIN
+// ===============================
+
+if (
+  facultyLoggedIn &&
+  facultyNeedsPasswordChange
+) {
+  return (
+    <FacultyChangePassword
+      api={API}
+      onSuccess={() => {
+
+        const updatedFaculty = {
+          ...facultyInfo,
+          isFirstLogin: false
+        };
+
+        localStorage.setItem(
+          "facultyInfo",
+          JSON.stringify(updatedFaculty)
+        );
+
+        setFacultyInfo(updatedFaculty);
+        setFacultyNeedsPasswordChange(false);
+      }}
+    />
+  );
+}
  const navBtnClass = (page) =>
   `nav-btn ${activePage === page ? "active" : ""}`;
 
@@ -807,47 +919,6 @@ const uploadFaculty = async () => {
   }
 };
 
-  // =========================
-  // RESET FACULTY PASSWORD
-  // =========================
-
-  const resetFacultyPassword = async (facultyId) => {
-    const confirmReset = window.confirm(
-      `Reset password for ${facultyId}?`
-    );
-
-    if (!confirmReset) return;
-
-    try {
-      const response = await fetch(
-        `${api}/api/admin/reset-faculty-password/${encodeURIComponent(
-          facultyId
-        )}`,
-        {
-          method: "POST",
-          headers: authHeaders
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        alert(
-          `❌ ${data.message || "Password reset failed"}`
-        );
-        return;
-      }
-
-      alert(
-        data.message ||
-        "Faculty password reset successfully!"
-      );
-
-    } catch (error) {
-      console.error("Reset password error:", error);
-      alert("❌ Server error");
-    }
-  };
 
   // =========================
   // STAT CARD
@@ -1415,26 +1486,6 @@ const uploadFaculty = async () => {
                     </td>
 
                     <td style={tdStyle}>
-                      <button
-                        onClick={() =>
-                          resetFacultyPassword(
-                            faculty.facultyId
-                          )
-                        }
-                        style={{
-                          background: "#fff",
-                          color: "#F15A29",
-                          border:
-                            "1px solid #F15A29",
-                          padding: "7px 14px",
-                          borderRadius: "7px",
-                          cursor: "pointer",
-                          fontWeight: "600",
-                          fontSize: "12px"
-                        }}
-                      >
-                        Reset Password
-                      </button>
                     </td>
                   </tr>
                 ))}
