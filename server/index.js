@@ -496,26 +496,62 @@ app.get("/api/faculty", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
-app.post("/api/admin/reset-faculty-password/:facultyId", adminMiddleware, async (req, res) => {
+
+app.post("/api/faculty/forgot-password", async (req, res) => {
   try {
-    if (!process.env.DEFAULT_PASSWORD) {
-      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+    const { facultyId, name, newPassword } = req.body;
+
+    if (!facultyId || !name || !newPassword) {
+      return res.status(400).json({
+        message: "Faculty ID, Name and New Password are required"
+      });
     }
-    const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
-    const result = await Faculty.updateOne(
-      { facultyId: req.params.facultyId },
-      { password: hashedPassword, isFirstLogin: true }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters"
+      });
+    }
+
+    const faculty = await Faculty.findOne({
+      facultyId: facultyId.trim(),
+      name: name.trim()
+    });
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty details not matched!"
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      newPassword,
+      10
     );
-    if (result.matchedCount === 0) {
-      return res.status(404).json({ message: "Faculty not found" });
-    }
-    res.json({ message: `Password reset to default for ${req.params.facultyId}` });
+
+    await Faculty.updateOne(
+      { facultyId: facultyId.trim() },
+      {
+        password: hashedPassword,
+        isFirstLogin: false
+      }
+    );
+
+    res.json({
+      message: "Password reset successful!"
+    });
+
   } catch (err) {
-    console.error("Reset faculty password error:", err);
-    res.status(500).json({ message: err.message });
+    console.error(
+      "Faculty forgot password error:",
+      err
+    );
+
+    res.status(500).json({
+      message: "Server error"
+    });
   }
 });
-
 app.post("/api/student/change-password", studentMiddleware, async (req, res) => {
   try {
     const rollNo = req.user.rollNo;
@@ -1409,73 +1445,217 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
   }
 });
 
-// Bulk faculty/HOD upload via Excel — Excel columns: facultyId, name, branch, role, sections
+// Bulk faculty/HOD upload via Excel
+// Excel columns: facultyId, name, branch, role, sections
 app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
-      return res.status(400).json({ message: "No file uploaded" });
+      return res.status(400).json({
+        message: "No file uploaded"
+      });
     }
+
     if (!process.env.DEFAULT_PASSWORD) {
-      return res.status(500).json({ message: "Server misconfigured: DEFAULT_PASSWORD env var is not set" });
+      return res.status(500).json({
+        message: "Server misconfigured: DEFAULT_PASSWORD env var is not set"
+      });
     }
 
     const file = req.files.file;
-    const workbook = XLSX.read(file.data, { type: "buffer" });
+
+    const workbook = XLSX.read(file.data, {
+      type: "buffer"
+    });
+
     const sheetName = workbook.SheetNames[0];
-    const data = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+    const data = XLSX.utils.sheet_to_json(
+      workbook.Sheets[sheetName]
+    );
 
     if (!data || data.length === 0) {
-      return res.status(400).json({ message: "Excel file is empty" });
+      return res.status(400).json({
+        message: "Excel file is empty"
+      });
     }
 
-    let added = 0, skipped = 0;
+    let added = 0;
+    let updated = 0;
+    let skipped = 0;
+
     const skippedReasons = [];
 
     for (const row of data) {
-      const facultyId = String(row.facultyId || "").trim();
-      const name = String(row.name || "").trim();
-      const branch = String(row.branch || "").trim();
-      const role = String(row.role || "faculty").trim().toLowerCase() === "hod" ? "hod" : "faculty";
-      const sections = String(row.sections || "").split(",").map(s => s.trim()).filter(Boolean);
 
+      const facultyId = String(
+        row.facultyId || ""
+      ).trim();
+
+      const name = String(
+        row.name || ""
+      ).trim();
+
+      const branch = String(
+        row.branch || ""
+      ).trim();
+
+      const role =
+        String(row.role || "faculty")
+          .trim()
+          .toLowerCase() === "hod"
+          ? "hod"
+          : "faculty";
+
+      const sections = String(
+        row.sections || ""
+      )
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+
+      // Validation
       if (!facultyId || !name || !branch) {
         skipped++;
-        skippedReasons.push(`Row skipped (missing facultyId/name/branch): ${JSON.stringify(row)}`);
+
+        skippedReasons.push(
+          `Row skipped (missing facultyId/name/branch): ${JSON.stringify(row)}`
+        );
+
         continue;
       }
 
-      const existing = await Faculty.findOne({ facultyId });
+
+      // Check existing faculty
+      const existing = await Faculty.findOne({
+        facultyId
+      });
+
+
+      // =====================================
+      // EXISTING FACULTY → UPDATE
+      // =====================================
+
       if (existing) {
-        skipped++;
-        skippedReasons.push(`${facultyId} already exists`);
+
+        // Prevent duplicate HOD in same branch
+        if (
+          role === "hod" &&
+          (
+            existing.role !== "hod" ||
+            existing.branch !== branch
+          )
+        ) {
+
+          const existingHod = await Faculty.findOne({
+            branch,
+            role: "hod",
+            facultyId: { $ne: facultyId }
+          });
+
+          if (existingHod) {
+            skipped++;
+
+            skippedReasons.push(
+              `${facultyId} cannot be updated as HOD because ${branch} already has HOD ${existingHod.facultyId}`
+            );
+
+            continue;
+          }
+        }
+
+
+        // Update Excel-related fields only
+        // Password is NOT changed
+        // isFirstLogin is NOT changed
+
+        existing.name = name;
+        existing.branch = branch;
+        existing.role = role;
+
+        existing.assignedSections =
+          role === "hod"
+            ? []
+            : sections;
+
+        await existing.save();
+
+        updated++;
+
         continue;
       }
+
+
+      // =====================================
+      // NEW FACULTY → ADD
+      // =====================================
 
       if (role === "hod") {
-        const existingHod = await Faculty.findOne({ branch, role: "hod" });
+
+        const existingHod = await Faculty.findOne({
+          branch,
+          role: "hod"
+        });
+
         if (existingHod) {
           skipped++;
-          skippedReasons.push(`${branch} already has an HOD (${existingHod.facultyId}), skipped ${facultyId}`);
+
+          skippedReasons.push(
+            `${branch} already has an HOD (${existingHod.facultyId}), skipped ${facultyId}`
+          );
+
           continue;
         }
       }
 
-      const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
+
+      const hashedPassword = await bcrypt.hash(
+        process.env.DEFAULT_PASSWORD,
+        10
+      );
+
+
       await Faculty.create({
         facultyId,
         name,
         branch,
         role,
-        assignedSections: role === "hod" ? [] : sections,
-        password: hashedPassword
+
+        assignedSections:
+          role === "hod"
+            ? []
+            : sections,
+
+        password: hashedPassword,
+
+        isFirstLogin: true
       });
+
       added++;
     }
 
-    res.json({ message: `✅ Added: ${added} ⏭️ Skipped: ${skipped}`, skippedReasons });
+
+    res.json({
+      message:
+        `✅ Added: ${added} 🔄 Updated: ${updated} ⏭️ Skipped: ${skipped}`,
+
+      added,
+      updated,
+      skipped,
+
+      skippedReasons
+    });
+
   } catch (err) {
-    console.error("Upload faculty error:", err);
-    res.status(500).json({ message: err.message });
+
+    console.error(
+      "Upload faculty error:",
+      err
+    );
+
+    res.status(500).json({
+      message: err.message
+    });
   }
 });
 
