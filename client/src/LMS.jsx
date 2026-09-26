@@ -2251,6 +2251,3 @@ export default function LMS({
     </div>
   );
 }
-```
-
-```
