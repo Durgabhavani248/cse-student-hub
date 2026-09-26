@@ -19,8 +19,10 @@ import Search from "./Search";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
 import ManageCR from "./ManageCR";
+import LMS from "./LMS";
 import LoginPage from "./LoginPage";
 import "./App.css";
+
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -425,6 +427,13 @@ if (
   </button>
 )}
 
+<button
+  className={navBtnClass("lms")}
+  onClick={() => setActivePage("lms")}
+>
+  📚 LMS
+</button>
+
 
       <button
         className={navBtnClass("search")}
@@ -474,7 +483,15 @@ if (
 
 
     {/* MAIN CONTENT */}
-    <main className="main-content">
+   <main className="main-content">
+    {activePage === "lms" && (
+  <LMS
+    api={API}
+    isAdmin={isAdmin}
+    facultyInfo={facultyInfo}
+    studentInfo={studentData}
+  />
+)}
 {activePage === "admin" && isAdmin && (
   <AdminPanel
     api={API}

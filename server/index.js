@@ -18,7 +18,12 @@ if (!fs.existsSync("uploads")) {
 }
 
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({
+  path: new URL("./.env", import.meta.url)
+});
+
+console.log("MONGO_URI loaded:", !!process.env.MONGO_URI);
+
 
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
@@ -82,6 +87,7 @@ app.use(express.urlencoded({ limit: "50mb" }));
 app.use(fileUpload());
 
 // ============== DATABASE CONNECTION ==============
+
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ MongoDB Connected ✅"))
   .catch(err => console.error("MongoDB Error:", err));
@@ -197,6 +203,233 @@ const TimetableSchema = new mongoose.Schema({
 // exists in every branch now)
 TimetableSchema.index({ branch: 1, section: 1 }, { unique: true });
 
+// ==================== LMS EXAM SCHEMAS ====================
+
+// Exam Schema
+const ExamSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  subject: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  description: {
+    type: String,
+    default: ""
+  },
+
+  instructions: {
+    type: String,
+    default: ""
+  },
+
+  branch: {
+    type: String,
+    required: true,
+    trim: true
+  },
+
+  sections: [
+    {
+      section: {
+        type: String,
+        required: true,
+        trim: true
+      },
+
+      startAt: {
+        type: Date,
+        required: true
+      },
+
+      endAt: {
+        type: Date,
+        required: true
+      }
+    }
+  ],
+
+  durationMinutes: {
+    type: Number,
+    required: true,
+    min: 1
+  },
+
+  questions: [
+    {
+      question: {
+        type: String,
+        required: true
+      },
+
+      type: {
+        type: String,
+        enum: ["mcq", "true-false"],
+        required: true
+      },
+
+      options: {
+        type: [String],
+        default: []
+      },
+
+      correctAnswer: {
+        type: String,
+        required: true
+      },
+
+      marks: {
+        type: Number,
+        required: true,
+        min: 0
+      },
+
+      negativeMarks: {
+        type: Number,
+        default: 0,
+        min: 0
+      }
+    }
+  ],
+
+  totalMarks: {
+    type: Number,
+    default: 0
+  },
+
+  status: {
+    type: String,
+    enum: ["draft", "published"],
+    default: "draft"
+  },
+
+  createdBy: {
+    role: {
+      type: String,
+      required: true
+    },
+
+    id: {
+      type: String,
+      required: true
+    }
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+
+// Exam Attempt Schema
+const ExamAttemptSchema = new mongoose.Schema({
+  studentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+
+  examId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Exam",
+    required: true
+  },
+
+  branch: {
+    type: String,
+    required: true
+  },
+
+  section: {
+    type: String,
+    required: true
+  },
+
+  startedAt: {
+    type: Date,
+    required: true
+  },
+
+  submittedAt: {
+    type: Date,
+    default: null
+  },
+
+  status: {
+    type: String,
+    enum: ["in-progress", "submitted", "auto-submitted"],
+    default: "in-progress"
+  },
+
+  tabSwitchCount: {
+    type: Number,
+    default: 0
+  },
+
+  answers: [
+    {
+      questionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        required: true
+      },
+
+      answer: {
+        type: String,
+        default: ""
+      }
+    }
+  ],
+
+  score: {
+    type: Number,
+    default: 0
+  },
+
+  totalMarks: {
+    type: Number,
+    default: 0
+  },
+
+  percentage: {
+    type: Number,
+    default: 0
+  },
+
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
+
+// One student can attempt one exam only once
+ExamAttemptSchema.index(
+  {
+    studentId: 1,
+    examId: 1
+  },
+  {
+    unique: true
+  }
+);
+
+
+// Models
+const Exam = mongoose.model("Exam", ExamSchema);
+const ExamAttempt = mongoose.model("ExamAttempt", ExamAttemptSchema);
+
 // ============== MODELS ==============
 const User = mongoose.model("User", UserSchema);
 const Faculty = mongoose.model("Faculty", FacultySchema);
@@ -207,6 +440,7 @@ const Assignment = mongoose.model("Assignment", AssignmentSchema);
 const Paper = mongoose.model("Paper", PaperSchema);
 const Material = mongoose.model("Material", MaterialSchema);
 const Timetable = mongoose.model("Timetable", TimetableSchema);
+
 
 // ============== MIDDLEWARE FUNCTIONS ==============
 
@@ -603,6 +837,1083 @@ app.post("/api/student/forgot-password", async (req, res) => {
   }
 });
 
+// ==================== LMS EXAM ROUTES ====================
+
+// Create a new exam
+app.post("/api/lms/exams", verifyAnyToken, async (req, res) => {
+  try {
+    const { title, subject, description, instructions, branch, sections, durationMinutes, questions } = req.body;
+
+    // Only Admin, HOD and Faculty can create exams
+    if (!["admin", "hod", "faculty"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You are not allowed to create exams"
+      });
+    }
+
+    if (!title || !subject || !branch) {
+      return res.status(400).json({
+        message: "Title, subject and branch are required"
+      });
+    }
+
+    if (!Array.isArray(sections) || sections.length === 0) {
+      return res.status(400).json({
+        message: "At least one section schedule is required"
+      });
+    }
+
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({
+        message: "At least one question is required"
+      });
+    }
+
+    if (!durationMinutes || Number(durationMinutes) <= 0) {
+      return res.status(400).json({
+        message: "Valid exam duration is required"
+      });
+    }
+    // HOD can create only for own branch
+    if (
+      req.user.role === "hod" &&
+      req.user.branch !== branch
+    ) {
+      return res.status(403).json({
+        message: "HOD can create exams only for their own branch"
+      });
+    }
+
+    // Faculty can create only for own branch
+    if (
+      req.user.role === "faculty" &&
+      req.user.branch !== branch
+    ) {
+      return res.status(403).json({
+        message: "Faculty can create exams only for their own branch"
+      });
+    }
+
+    // Faculty can create only for assigned sections
+    if (req.user.role === "faculty") {
+      const assignedSections = req.user.assignedSections || [];
+
+      const unauthorizedSection = sections.some(
+        item => !assignedSections.includes(item.section)
+      );
+
+      if (unauthorizedSection) {
+        return res.status(403).json({
+          message: "You can create exams only for your assigned sections"
+        });
+      }
+    }
+
+    // Validate section schedules
+    for (const item of sections) {
+      if (!item.section || !item.startAt || !item.endAt) {
+        return res.status(400).json({
+          message: "Each section must have section, start time and end time"
+        });
+      }
+
+      const start = new Date(item.startAt);
+      const end = new Date(item.endAt);
+
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return res.status(400).json({
+          message: `Invalid date/time for section ${item.section}`
+        });
+      }
+
+      if (start >= end) {
+        return res.status(400).json({
+          message: `End time must be after start time for section ${item.section}`
+        });
+      }
+    }
+
+    // Calculate total marks from questions
+    const totalMarks = questions.reduce(
+      (sum, q) => sum + Number(q.marks || 0),
+      0
+    );
+
+    const exam = await Exam.create({
+      title: title.trim(),
+      subject: subject.trim(),
+      description: description || "",
+      instructions: instructions || "",
+      branch: branch.trim(),
+      sections,
+      durationMinutes: Number(durationMinutes),
+      questions,
+      totalMarks,
+      status: "draft",
+      createdBy: {
+        role: req.user.role,
+        id:
+          req.user.facultyId ||
+          req.user.rollNo ||
+          req.user.id ||
+          "admin"
+      },
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    res.status(201).json({
+      message: "Exam created successfully",
+      exam
+    });
+
+  } catch (err) {
+    console.error("Create LMS exam error:", err);
+
+    res.status(500).json({
+      message: "Failed to create exam",
+      error: err.message
+    });
+  }
+});
+// Get exams
+app.get("/api/lms/exams", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    let filter = {};
+
+    // Students and CRs can see published exams for their branch and section
+    if (req.user.role === "student") {
+      filter = {
+        branch: req.user.branch,
+        status: "published",
+        "sections.section": req.user.section
+      };
+    }
+
+    // Faculty sees exams created by them
+    else if (req.user.role === "faculty") {
+      filter = {
+        branch: req.user.branch,
+        "createdBy.id":
+          req.user.facultyId ||
+          req.user.employeeId ||
+          req.user.id
+      };
+    }
+
+    // HOD sees all exams of their branch
+    else if (req.user.role === "hod") {
+      filter = {
+        branch: req.user.branch
+      };
+    }
+
+    // Admin sees all exams
+    else if (req.user.role === "admin") {
+      filter = {};
+    }
+
+    else {
+      return res.status(403).json({
+        message: "You are not allowed to view exams"
+      });
+    }
+
+    const exams = await Exam.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      exams
+    });
+
+  } catch (err) {
+    console.error("Get LMS exams error:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch exams",
+      error: err.message
+    });
+  }
+});
+// Publish an exam
+app.patch("/api/lms/exams/:examId/publish", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only Admin, HOD and Faculty can publish exams
+    if (!["admin", "hod", "faculty"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You are not allowed to publish exams"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId);
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    // HOD can publish only exams of their branch
+    if (
+      req.user.role === "hod" &&
+      req.user.branch !== exam.branch
+    ) {
+      return res.status(403).json({
+        message: "HOD can publish only exams of their own branch"
+      });
+    }
+
+    // Faculty can publish only exams of their branch
+    if (
+      req.user.role === "faculty" &&
+      req.user.branch !== exam.branch
+    ) {
+      return res.status(403).json({
+        message: "Faculty can publish only exams of their own branch"
+      });
+    }
+
+    // Faculty can publish only exams created by them
+    if (req.user.role === "faculty") {
+      const facultyId =
+        req.user.facultyId ||
+        req.user.employeeId ||
+        req.user.id;
+
+      if (String(exam.createdBy.id) !== String(facultyId)) {
+        return res.status(403).json({
+          message: "You can publish only exams created by you"
+        });
+      }
+    }
+
+    exam.status = "published";
+    exam.updatedAt = new Date();
+
+    await exam.save();
+
+    res.json({
+      message: "Exam published successfully",
+      exam
+    });
+
+  } catch (err) {
+    console.error("Publish LMS exam error:", err);
+
+    res.status(500).json({
+      message: "Failed to publish exam",
+      error: err.message
+    });
+  }
+});
+// Start an exam
+app.post("/api/lms/exams/:examId/start", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only students and CRs can start exams
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        message: "Only students can start exams"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId).lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    // Exam must be published
+    if (exam.status !== "published") {
+      return res.status(403).json({
+        message: "This exam is not available yet"
+      });
+    }
+
+    // Check student's branch
+    if (exam.branch !== req.user.branch) {
+      return res.status(403).json({
+        message: "This exam is not assigned to your branch"
+      });
+    }
+
+    // Find student's section schedule
+    const sectionSchedule = exam.sections.find(
+      item => item.section === req.user.section
+    );
+
+    if (!sectionSchedule) {
+      return res.status(403).json({
+        message: "This exam is not assigned to your section"
+      });
+    }
+
+    const now = new Date();
+    const startAt = new Date(sectionSchedule.startAt);
+    const endAt = new Date(sectionSchedule.endAt);
+
+    // Before exam start
+    if (now < startAt) {
+      return res.status(403).json({
+        message: "Exam is not available yet",
+        startAt
+      });
+    }
+
+    // After exam end
+    if (now >= endAt) {
+      return res.status(403).json({
+        message: "Exam window has ended",
+        endAt
+      });
+    }
+
+    // Student ID
+    const studentId = req.user.id || req.user._id;
+
+    if (!studentId) {
+      return res.status(400).json({
+        message: "Student ID not found"
+      });
+    }
+
+    // Check whether student already has an attempt
+    const existingAttempt = await ExamAttempt.findOne({
+      studentId,
+      examId: exam._id
+    });
+
+    // Already submitted
+    if (
+      existingAttempt &&
+      (
+        existingAttempt.status === "submitted" ||
+        existingAttempt.status === "auto-submitted"
+      )
+    ) {
+      return res.status(403).json({
+        message: "You have already completed this exam"
+      });
+    }
+
+    // Resume existing in-progress attempt
+    if (
+      existingAttempt &&
+      existingAttempt.status === "in-progress"
+    ) {
+      const durationEnd = new Date(
+        existingAttempt.startedAt.getTime() +
+        exam.durationMinutes * 60 * 1000
+      );
+
+      const hardEnd = durationEnd < endAt
+        ? durationEnd
+        : endAt;
+
+      // Attempt time already ended
+      if (now >= hardEnd) {
+        existingAttempt.status = "auto-submitted";
+        existingAttempt.submittedAt = now;
+
+        await existingAttempt.save();
+
+        return res.status(403).json({
+          message: "Exam time has ended"
+        });
+      }
+
+      return res.json({
+        message: "Existing exam attempt resumed",
+        attempt: existingAttempt,
+        exam: {
+          id: exam._id,
+          title: exam.title,
+          subject: exam.subject,
+          description: exam.description,
+          instructions: exam.instructions,
+          questions: exam.questions.map(q => ({
+            _id: q._id,
+            question: q.question,
+            type: q.type,
+            options: q.options,
+            marks: q.marks,
+            negativeMarks: q.negativeMarks
+          })),
+          totalMarks: exam.totalMarks,
+          durationMinutes: exam.durationMinutes,
+          examEndAt: hardEnd
+        }
+      });
+    }
+
+    // Create a new attempt
+    const attempt = await ExamAttempt.create({
+      studentId,
+      examId: exam._id,
+      branch: req.user.branch,
+      section: req.user.section,
+      startedAt: now,
+      status: "in-progress",
+      tabSwitchCount: 0,
+      answers: [],
+      score: 0,
+      totalMarks: exam.totalMarks,
+      percentage: 0
+    });
+
+    const durationEnd = new Date(
+      now.getTime() +
+      exam.durationMinutes * 60 * 1000
+    );
+
+    const hardEnd = durationEnd < endAt
+      ? durationEnd
+      : endAt;
+
+    res.status(201).json({
+      message: "Exam started successfully",
+      attempt: {
+        id: attempt._id,
+        startedAt: attempt.startedAt,
+        status: attempt.status,
+        tabSwitchCount: attempt.tabSwitchCount
+      },
+      exam: {
+        id: exam._id,
+        title: exam.title,
+        subject: exam.subject,
+        description: exam.description,
+        instructions: exam.instructions,
+        questions: exam.questions.map(q => ({
+          _id: q._id,
+          question: q.question,
+          type: q.type,
+          options: q.options,
+          marks: q.marks,
+          negativeMarks: q.negativeMarks
+        })),
+        totalMarks: exam.totalMarks,
+        durationMinutes: exam.durationMinutes,
+        examEndAt: hardEnd
+      }
+    });
+
+  } catch (err) {
+    console.error("Start LMS exam error:", err);
+
+    res.status(500).json({
+      message: "Failed to start exam",
+      error: err.message
+    });
+  }
+});
+// Save exam answers
+app.patch("/api/lms/exams/:examId/attempt/:attemptId/answers", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only students and CRs can save answers
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        message: "Only students can save exam answers"
+      });
+    }
+
+    const { answers } = req.body;
+
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({
+        message: "Answers must be an array"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId).lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    const studentId = req.user.id || req.user._id;
+
+    const attempt = await ExamAttempt.findOne({
+      _id: req.params.attemptId,
+      examId: exam._id,
+      studentId
+    });
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: "Exam attempt not found"
+      });
+    }
+
+    // Attempt must still be active
+    if (attempt.status !== "in-progress") {
+      return res.status(403).json({
+        message: "This exam attempt is no longer active"
+      });
+    }
+
+    const sectionSchedule = exam.sections.find(
+      item => item.section === attempt.section
+    );
+
+    if (!sectionSchedule) {
+      return res.status(403).json({
+        message: "Exam section schedule not found"
+      });
+    }
+
+    const now = new Date();
+    const sectionEnd = new Date(sectionSchedule.endAt);
+
+    const durationEnd = new Date(
+      attempt.startedAt.getTime() +
+      exam.durationMinutes * 60 * 1000
+    );
+
+    const hardEnd = durationEnd < sectionEnd
+      ? durationEnd
+      : sectionEnd;
+
+    // Do not allow saving after exam time
+    if (now >= hardEnd) {
+      attempt.status = "auto-submitted";
+      attempt.submittedAt = now;
+
+      await attempt.save();
+
+      return res.status(403).json({
+        message: "Exam time has ended. Your attempt was auto-submitted."
+      });
+    }
+
+    // Validate and save answers
+    const validQuestionIds = new Set(
+      exam.questions.map(q => String(q._id))
+    );
+
+    const cleanedAnswers = [];
+
+    for (const item of answers) {
+      if (!item || !item.questionId) {
+        continue;
+      }
+
+      if (!validQuestionIds.has(String(item.questionId))) {
+        continue;
+      }
+
+      cleanedAnswers.push({
+        questionId: item.questionId,
+        answer:
+          item.answer === undefined ||
+          item.answer === null
+            ? ""
+            : String(item.answer)
+      });
+    }
+
+    attempt.answers = cleanedAnswers;
+
+    await attempt.save();
+
+    res.json({
+      message: "Answers saved successfully",
+      answers: attempt.answers
+    });
+
+  } catch (err) {
+    console.error("Save LMS exam answers error:", err);
+
+    res.status(500).json({
+      message: "Failed to save answers",
+      error: err.message
+    });
+  }
+});
+// Submit exam and auto-evaluate
+app.post("/api/lms/exams/:examId/attempt/:attemptId/submit", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only students and CRs can submit exams
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        message: "Only students can submit exams"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId).lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    const studentId = req.user.id || req.user._id;
+
+    const attempt = await ExamAttempt.findOne({
+      _id: req.params.attemptId,
+      examId: exam._id,
+      studentId
+    });
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: "Exam attempt not found"
+      });
+    }
+
+    // Prevent submitting the same attempt again
+    if (attempt.status !== "in-progress") {
+      return res.status(403).json({
+        message: "This exam attempt has already been submitted"
+      });
+    }
+
+    const sectionSchedule = exam.sections.find(
+      item => item.section === attempt.section
+    );
+
+    if (!sectionSchedule) {
+      return res.status(403).json({
+        message: "Exam section schedule not found"
+      });
+    }
+
+    const now = new Date();
+    const sectionEnd = new Date(sectionSchedule.endAt);
+
+    const durationEnd = new Date(
+      attempt.startedAt.getTime() +
+      exam.durationMinutes * 60 * 1000
+    );
+
+    const hardEnd = durationEnd < sectionEnd
+      ? durationEnd
+      : sectionEnd;
+
+    // Get answers from saved attempt
+    const submittedAnswers = new Map(
+      attempt.answers.map(item => [
+        String(item.questionId),
+        String(item.answer || "")
+      ])
+    );
+
+    let score = 0;
+
+    // Evaluate every question
+    for (const question of exam.questions) {
+      const studentAnswer =
+        submittedAnswers.get(String(question._id)) || "";
+
+      // Unanswered question
+      if (!studentAnswer) {
+        continue;
+      }
+
+      const correctAnswer = String(question.correctAnswer);
+
+      // Correct answer
+      if (studentAnswer === correctAnswer) {
+        score += Number(question.marks || 0);
+      }
+
+      // Wrong answer
+      else if (Number(question.negativeMarks || 0) > 0) {
+        score -= Number(question.negativeMarks || 0);
+      }
+    }
+
+    // Prevent score from going below zero
+    score = Math.max(0, score);
+
+    const totalMarks = Number(exam.totalMarks || 0);
+
+    const percentage =
+      totalMarks > 0
+        ? Number(((score / totalMarks) * 100).toFixed(2))
+        : 0;
+
+    // Determine submission type
+    const autoSubmitted = now >= hardEnd;
+
+    attempt.score = score;
+    attempt.totalMarks = totalMarks;
+    attempt.percentage = percentage;
+    attempt.submittedAt = now;
+    attempt.status = autoSubmitted
+      ? "auto-submitted"
+      : "submitted";
+
+    await attempt.save();
+
+    res.json({
+      message: autoSubmitted
+        ? "Exam time ended. Exam auto-submitted successfully."
+        : "Exam submitted successfully.",
+      result: {
+        attemptId: attempt._id,
+        examId: exam._id,
+        score,
+        totalMarks,
+        percentage,
+        status: attempt.status,
+        submittedAt: attempt.submittedAt
+      }
+    });
+
+  } catch (err) {
+    console.error("Submit LMS exam error:", err);
+
+    res.status(500).json({
+      message: "Failed to submit exam",
+      error: err.message
+    });
+  }
+});
+// Record exam tab switch
+app.post("/api/lms/exams/:examId/attempt/:attemptId/tab-switch", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only students and CRs can trigger tab-switch tracking
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        message: "Only students can take exams"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId).lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    const studentId = req.user.id || req.user._id;
+
+    const attempt = await ExamAttempt.findOne({
+      _id: req.params.attemptId,
+      examId: exam._id,
+      studentId
+    });
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: "Exam attempt not found"
+      });
+    }
+
+    // Ignore tab switches after submission
+    if (attempt.status !== "in-progress") {
+      return res.status(403).json({
+        message: "This exam attempt is no longer active"
+      });
+    }
+
+    // Increase tab switch count
+    attempt.tabSwitchCount =
+      Number(attempt.tabSwitchCount || 0) + 1;
+
+    // First violation → warning only
+    if (attempt.tabSwitchCount === 1) {
+      await attempt.save();
+
+      return res.json({
+        message: "Tab switch detected",
+        tabSwitchCount: attempt.tabSwitchCount,
+        warning: true,
+        autoSubmitted: false
+      });
+    }
+
+    // Second violation → automatically submit
+    const submittedAnswers = new Map(
+      attempt.answers.map(item => [
+        String(item.questionId),
+        String(item.answer || "")
+      ])
+    );
+
+    let score = 0;
+
+    for (const question of exam.questions) {
+      const studentAnswer =
+        submittedAnswers.get(String(question._id)) || "";
+
+      if (!studentAnswer) {
+        continue;
+      }
+
+      const correctAnswer = String(question.correctAnswer);
+
+      if (studentAnswer === correctAnswer) {
+        score += Number(question.marks || 0);
+      } else if (Number(question.negativeMarks || 0) > 0) {
+        score -= Number(question.negativeMarks || 0);
+      }
+    }
+
+    score = Math.max(0, score);
+
+    const totalMarks = Number(exam.totalMarks || 0);
+
+    const percentage =
+      totalMarks > 0
+        ? Number(((score / totalMarks) * 100).toFixed(2))
+        : 0;
+
+    attempt.score = score;
+    attempt.totalMarks = totalMarks;
+    attempt.percentage = percentage;
+    attempt.submittedAt = new Date();
+    attempt.status = "auto-submitted";
+
+    await attempt.save();
+
+    return res.json({
+      message: "Second tab switch detected. Exam automatically submitted.",
+      tabSwitchCount: attempt.tabSwitchCount,
+      warning: false,
+      autoSubmitted: true,
+      result: {
+        score,
+        totalMarks,
+        percentage,
+        status: attempt.status,
+        submittedAt: attempt.submittedAt
+      }
+    });
+
+  } catch (err) {
+    console.error("LMS tab switch error:", err);
+
+    res.status(500).json({
+      message: "Failed to record tab switch",
+      error: err.message
+    });
+  }
+});
+// Get student's own exam result
+app.get("/api/lms/exams/:examId/attempt/:attemptId/result", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only students and CRs can view their own result
+    if (req.user.role !== "student") {
+      return res.status(403).json({
+        message: "Only students can view their own results"
+      });
+    }
+
+    const studentId = req.user.id || req.user._id;
+
+    const attempt = await ExamAttempt.findOne({
+      _id: req.params.attemptId,
+      examId: req.params.examId,
+      studentId
+    }).lean();
+
+    if (!attempt) {
+      return res.status(404).json({
+        message: "Exam result not found"
+      });
+    }
+
+    // Result is available only after submission
+    if (
+      attempt.status !== "submitted" &&
+      attempt.status !== "auto-submitted"
+    ) {
+      return res.status(403).json({
+        message: "Result is not available until the exam is submitted"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId)
+      .select("title subject totalMarks")
+      .lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    res.json({
+      result: {
+        attemptId: attempt._id,
+        examId: exam._id,
+        examTitle: exam.title,
+        subject: exam.subject,
+        score: attempt.score,
+        totalMarks: attempt.totalMarks,
+        percentage: attempt.percentage,
+        status: attempt.status,
+        submittedAt: attempt.submittedAt,
+        tabSwitchCount: attempt.tabSwitchCount
+      }
+    });
+
+  } catch (err) {
+    console.error("Get LMS student result error:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch result",
+      error: err.message
+    });
+  }
+});
+// Get exam results for Faculty, HOD and Admin
+app.get("/api/lms/exams/:examId/results", verifyAnyToken, async (req, res) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        message: "Authentication required"
+      });
+    }
+
+    // Only Admin, HOD and Faculty can view student results
+    if (!["admin", "hod", "faculty"].includes(req.user.role)) {
+      return res.status(403).json({
+        message: "You are not allowed to view exam results"
+      });
+    }
+
+    const exam = await Exam.findById(req.params.examId).lean();
+
+    if (!exam) {
+      return res.status(404).json({
+        message: "Exam not found"
+      });
+    }
+
+    // HOD can view only exams from their branch
+    if (
+      req.user.role === "hod" &&
+      req.user.branch !== exam.branch
+    ) {
+      return res.status(403).json({
+        message: "HOD can view results only for their own branch"
+      });
+    }
+
+    // Faculty can view only exams from their branch
+    if (
+      req.user.role === "faculty" &&
+      req.user.branch !== exam.branch
+    ) {
+      return res.status(403).json({
+        message: "Faculty can view results only for their own branch"
+      });
+    }
+
+    // Faculty can view only exams created by them
+    if (req.user.role === "faculty") {
+      const facultyId =
+        req.user.facultyId ||
+        req.user.employeeId ||
+        req.user.id;
+
+      if (String(exam.createdBy.id) !== String(facultyId)) {
+        return res.status(403).json({
+          message: "You can view results only for exams created by you"
+        });
+      }
+    }
+
+    const attempts = await ExamAttempt.find({
+      examId: exam._id,
+      status: {
+        $in: ["submitted", "auto-submitted"]
+      }
+    })
+      .populate(
+        "studentId",
+        "name rollNo branch section"
+      )
+      .sort({ submittedAt: -1 })
+      .lean();
+
+    const results = attempts.map(attempt => ({
+      attemptId: attempt._id,
+      studentId: attempt.studentId?._id || null,
+      studentName: attempt.studentId?.name || "",
+      rollNo: attempt.studentId?.rollNo || "",
+      branch: attempt.branch,
+      section: attempt.section,
+      score: attempt.score,
+      totalMarks: attempt.totalMarks,
+      percentage: attempt.percentage,
+      status: attempt.status,
+      tabSwitchCount: attempt.tabSwitchCount,
+      startedAt: attempt.startedAt,
+      submittedAt: attempt.submittedAt
+    }));
+
+    res.json({
+      exam: {
+        id: exam._id,
+        title: exam.title,
+        subject: exam.subject,
+        branch: exam.branch,
+        totalMarks: exam.totalMarks
+      },
+      results
+    });
+
+  } catch (err) {
+    console.error("Get LMS exam results error:", err);
+
+    res.status(500).json({
+      message: "Failed to fetch exam results",
+      error: err.message
+    });
+  }
+});
 // ============== NOTICES ==============
 
 app.get("/api/notices", optionalAuth, async (req, res) => {
