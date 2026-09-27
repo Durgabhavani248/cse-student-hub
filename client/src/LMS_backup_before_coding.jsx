@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import CodingPractice from "./CodingPractice";
 
 const ORANGE = "#F15A29";
 const API = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -2195,31 +2194,6 @@ const [availableSections, setAvailableSections] = useState([]);
             📊 My Result
           </button>
         )}
-        {isStudent && (
-  <button
-    style={{
-      ...secondaryButtonStyle,
-      background:
-        activeTab === "coding"
-          ? ORANGE
-          : "#fff",
-      color:
-        activeTab === "coding"
-          ? "#fff"
-          : "#444",
-      borderColor:
-        activeTab === "coding"
-          ? ORANGE
-          : "#ddd"
-    }}
-    onClick={() => {
-      setActiveTab("coding");
-      clearMessages();
-    }}
-  >
-    💻 Coding Practice
-  </button>
-)}
       </div>
 
       {/* MESSAGE */}
@@ -2253,17 +2227,12 @@ const [availableSections, setAvailableSections] = useState([]);
         </div>
       )}
 
-      {/* CREATE / CODING */}
-{activeTab === "coding" && isStudent ? (
-  <CodingPractice
-    api={api}
-    token={token}
-  />
-) : showCreate ? (
-  renderCreateForm()
-) : (
-  <>
-    {loading && (
+      {/* CREATE */}
+      {showCreate ? (
+        renderCreateForm()
+      ) : (
+        <>
+          {loading && (
             <div
               style={{
                 ...cardStyle,
