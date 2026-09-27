@@ -3044,6 +3044,162 @@ app.get(
     }
   }
 );
+// Export LMS exam results to Excel
+app.get(
+  "/api/lms/exams/:examId/results/export",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          message: "Authentication required"
+        });
+      }
+
+      // Only Admin, HOD and Faculty can export results
+      if (!["admin", "hod", "faculty"].includes(req.user.role)) {
+        return res.status(403).json({
+          message: "You are not allowed to export exam results"
+        });
+      }
+
+      const exam = await Exam.findById(req.params.examId).lean();
+
+      if (!exam) {
+        return res.status(404).json({
+          message: "Exam not found"
+        });
+      }
+
+      // HOD can export only exams of their branch
+      if (
+        req.user.role === "hod" &&
+        req.user.branch !== exam.branch
+      ) {
+        return res.status(403).json({
+          message: "HOD can export only exams of their own branch"
+        });
+      }
+
+      // Faculty can export only exams of their branch
+      if (
+        req.user.role === "faculty" &&
+        req.user.branch !== exam.branch
+      ) {
+        return res.status(403).json({
+          message: "Faculty can export only exams of their own branch"
+        });
+      }
+
+      // Faculty can export only exams created by them
+      if (req.user.role === "faculty") {
+        const facultyId =
+          req.user.facultyId ||
+          req.user.employeeId ||
+          req.user.id;
+
+        if (
+          String(exam.createdBy?.id) !==
+          String(facultyId)
+        ) {
+          return res.status(403).json({
+            message: "You can export only exams created by you"
+          });
+        }
+      }
+
+      const attempts = await ExamAttempt.find({
+        examId: exam._id,
+        status: {
+          $in: ["submitted", "auto-submitted"]
+        }
+      })
+        .populate(
+          "studentId",
+          "name rollNo branch section"
+        )
+        .sort({ submittedAt: -1 })
+        .lean();
+
+      const rows = attempts.map((attempt) => ({
+        "Roll No": attempt.studentId?.rollNo || "",
+        "Student Name": attempt.studentId?.name || "",
+        "Branch": attempt.branch || "",
+        "Section": attempt.section || "",
+        "Score": attempt.score ?? 0,
+        "Total Marks": attempt.totalMarks ?? 0,
+        "Percentage": attempt.percentage ?? 0,
+        "Status":
+          attempt.status === "auto-submitted"
+            ? "Auto-submitted"
+            : "Submitted",
+        "Tab Switches": attempt.tabSwitchCount ?? 0,
+        "Started At": attempt.startedAt
+          ? new Date(attempt.startedAt).toLocaleString()
+          : "",
+        "Submitted At": attempt.submittedAt
+          ? new Date(attempt.submittedAt).toLocaleString()
+          : ""
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      worksheet["!cols"] = [
+        { wch: 16 },
+        { wch: 24 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 18 },
+        { wch: 14 },
+        { wch: 24 },
+        { wch: 24 }
+      ];
+
+      const workbook = XLSX.utils.book_new();
+
+      XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Results"
+      );
+
+      const buffer = XLSX.write(workbook, {
+        type: "buffer",
+        bookType: "xlsx"
+      });
+
+      const safeTitle = String(exam.title || "Exam")
+        .replace(/[^a-z0-9]+/gi, "_")
+        .replace(/^_+|_+$/g, "");
+
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeTitle || "Exam"}_Results.xlsx"`
+      );
+
+      res.send(buffer);
+
+    } catch (err) {
+      console.error(
+        "Export LMS exam results error:",
+        err
+      );
+
+      res.status(500).json({
+        message: "Failed to export exam results",
+        error: err.message
+      });
+    }
+  }
+);
 // ============== NOTICES ==============
 
 app.get("/api/notices", optionalAuth, async (req, res) => {

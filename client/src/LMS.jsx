@@ -842,6 +842,66 @@ const [availableSections, setAvailableSections] = useState([]);
       setLoading(false);
     }
   };
+  const exportResults = async () => {
+  if (!resultsExam) return;
+
+  try {
+    setLoading(true);
+    clearMessages();
+
+    const response = await fetch(
+      `${api}/api/lms/exams/${resultsExam._id}/results/export`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    if (!response.ok) {
+      let message = "Failed to export results";
+
+      try {
+        const data = await response.json();
+        message = data.message || message;
+      } catch {
+        // Response was not JSON
+      }
+
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+
+    const safeTitle = String(
+      resultsExam.title || "Exam"
+    )
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "");
+
+    link.download = `${safeTitle || "Exam"}_Results.xlsx`;
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+    window.URL.revokeObjectURL(url);
+
+    showMessage("Results exported successfully.");
+  } catch (err) {
+    console.error("Export results error:", err);
+    showError(
+      err.message || "Failed to export results"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   // =========================================================
   // STYLES
@@ -1855,7 +1915,13 @@ const [availableSections, setAvailableSections] = useState([]);
           >
             ← Back to Exams
           </button>
-
+<button
+  style={buttonStyle}
+  onClick={exportResults}
+  disabled={loading}
+>
+  ⬇️ Export Excel
+</button>
           <h2
             style={{
               color: ORANGE,
