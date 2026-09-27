@@ -66,14 +66,14 @@ export default function CodingPractice({
         params.set("difficulty", difficulty);
       }
 
-      const response = await fetch(
-        `${api}/api/lms/coding/problems?${params.toString()}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+     const response = await fetch(
+  `http://localhost:3001/api/lms/coding/problems?${params.toString()}`,
+  {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  }
+);
 
       const data = await response.json();
 
