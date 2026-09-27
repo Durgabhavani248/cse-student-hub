@@ -103,9 +103,25 @@ export default function LMS({
     facultyInfo?.branch || studentInfo?.branch || ""
   );
   const [durationMinutes, setDurationMinutes] = useState(30);
+  const [marksPerQuestion, setMarksPerQuestion] = useState(1);
+  const [negativeMarks, setNegativeMarks] = useState(0);
+
+  const [availableBranches, setAvailableBranches] = useState([
+  "CSE",
+  "ECE",
+  "EEE",
+  "CIVIL",
+  "MECH"
+]);
+
+const [availableSections, setAvailableSections] = useState([]);
+  const [studentSectionFilter, setStudentSectionFilter] = useState(
+    studentInfo?.section || ""
+  );
 
   const [sections, setSections] = useState([emptySection()]);
-  const [questions, setQuestions] = useState([emptyQuestion()]);
+  const [questionsPdf, setQuestionsPdf] = useState(null);
+  const [answerKeyPdf, setAnswerKeyPdf] = useState(null);
 
   const [activeAttempt, setActiveAttempt] = useState(null);
   const [activeExam, setActiveExam] = useState(null);
@@ -181,6 +197,109 @@ export default function LMS({
   }, [token]);
 
   // =========================================================
+  // LOAD DB-BACKED BRANCH / SECTION OPTIONS
+  // =========================================================
+
+  const loadSectionOptions = async (selectedBranch = branch) => {
+  if (!token) return;
+
+  try {
+    const query = selectedBranch
+      ? `?branch=${encodeURIComponent(selectedBranch)}`
+      : "";
+
+    const response = await fetch(
+      `${api}/api/lms/section-options${query}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to load sections"
+      );
+    }
+
+    // Branch dropdown is always fixed
+    setAvailableBranches([
+      "CSE",
+      "ECE",
+      "EEE",
+      "CIVIL",
+      "MECH"
+    ]);
+
+    // Backend returns sectionsByBranch
+    const sectionsByBranch =
+      data.sectionsByBranch || {};
+
+    if (!selectedBranch) {
+      setAvailableSections([]);
+      return;
+    }
+
+    // Match branch safely
+    const branchKey = Object.keys(sectionsByBranch).find(
+      (key) =>
+        String(key).trim().toUpperCase() ===
+        String(selectedBranch).trim().toUpperCase()
+    );
+
+    const sectionsForBranch = branchKey
+      ? sectionsByBranch[branchKey]
+      : [];
+
+    setAvailableSections(
+      Array.isArray(sectionsForBranch)
+        ? [...new Set(
+            sectionsForBranch
+              .filter(Boolean)
+              .map((section) => String(section).trim())
+          )].sort((a, b) =>
+            a.localeCompare(b, undefined, {
+              numeric: true,
+              sensitivity: "base"
+            })
+          )
+        : []
+    );
+  } catch (err) {
+    console.error("LMS section options error:", err);
+
+    showError(
+      err.message || "Failed to load sections"
+    );
+
+    setAvailableBranches([
+      "CSE",
+      "ECE",
+      "EEE",
+      "CIVIL",
+      "MECH"
+    ]);
+
+    setAvailableSections([]);
+  }
+};
+
+  useEffect(() => {
+    if (token) {
+      loadSectionOptions(branch);
+    }
+  }, [token, branch]);
+
+  useEffect(() => {
+    if (!isStudent) return;
+
+    setStudentSectionFilter(studentInfo?.section || "");
+  }, [isStudent, studentInfo?.section]);
+
+  // =========================================================
   // CREATE EXAM
   // =========================================================
 
@@ -197,37 +316,15 @@ export default function LMS({
     );
   };
 
-  const updateQuestion = (index, field, value) => {
-    setQuestions((prev) =>
-      prev.map((item, i) =>
-        i === index
-          ? {
-              ...item,
-              [field]: value
-            }
-          : item
-      )
-    );
-  };
-
-  const updateQuestionOption = (questionIndex, optionIndex, value) => {
-    setQuestions((prev) =>
-      prev.map((item, i) => {
-        if (i !== questionIndex) return item;
-
-        const options = [...item.options];
-        options[optionIndex] = value;
-
-        return {
-          ...item,
-          options
-        };
-      })
-    );
-  };
-
   const addSection = () => {
-    setSections((prev) => [...prev, emptySection()]);
+    setSections((prev) => [
+      ...prev,
+      {
+        section: "",
+        startAt: "",
+        endAt: ""
+      }
+    ]);
   };
 
   const removeSection = (index) => {
@@ -236,22 +333,22 @@ export default function LMS({
     setSections((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const addQuestion = () => {
-    setQuestions((prev) => [...prev, emptyQuestion()]);
-  };
-
-  const removeQuestion = (index) => {
-    if (questions.length === 1) return;
-
-    setQuestions((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const createExam = async (event) => {
     event.preventDefault();
     clearMessages();
 
     if (!title.trim() || !subject.trim() || !branch.trim()) {
       showError("Title, subject and branch are required.");
+      return;
+    }
+
+    if (!questionsPdf) {
+      showError("Please upload the Questions PDF.");
+      return;
+    }
+
+    if (!answerKeyPdf) {
+      showError("Please upload the Answer Key PDF.");
       return;
     }
 
@@ -266,6 +363,7 @@ export default function LMS({
     }));
 
     if (
+      cleanedSections.length === 0 ||
       cleanedSections.some(
         (item) => !item.section || !item.startAt || !item.endAt
       )
@@ -274,57 +372,40 @@ export default function LMS({
       return;
     }
 
-    const cleanedQuestions = questions.map((item) => {
-      const cleanOptions =
-        item.type === "mcq"
-          ? item.options.map((option) => option.trim()).filter(Boolean)
-          : ["True", "False"];
+    const duplicateSections = new Set();
+    for (const item of cleanedSections) {
+      if (duplicateSections.has(item.section)) {
+        showError(`Section ${item.section} is selected more than once.`);
+        return;
+      }
+      duplicateSections.add(item.section);
 
-      return {
-        question: item.question.trim(),
-        type: item.type,
-        options: cleanOptions,
-        correctAnswer:
-          item.type === "true-false"
-            ? item.correctAnswer || "True"
-            : item.correctAnswer,
-        marks: Number(item.marks) || 0,
-        negativeMarks: Number(item.negativeMarks) || 0
-      };
-    });
+      if (new Date(item.startAt) >= new Date(item.endAt)) {
+        showError(
+          `End time must be after start time for section ${item.section}.`
+        );
+        return;
+      }
+    }
 
-    if (
-      cleanedQuestions.some(
-        (item) =>
-          !item.question ||
-          !item.correctAnswer ||
-          item.marks <= 0
-      )
-    ) {
-      showError(
-        "Please complete every question, correct answer and marks."
-      );
+    if (Number(marksPerQuestion) <= 0) {
+      showError("Marks per question must be greater than 0.");
       return;
     }
 
-    if (
-      cleanedQuestions.some(
-        (item) =>
-          item.type === "mcq" &&
-          item.options.length < 2
-      )
-    ) {
-      showError("Every MCQ needs at least two options.");
+    if (Number(negativeMarks) < 0) {
+      showError("Negative marks cannot be negative.");
       return;
     }
 
     try {
       setLoading(true);
 
-      const response = await fetch(`${api}/api/lms/exams`, {
-        method: "POST",
-        headers: authHeaders,
-        body: JSON.stringify({
+      const formData = new FormData();
+
+      formData.append(
+        "metadata",
+        JSON.stringify({
           title: title.trim(),
           subject: subject.trim(),
           description: description.trim(),
@@ -332,8 +413,20 @@ export default function LMS({
           branch: branch.trim(),
           sections: cleanedSections,
           durationMinutes: Number(durationMinutes),
-          questions: cleanedQuestions
+          marksPerQuestion: Number(marksPerQuestion),
+          negativeMarks: Number(negativeMarks)
         })
+      );
+
+      formData.append("questionsPdf", questionsPdf);
+      formData.append("answerKeyPdf", answerKeyPdf);
+
+      const response = await fetch(`${api}/api/lms/exams`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
       });
 
       const data = await response.json();
@@ -342,16 +435,35 @@ export default function LMS({
         throw new Error(data.message || "Failed to create exam");
       }
 
-      showMessage("Exam created successfully as Draft.");
+      showMessage(
+        `Exam created as Draft. ${data.questionCount || 0} questions imported successfully.`
+      );
 
       setTitle("");
       setSubject("");
       setDescription("");
       setInstructions("");
+      setBranch(
+        facultyInfo?.branch || studentInfo?.branch || ""
+      );
       setDurationMinutes(30);
-      setSections([emptySection()]);
-      setQuestions([emptyQuestion()]);
+      setMarksPerQuestion(1);
+      setNegativeMarks(0);
+      setSections([
+        {
+          section: "",
+          startAt: "",
+          endAt: ""
+        }
+      ]);
+      setQuestionsPdf(null);
+      setAnswerKeyPdf(null);
       setShowCreate(false);
+
+      const questionInput = document.getElementById("lms-questions-pdf");
+      const answerInput = document.getElementById("lms-answer-key-pdf");
+      if (questionInput) questionInput.value = "";
+      if (answerInput) answerInput.value = "";
 
       await loadExams();
     } catch (err) {
@@ -979,20 +1091,14 @@ export default function LMS({
   const renderCreateForm = () => (
     <form onSubmit={createExam}>
       <div style={cardStyle}>
-        <h3
-          style={{
-            margin: "0 0 18px",
-            color: "#222"
-          }}
-        >
+        <h3 style={{ margin: "0 0 18px", color: "#222" }}>
           ➕ Create New Exam
         </h3>
 
         <div
           style={{
             display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(220px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
             gap: "14px"
           }}
         >
@@ -1018,27 +1124,63 @@ export default function LMS({
 
           <div>
             <label style={labelStyle}>Branch</label>
-            <input
+            <select
               style={inputStyle}
               value={branch}
-              onChange={(e) => setBranch(e.target.value)}
-              placeholder="Example: CSE"
               disabled={role === "hod" || role === "faculty"}
-            />
+              onChange={(e) => {
+                const value = e.target.value;
+                setBranch(value);
+                setSections([
+                  {
+                    section: "",
+                    startAt: "",
+                    endAt: ""
+                  }
+                ]);
+              }}
+            >
+              <option value="">Select Branch</option>
+              {availableBranches.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
-            <label style={labelStyle}>
-              Duration (minutes)
-            </label>
+            <label style={labelStyle}>Duration (minutes)</label>
             <input
               type="number"
               min="1"
               style={inputStyle}
               value={durationMinutes}
-              onChange={(e) =>
-                setDurationMinutes(e.target.value)
-              }
+              onChange={(e) => setDurationMinutes(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Marks Per Question</label>
+            <input
+              type="number"
+              min="0.5"
+              step="0.5"
+              style={inputStyle}
+              value={marksPerQuestion}
+              onChange={(e) => setMarksPerQuestion(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label style={labelStyle}>Negative Marks Per Wrong Answer</label>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              style={inputStyle}
+              value={negativeMarks}
+              onChange={(e) => setNegativeMarks(e.target.value)}
             />
           </div>
         </div>
@@ -1072,400 +1214,236 @@ export default function LMS({
         </div>
       </div>
 
-      {/* SECTION SCHEDULES */}
       <div style={{ ...cardStyle, marginTop: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "10px"
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                color: "#222"
-              }}
-            >
-              🕐 Section-wise Exam Timing
-            </h3>
-
-            <p
-              style={{
-                color: "#999",
-                fontSize: "13px",
-                margin: "5px 0 0"
-              }}
-            >
-              Each section can have a different exam window.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            style={secondaryButtonStyle}
-            onClick={addSection}
+        <div>
+          <h3 style={{ margin: 0, color: "#222" }}>
+            🕐 Section-wise Exam Timing
+          </h3>
+          <p
+            style={{
+              color: "#999",
+              fontSize: "13px",
+              margin: "5px 0 15px"
+            }}
           >
-            + Add Section
-          </button>
+            Sections come directly from the existing database. Each selected
+            section can have its own start and end time.
+          </p>
         </div>
 
-        <div style={{ marginTop: "15px" }}>
-          {sections.map((item, index) => (
-            <div
-              key={index}
-              style={{
-                padding: "14px",
-                border: "1px solid #eee",
-                borderRadius: "9px",
-                marginBottom: "10px",
-                background: "#fafafa"
-              }}
-            >
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(180px, 1fr))",
-                  gap: "12px"
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>Section</label>
-                  <input
-                    style={inputStyle}
-                    value={item.section}
-                    onChange={(e) =>
-                      updateSection(
-                        index,
-                        "section",
-                        e.target.value
-                      )
-                    }
-                    placeholder="Example: CSE-A"
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>Start Time</label>
-                  <input
-                    type="datetime-local"
-                    style={inputStyle}
-                    value={item.startAt}
-                    onChange={(e) =>
-                      updateSection(
-                        index,
-                        "startAt",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>End Time</label>
-                  <input
-                    type="datetime-local"
-                    style={inputStyle}
-                    value={item.endAt}
-                    onChange={(e) =>
-                      updateSection(
-                        index,
-                        "endAt",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              {sections.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeSection(index)}
-                  style={{
-                    ...secondaryButtonStyle,
-                    marginTop: "10px",
-                    color: "#d33"
-                  }}
-                >
-                  Remove Section
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* QUESTIONS */}
-      <div style={{ ...cardStyle, marginTop: "16px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "10px"
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                color: "#222"
-              }}
-            >
-              📝 Questions
-            </h3>
-
-            <p
-              style={{
-                color: "#999",
-                fontSize: "13px",
-                margin: "5px 0 0"
-              }}
-            >
-              MCQ and True/False are supported in this version.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            style={secondaryButtonStyle}
-            onClick={addQuestion}
+        {sections.map((item, index) => (
+          <div
+            key={index}
+            style={{
+              padding: "14px",
+              border: "1px solid #eee",
+              borderRadius: "9px",
+              marginBottom: "10px",
+              background: "#fafafa"
+            }}
           >
-            + Add Question
-          </button>
-        </div>
-
-        <div style={{ marginTop: "15px" }}>
-          {questions.map((item, index) => (
             <div
-              key={index}
               style={{
-                border: "1px solid #eee",
-                borderRadius: "10px",
-                padding: "16px",
-                marginBottom: "12px",
-                background: "#fafafa"
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "12px"
               }}
             >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "10px"
-                }}
-              >
-                <strong style={{ color: ORANGE }}>
-                  Question {index + 1}
-                </strong>
-
-                {questions.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeQuestion(index)}
-                    style={{
-                      border: "none",
-                      background: "transparent",
-                      color: "#d33",
-                      cursor: "pointer",
-                      fontWeight: "600"
-                    }}
-                  >
-                    Remove
-                  </button>
-                )}
-              </div>
-
-              <div style={{ marginTop: "12px" }}>
-                <label style={labelStyle}>Question</label>
-
-                <textarea
-                  style={{
-                    ...inputStyle,
-                    minHeight: "65px",
-                    resize: "vertical"
-                  }}
-                  value={item.question}
+              <div>
+                <label style={labelStyle}>Section</label>
+                <select
+                  style={inputStyle}
+                  value={item.section}
                   onChange={(e) =>
-                    updateQuestion(
-                      index,
-                      "question",
-                      e.target.value
-                    )
+                    updateSection(index, "section", e.target.value)
                   }
-                  placeholder="Enter your question"
+                >
+                  <option value="">Select Section</option>
+                  {availableSections.map((section) => (
+                    <option
+                      key={section}
+                      value={section}
+                      disabled={
+                        sections.some(
+                          (other, otherIndex) =>
+                            otherIndex !== index &&
+                            other.section === section
+                        )
+                      }
+                    >
+                      {section}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Start Date & Time</label>
+                <input
+                  type="datetime-local"
+                  style={inputStyle}
+                  value={item.startAt}
+                  onChange={(e) =>
+                    updateSection(index, "startAt", e.target.value)
+                  }
                 />
               </div>
 
-              <div
+              <div>
+                <label style={labelStyle}>End Date & Time</label>
+                <input
+                  type="datetime-local"
+                  style={inputStyle}
+                  value={item.endAt}
+                  onChange={(e) =>
+                    updateSection(index, "endAt", e.target.value)
+                  }
+                />
+              </div>
+            </div>
+
+            {sections.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeSection(index)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns:
-                    "repeat(auto-fit, minmax(160px, 1fr))",
-                  gap: "12px",
-                  marginTop: "12px"
+                  ...secondaryButtonStyle,
+                  marginTop: "10px",
+                  color: "#d33"
                 }}
               >
-                <div>
-                  <label style={labelStyle}>Question Type</label>
+                Remove Section
+              </button>
+            )}
+          </div>
+        ))}
 
-                  <select
-                    style={inputStyle}
-                    value={item.type}
-                    onChange={(e) => {
-                      const type = e.target.value;
+        <button
+          type="button"
+          style={secondaryButtonStyle}
+          onClick={addSection}
+        >
+          + Add Another Section
+        </button>
+      </div>
 
-                      updateQuestion(index, "type", type);
+      <div style={{ ...cardStyle, marginTop: "16px" }}>
+        <h3 style={{ margin: "0 0 6px", color: "#222" }}>
+          📄 Questions & Answer Key
+        </h3>
 
-                      if (type === "true-false") {
-                        updateQuestion(
-                          index,
-                          "correctAnswer",
-                          "True"
-                        );
-                      } else {
-                        updateQuestion(
-                          index,
-                          "correctAnswer",
-                          ""
-                        );
-                      }
-                    }}
-                  >
-                    <option value="mcq">MCQ</option>
-                    <option value="true-false">
-                      True / False
-                    </option>
-                  </select>
-                </div>
+        <p
+          style={{
+            color: "#777",
+            fontSize: "13px",
+            lineHeight: "1.5",
+            margin: "0 0 16px"
+          }}
+        >
+          Upload the question paper and a separate answer-key PDF. Use the
+          standard numbered MCQ format shown below so the system can import
+          the questions automatically.
+        </p>
 
-                <div>
-                  <label style={labelStyle}>Marks</label>
+        <div
+          style={{
+            padding: "12px",
+            borderRadius: "8px",
+            background: "#fff8f3",
+            border: "1px solid #ffe1d2",
+            fontSize: "13px",
+            lineHeight: "1.6",
+            color: "#555",
+            marginBottom: "16px"
+          }}
+        >
+          <strong>Questions PDF format:</strong>
+          <br />
+          1. Which data structure follows FIFO?
+          <br />
+          A) Stack
+          <br />
+          B) Queue
+          <br />
+          C) Tree
+          <br />
+          D) Graph
+          <br />
+          <br />
+          <strong>Answer Key PDF format:</strong>
+          <br />
+          1 - B
+          <br />
+          2 - C
+          <br />
+          3 - A
+        </div>
 
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    style={inputStyle}
-                    value={item.marks}
-                    onChange={(e) =>
-                      updateQuestion(
-                        index,
-                        "marks",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label style={labelStyle}>
-                    Negative Marks
-                  </label>
-
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.25"
-                    style={inputStyle}
-                    value={item.negativeMarks}
-                    onChange={(e) =>
-                      updateQuestion(
-                        index,
-                        "negativeMarks",
-                        e.target.value
-                      )
-                    }
-                  />
-                </div>
-              </div>
-
-              {item.type === "mcq" ? (
-                <div style={{ marginTop: "14px" }}>
-                  <label style={labelStyle}>Options</label>
-
-                  {item.options.map((option, optionIndex) => (
-                    <input
-                      key={optionIndex}
-                      style={{
-                        ...inputStyle,
-                        marginBottom: "7px"
-                      }}
-                      value={option}
-                      onChange={(e) =>
-                        updateQuestionOption(
-                          index,
-                          optionIndex,
-                          e.target.value
-                        )
-                      }
-                      placeholder={`Option ${optionIndex + 1}`}
-                    />
-                  ))}
-
-                  <label
-                    style={{
-                      ...labelStyle,
-                      marginTop: "6px"
-                    }}
-                  >
-                    Correct Answer
-                  </label>
-
-                  <select
-                    style={inputStyle}
-                    value={item.correctAnswer}
-                    onChange={(e) =>
-                      updateQuestion(
-                        index,
-                        "correctAnswer",
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="">
-                      Select correct answer
-                    </option>
-
-                    {item.options
-                      .filter((option) => option.trim())
-                      .map((option, optionIndex) => (
-                        <option
-                          key={optionIndex}
-                          value={option}
-                        >
-                          {option}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              ) : (
-                <div style={{ marginTop: "14px" }}>
-                  <label style={labelStyle}>
-                    Correct Answer
-                  </label>
-
-                  <select
-                    style={inputStyle}
-                    value={item.correctAnswer}
-                    onChange={(e) =>
-                      updateQuestion(
-                        index,
-                        "correctAnswer",
-                        e.target.value
-                      )
-                    }
-                  >
-                    <option value="True">True</option>
-                    <option value="False">False</option>
-                  </select>
-                </div>
-              )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+            gap: "14px"
+          }}
+        >
+          <div
+            style={{
+              border: "1px dashed #ccc",
+              borderRadius: "9px",
+              padding: "14px"
+            }}
+          >
+            <label style={labelStyle}>Questions PDF</label>
+            <input
+              id="lms-questions-pdf"
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(e) =>
+                setQuestionsPdf(e.target.files?.[0] || null)
+              }
+            />
+            <div
+              style={{
+                marginTop: "8px",
+                fontSize: "12px",
+                color: "#777"
+              }}
+            >
+              {questionsPdf
+                ? questionsPdf.name
+                : "No questions PDF selected"}
             </div>
-          ))}
+          </div>
+
+          <div
+            style={{
+              border: "1px dashed #ccc",
+              borderRadius: "9px",
+              padding: "14px"
+            }}
+          >
+            <label style={labelStyle}>Answer Key PDF</label>
+            <input
+              id="lms-answer-key-pdf"
+              type="file"
+              accept="application/pdf,.pdf"
+              onChange={(e) =>
+                setAnswerKeyPdf(e.target.files?.[0] || null)
+              }
+            />
+            <div
+              style={{
+                marginTop: "8px",
+                fontSize: "12px",
+                color: "#777"
+              }}
+            >
+              {answerKeyPdf
+                ? answerKeyPdf.name
+                : "No answer key PDF selected"}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1481,7 +1459,7 @@ export default function LMS({
           style={buttonStyle}
           disabled={loading}
         >
-          {loading ? "Creating..." : "Create Draft Exam"}
+          {loading ? "Importing Questions..." : "Create Draft Exam"}
         </button>
 
         <button
@@ -2232,8 +2210,6 @@ export default function LMS({
               </p>
             </div>
           )}
-
-          ```jsx
           {!loading && exams.length > 0 && (
             <div
               style={{
