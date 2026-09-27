@@ -66,8 +66,8 @@ export default function CodingPractice({
         params.set("difficulty", difficulty);
       }
 
-     const response = await fetch(
-  `http://localhost:3001/api/lms/coding/problems?${params.toString()}`,
+ const response = await fetch(
+  `http://localhost:3001/api/lms/coding/problems/${problemId}`,
   {
     headers: {
       Authorization: `Bearer ${token}`
