@@ -15,6 +15,7 @@ export default function CodingPractice({
   const [difficulty, setDifficulty] = useState("");
 
   const [page, setPage] = useState(1);
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 12,
@@ -24,8 +25,11 @@ export default function CodingPractice({
     hasPreviousPage: false
   });
 
-  const [selectedProblem, setSelectedProblem] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
+  const [selectedProblem, setSelectedProblem] =
+    useState(null);
+
+  const [detailLoading, setDetailLoading] =
+    useState(false);
 
   const topics = [
     "Arrays",
@@ -42,7 +46,15 @@ export default function CodingPractice({
     "Dynamic Programming"
   ];
 
-  const loadProblems = async () => {
+  // Remove trailing slash from API URL
+  const API_BASE = (api || "").replace(/\/$/, "");
+
+  // =========================
+  // LOAD CODING PROBLEMS
+  // =========================
+  const loadProblems = async (
+    requestedPage = page
+  ) => {
     if (!token) return;
 
     try {
@@ -51,11 +63,18 @@ export default function CodingPractice({
 
       const params = new URLSearchParams();
 
-      params.set("page", String(page));
+      params.set(
+        "page",
+        String(requestedPage)
+      );
+
       params.set("limit", "12");
 
       if (search.trim()) {
-        params.set("search", search.trim());
+        params.set(
+          "search",
+          search.trim()
+        );
       }
 
       if (topic) {
@@ -63,23 +82,27 @@ export default function CodingPractice({
       }
 
       if (difficulty) {
-        params.set("difficulty", difficulty);
+        params.set(
+          "difficulty",
+          difficulty
+        );
       }
 
- const response = await fetch(
-  `http://localhost:3001/api/lms/coding/problems/${problemId}`,
-  {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  }
-);
+      const response = await fetch(
+        `${API_BASE}/api/lms/coding/problems?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to load coding problems"
+          data.message ||
+            "Failed to load coding problems"
         );
       }
 
@@ -91,7 +114,7 @@ export default function CodingPractice({
 
       setPagination(
         data.pagination || {
-          page: 1,
+          page: requestedPage,
           limit: 12,
           total: 0,
           totalPages: 0,
@@ -109,21 +132,36 @@ export default function CodingPractice({
         err.message ||
           "Failed to load coding problems"
       );
+
+      setProblems([]);
     } finally {
       setLoading(false);
     }
   };
 
+  // Load when page/topic/difficulty changes
   useEffect(() => {
     loadProblems();
-  }, [page, topic, difficulty]);
+  }, [
+    page,
+    topic,
+    difficulty
+  ]);
 
-  const handleSearch = (event) => {
+  // =========================
+  // SEARCH
+  // =========================
+  const handleSearch = async (event) => {
     event.preventDefault();
+
     setPage(1);
-    loadProblems();
+
+    await loadProblems(1);
   };
 
+  // =========================
+  // CLEAR FILTERS
+  // =========================
   const clearFilters = () => {
     setSearch("");
     setTopic("");
@@ -131,13 +169,25 @@ export default function CodingPractice({
     setPage(1);
   };
 
-  const openProblem = async (problemId) => {
+  // =========================
+  // OPEN PROBLEM DETAILS
+  // =========================
+  const openProblem = async (
+    problemId
+  ) => {
+    if (!problemId) {
+      setError(
+        "Invalid coding problem."
+      );
+      return;
+    }
+
     try {
       setDetailLoading(true);
       setError("");
 
       const response = await fetch(
-        `${api}/api/lms/coding/problems/${problemId}`,
+        `${API_BASE}/api/lms/coding/problems/${problemId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -154,7 +204,15 @@ export default function CodingPractice({
         );
       }
 
-      setSelectedProblem(data.problem);
+      if (!data.problem) {
+        throw new Error(
+          "Problem details not found"
+        );
+      }
+
+      setSelectedProblem(
+        data.problem
+      );
     } catch (err) {
       console.error(
         "Coding problem details error:",
@@ -170,7 +228,12 @@ export default function CodingPractice({
     }
   };
 
-  const difficultyStyle = (difficulty) => {
+  // =========================
+  // DIFFICULTY STYLE
+  // =========================
+  const difficultyStyle = (
+    difficulty
+  ) => {
     if (difficulty === "Easy") {
       return {
         background: "#eaf7ef",
@@ -191,6 +254,9 @@ export default function CodingPractice({
     };
   };
 
+  // =========================
+  // PROBLEM DETAILS PAGE
+  // =========================
   if (selectedProblem) {
     return (
       <div>
@@ -222,11 +288,14 @@ export default function CodingPractice({
               "0 2px 8px rgba(0,0,0,0.06)"
           }}
         >
+          {/* TITLE + DIFFICULTY */}
           <div
             style={{
               display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
+              justifyContent:
+                "space-between",
+              alignItems:
+                "flex-start",
               gap: "12px",
               flexWrap: "wrap"
             }}
@@ -269,74 +338,104 @@ export default function CodingPractice({
           <hr
             style={{
               border: 0,
-              borderTop: "1px solid #eee",
+              borderTop:
+                "1px solid #eee",
               margin: "18px 0"
             }}
           />
 
-          <h3>Description</h3>
+          {/* DESCRIPTION */}
+          <h3>
+            Description
+          </h3>
 
           <p
             style={{
               color: "#555",
               lineHeight: 1.7,
-              whiteSpace: "pre-wrap"
+              whiteSpace:
+                "pre-wrap"
             }}
           >
             {selectedProblem.description}
           </p>
 
+          {/* INPUT FORMAT */}
           {selectedProblem.inputFormat && (
             <>
-              <h3>Input Format</h3>
+              <h3>
+                Input Format
+              </h3>
+
               <p
                 style={{
                   color: "#555",
-                  whiteSpace: "pre-wrap",
+                  whiteSpace:
+                    "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {selectedProblem.inputFormat}
+                {
+                  selectedProblem.inputFormat
+                }
               </p>
             </>
           )}
 
+          {/* OUTPUT FORMAT */}
           {selectedProblem.outputFormat && (
             <>
-              <h3>Output Format</h3>
+              <h3>
+                Output Format
+              </h3>
+
               <p
                 style={{
                   color: "#555",
-                  whiteSpace: "pre-wrap",
+                  whiteSpace:
+                    "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {selectedProblem.outputFormat}
+                {
+                  selectedProblem.outputFormat
+                }
               </p>
             </>
           )}
 
+          {/* CONSTRAINTS */}
           {selectedProblem.constraints && (
             <>
-              <h3>Constraints</h3>
+              <h3>
+                Constraints
+              </h3>
+
               <p
                 style={{
                   color: "#555",
-                  whiteSpace: "pre-wrap",
+                  whiteSpace:
+                    "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {selectedProblem.constraints}
+                {
+                  selectedProblem.constraints
+                }
               </p>
             </>
           )}
 
+          {/* EXAMPLES */}
           {Array.isArray(
             selectedProblem.examples
           ) &&
-            selectedProblem.examples.length > 0 && (
+            selectedProblem
+              .examples.length > 0 && (
               <>
-                <h3>Examples</h3>
+                <h3>
+                  Examples
+                </h3>
 
                 <div
                   style={{
@@ -345,18 +444,26 @@ export default function CodingPractice({
                   }}
                 >
                   {selectedProblem.examples.map(
-                    (example, index) => (
+                    (
+                      example,
+                      index
+                    ) => (
                       <div
                         key={index}
                         style={{
-                          background: "#fafafa",
-                          border: "1px solid #eee",
-                          borderRadius: "8px",
-                          padding: "14px"
+                          background:
+                            "#fafafa",
+                          border:
+                            "1px solid #eee",
+                          borderRadius:
+                            "8px",
+                          padding:
+                            "14px"
                         }}
                       >
                         <strong>
-                          Example {index + 1}
+                          Example{" "}
+                          {index + 1}
                         </strong>
 
                         <p
@@ -367,8 +474,12 @@ export default function CodingPractice({
                               "pre-wrap"
                           }}
                         >
-                          <b>Input:</b>{" "}
-                          {example.input}
+                          <b>
+                            Input:
+                          </b>{" "}
+                          {
+                            example.input
+                          }
                         </p>
 
                         <p
@@ -379,8 +490,12 @@ export default function CodingPractice({
                               "pre-wrap"
                           }}
                         >
-                          <b>Output:</b>{" "}
-                          {example.output}
+                          <b>
+                            Output:
+                          </b>{" "}
+                          {
+                            example.output
+                          }
                         </p>
 
                         {example.explanation && (
@@ -392,7 +507,9 @@ export default function CodingPractice({
                                 "#777"
                             }}
                           >
-                            {example.explanation}
+                            {
+                              example.explanation
+                            }
                           </p>
                         )}
                       </div>
@@ -402,13 +519,16 @@ export default function CodingPractice({
               </>
             )}
 
+          {/* CODING EDITOR PLACEHOLDER */}
           <div
             style={{
               marginTop: "22px",
               padding: "16px",
               borderRadius: "10px",
-              background: "#fff8f4",
-              border: `1px solid ${ORANGE}`
+              background:
+                "#fff8f4",
+              border:
+                `1px solid ${ORANGE}`
             }}
           >
             <h3
@@ -426,8 +546,9 @@ export default function CodingPractice({
                 color: "#666"
               }}
             >
-              Code editor and secure test-case
-              execution will be added in the next
+              Code editor and secure
+              test-case execution will
+              be added in the next
               Coding Platform phase.
             </p>
           </div>
@@ -436,6 +557,9 @@ export default function CodingPractice({
     );
   }
 
+  // =========================
+  // PROBLEM LIST PAGE
+  // =========================
   return (
     <div>
       {/* FILTERS */}
@@ -459,31 +583,42 @@ export default function CodingPractice({
             gap: "10px"
           }}
         >
+          {/* SEARCH */}
           <input
             value={search}
             onChange={(e) =>
-              setSearch(e.target.value)
+              setSearch(
+                e.target.value
+              )
             }
             placeholder="Search problems..."
             style={{
               width: "100%",
-              boxSizing: "border-box",
-              padding: "10px 12px",
-              border: "1px solid #ddd",
+              boxSizing:
+                "border-box",
+              padding:
+                "10px 12px",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
               outline: "none"
             }}
           />
 
+          {/* TOPIC */}
           <select
             value={topic}
             onChange={(e) => {
-              setTopic(e.target.value);
+              setTopic(
+                e.target.value
+              );
               setPage(1);
             }}
             style={{
-              padding: "10px 12px",
-              border: "1px solid #ddd",
+              padding:
+                "10px 12px",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
               background: "#fff"
             }}
@@ -492,25 +627,32 @@ export default function CodingPractice({
               All Topics
             </option>
 
-            {topics.map((item) => (
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-            ))}
+            {topics.map(
+              (item) => (
+                <option
+                  key={item}
+                  value={item}
+                >
+                  {item}
+                </option>
+              )
+            )}
           </select>
 
+          {/* DIFFICULTY */}
           <select
             value={difficulty}
             onChange={(e) => {
-              setDifficulty(e.target.value);
+              setDifficulty(
+                e.target.value
+              );
               setPage(1);
             }}
             style={{
-              padding: "10px 12px",
-              border: "1px solid #ddd",
+              padding:
+                "10px 12px",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
               background: "#fff"
             }}
@@ -518,23 +660,28 @@ export default function CodingPractice({
             <option value="">
               All Difficulties
             </option>
+
             <option value="Easy">
               Easy
             </option>
+
             <option value="Medium">
               Medium
             </option>
+
             <option value="Hard">
               Hard
             </option>
           </select>
 
+          {/* SEARCH BUTTON */}
           <button
             type="submit"
             style={{
               border: "none",
               borderRadius: "7px",
-              padding: "10px 16px",
+              padding:
+                "10px 16px",
               background: ORANGE,
               color: "#fff",
               cursor: "pointer",
@@ -544,13 +691,18 @@ export default function CodingPractice({
             Search
           </button>
 
+          {/* CLEAR BUTTON */}
           <button
             type="button"
-            onClick={clearFilters}
+            onClick={
+              clearFilters
+            }
             style={{
-              border: "1px solid #ddd",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
-              padding: "10px 16px",
+              padding:
+                "10px 16px",
               background: "#fff",
               color: "#444",
               cursor: "pointer",
@@ -562,13 +714,16 @@ export default function CodingPractice({
         </div>
       </form>
 
+      {/* ERROR */}
       {error && (
         <div
           style={{
             marginBottom: "14px",
-            padding: "11px 13px",
+            padding:
+              "11px 13px",
             borderRadius: "8px",
-            background: "#fff0f0",
+            background:
+              "#fff0f0",
             color: "#d33",
             fontSize: "14px"
           }}
@@ -581,7 +736,8 @@ export default function CodingPractice({
       <div
         style={{
           display: "flex",
-          justifyContent: "space-between",
+          justifyContent:
+            "space-between",
           alignItems: "center",
           marginBottom: "14px",
           gap: "10px",
@@ -600,12 +756,16 @@ export default function CodingPractice({
 
           <p
             style={{
-              margin: "5px 0 0",
+              margin:
+                "5px 0 0",
               color: "#999",
               fontSize: "14px"
             }}
           >
-            {pagination.total} problems available
+            {
+              pagination.total
+            }{" "}
+            problems available
           </p>
         </div>
       </div>
@@ -615,27 +775,32 @@ export default function CodingPractice({
         <div
           style={{
             background: "#fff",
-            border: "1px solid #eee",
+            border:
+              "1px solid #eee",
             borderRadius: "12px",
             padding: "35px",
             textAlign: "center",
             color: "#999"
           }}
         >
-          Loading coding problems...
+          Loading coding
+          problems...
         </div>
-      ) : problems.length === 0 ? (
+      ) : problems.length ===
+        0 ? (
         <div
           style={{
             background: "#fff",
-            border: "1px solid #eee",
+            border:
+              "1px solid #eee",
             borderRadius: "12px",
             padding: "35px",
             textAlign: "center",
             color: "#999"
           }}
         >
-          No coding problems found.
+          No coding
+          problems found.
         </div>
       ) : (
         <div
@@ -646,123 +811,184 @@ export default function CodingPractice({
             gap: "16px"
           }}
         >
-          {problems.map((problem) => (
-            <div
-              key={problem._id}
-              style={{
-                background: "#fff",
-                border: "1px solid #eee",
-                borderRadius: "12px",
-                padding: "18px",
-                boxShadow:
-                  "0 2px 8px rgba(0,0,0,0.05)",
-                display: "flex",
-                flexDirection: "column"
-              }}
-            >
+          {problems.map(
+            (problem) => (
               <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: "8px",
-                  alignItems: "flex-start"
-                }}
-              >
-                <h3
-                  style={{
-                    margin: 0,
-                    color: "#333",
-                    fontSize: "17px",
-                    lineHeight: 1.4
-                  }}
-                >
-                  {problem.title}
-                </h3>
-
-                <span
-                  style={{
-                    ...difficultyStyle(
-                      problem.difficulty
-                    ),
-                    padding: "5px 8px",
-                    borderRadius: "15px",
-                    fontSize: "11px",
-                    fontWeight: "700",
-                    whiteSpace: "nowrap"
-                  }}
-                >
-                  {problem.difficulty}
-                </span>
-              </div>
-
-              <p
-                style={{
-                  color: ORANGE,
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  margin: "9px 0"
-                }}
-              >
-                {problem.topic}
-              </p>
-
-              <p
-                style={{
-                  color: "#777",
-                  fontSize: "14px",
-                  lineHeight: 1.5,
-                  flex: 1
-                }}
-              >
-                {problem.description}
-              </p>
-
-              <button
-                onClick={() =>
-                  openProblem(problem._id)
+                key={
+                  problem._id
                 }
-                disabled={detailLoading}
                 style={{
-                  border: "none",
-                  borderRadius: "7px",
-                  padding: "10px 14px",
-                  background: ORANGE,
-                  color: "#fff",
-                  cursor: "pointer",
-                  fontWeight: "600"
+                  background:
+                    "#fff",
+                  border:
+                    "1px solid #eee",
+                  borderRadius:
+                    "12px",
+                  padding:
+                    "18px",
+                  boxShadow:
+                    "0 2px 8px rgba(0,0,0,0.05)",
+                  display:
+                    "flex",
+                  flexDirection:
+                    "column"
                 }}
               >
-                {detailLoading
-                  ? "Loading..."
-                  : "Practice"}
-              </button>
-            </div>
-          ))}
+                {/* TITLE + DIFFICULTY */}
+                <div
+                  style={{
+                    display:
+                      "flex",
+                    justifyContent:
+                      "space-between",
+                    gap: "8px",
+                    alignItems:
+                      "flex-start"
+                  }}
+                >
+                  <h3
+                    style={{
+                      margin: 0,
+                      color: "#333",
+                      fontSize:
+                        "17px",
+                      lineHeight:
+                        1.4
+                    }}
+                  >
+                    {
+                      problem.title
+                    }
+                  </h3>
+
+                  <span
+                    style={{
+                      ...difficultyStyle(
+                        problem.difficulty
+                      ),
+                      padding:
+                        "5px 8px",
+                      borderRadius:
+                        "15px",
+                      fontSize:
+                        "11px",
+                      fontWeight:
+                        "700",
+                      whiteSpace:
+                        "nowrap"
+                    }}
+                  >
+                    {
+                      problem.difficulty
+                    }
+                  </span>
+                </div>
+
+                {/* TOPIC */}
+                <p
+                  style={{
+                    color: ORANGE,
+                    fontSize:
+                      "13px",
+                    fontWeight:
+                      "600",
+                    margin:
+                      "9px 0"
+                  }}
+                >
+                  {
+                    problem.topic
+                  }
+                </p>
+
+                {/* DESCRIPTION */}
+                <p
+                  style={{
+                    color: "#777",
+                    fontSize:
+                      "14px",
+                    lineHeight:
+                      1.5,
+                    flex: 1
+                  }}
+                >
+                  {
+                    problem.description
+                  }
+                </p>
+
+                {/* PRACTICE */}
+                <button
+                  onClick={() =>
+                    openProblem(
+                      problem._id
+                    )
+                  }
+                  disabled={
+                    detailLoading
+                  }
+                  style={{
+                    border: "none",
+                    borderRadius:
+                      "7px",
+                    padding:
+                      "10px 14px",
+                    background:
+                      ORANGE,
+                    color: "#fff",
+                    cursor:
+                      detailLoading
+                        ? "not-allowed"
+                        : "pointer",
+                    fontWeight:
+                      "600",
+                    opacity:
+                      detailLoading
+                        ? 0.7
+                        : 1
+                  }}
+                >
+                  {detailLoading
+                    ? "Loading..."
+                    : "Practice"}
+                </button>
+              </div>
+            )
+          )}
         </div>
       )}
 
       {/* PAGINATION */}
-      {pagination.totalPages > 1 && (
+      {pagination.totalPages >
+        1 && (
         <div
           style={{
             display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
+            justifyContent:
+              "center",
+            alignItems:
+              "center",
             gap: "12px",
             marginTop: "20px"
           }}
         >
+          {/* PREVIOUS */}
           <button
             disabled={
               !pagination.hasPreviousPage
             }
             onClick={() =>
-              setPage((prev) => prev - 1)
+              setPage(
+                (prev) =>
+                  prev - 1
+              )
             }
             style={{
-              border: "1px solid #ddd",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
-              padding: "9px 14px",
+              padding:
+                "9px 14px",
               background:
                 pagination.hasPreviousPage
                   ? "#fff"
@@ -776,25 +1002,40 @@ export default function CodingPractice({
             ← Previous
           </button>
 
+          {/* PAGE NUMBER */}
           <span
             style={{
               color: "#666",
               fontSize: "14px"
             }}
           >
-            Page {pagination.page} of{" "}
-            {pagination.totalPages}
+            Page{" "}
+            {
+              pagination.page
+            }{" "}
+            of{" "}
+            {
+              pagination.totalPages
+            }
           </span>
 
+          {/* NEXT */}
           <button
-            disabled={!pagination.hasNextPage}
+            disabled={
+              !pagination.hasNextPage
+            }
             onClick={() =>
-              setPage((prev) => prev + 1)
+              setPage(
+                (prev) =>
+                  prev + 1
+              )
             }
             style={{
-              border: "1px solid #ddd",
+              border:
+                "1px solid #ddd",
               borderRadius: "7px",
-              padding: "9px 14px",
+              padding:
+                "9px 14px",
               background:
                 pagination.hasNextPage
                   ? "#fff"
