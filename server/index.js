@@ -1358,8 +1358,8 @@ app.get(
       // -----------------------------
       const { topic, difficulty, search } = req.query;
 
-      const filter = {
-        active: true
+           const filter = {
+        active: { $ne: false }
       };
 
       if (topic && String(topic).trim()) {
@@ -1488,9 +1488,9 @@ app.get(
       }
 
       const problem =
-        await CodingProblem.findOne({
+              await CodingProblem.findOne({
           _id: req.params.problemId,
-          active: true
+          active: { $ne: false }
         })
           .select("-testCases")
           .lean();
