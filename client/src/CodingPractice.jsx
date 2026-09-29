@@ -6,7 +6,6 @@ export default function CodingPractice({ api, token }) {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
   const [search, setSearch] = useState("");
   const [topic, setTopic] = useState("");
   const [difficulty, setDifficulty] = useState("");
@@ -23,16 +22,18 @@ export default function CodingPractice({ api, token }) {
 
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-    const [selectedLanguage, setSelectedLanguage] = useState("Python");
+  const [selectedLanguage, setSelectedLanguage] = useState("Python");
+
   const [code, setCode] = useState(
     '# Write your Python code here\nprint("Hello World")'
   );
+
   const [customInput, setCustomInput] = useState("");
   const [codeOutput, setCodeOutput] = useState("");
   const [codeError, setCodeError] = useState("");
   const [runningCode, setRunningCode] = useState(false);
   const [submissionResult, setSubmissionResult] = useState(null);
-const [submittingCode, setSubmittingCode] = useState(false);
+  const [submittingCode, setSubmittingCode] = useState(false);
 
   const topics = [
     "Arrays",
@@ -53,8 +54,6 @@ const [submittingCode, setSubmittingCode] = useState(false);
   const API_BASE = (api || "").replace(/\/$/, "");
 
   // Student authentication token
-  // Existing token prop is preferred.
-  // If it is not available, use the actual student login token.
   const authToken =
     token || localStorage.getItem("studentToken");
 
@@ -156,9 +155,7 @@ const [submittingCode, setSubmittingCode] = useState(false);
 
   const handleSearch = async (event) => {
     event.preventDefault();
-
     setPage(1);
-
     await loadProblems(1);
   };
 
@@ -234,18 +231,23 @@ const [submittingCode, setSubmittingCode] = useState(false);
       setDetailLoading(false);
     }
   };
+
   // =========================
   // RUN CODE
   // =========================
 
   const runCode = async () => {
     if (!authToken) {
-      setCodeError("Student authentication token not found.");
+      setCodeError(
+        "Student authentication token not found."
+      );
       return;
     }
 
     if (!code.trim()) {
-      setCodeError("Please enter some code before running.");
+      setCodeError(
+        "Please enter some code before running."
+      );
       return;
     }
 
@@ -274,7 +276,8 @@ const [submittingCode, setSubmittingCode] = useState(false);
 
       if (!response.ok) {
         throw new Error(
-          data.message || "Failed to execute code"
+          data.message ||
+            "Failed to execute code"
         );
       }
 
@@ -301,13 +304,15 @@ const [submittingCode, setSubmittingCode] = useState(false);
       console.error("Run code error:", err);
 
       setCodeError(
-        err.message || "Unable to run code."
+        err.message ||
+          "Unable to run code."
       );
     } finally {
       setRunningCode(false);
     }
   };
-    // =========================
+
+  // =========================
   // SUBMIT CODE
   // =========================
 
@@ -365,7 +370,6 @@ const [submittingCode, setSubmittingCode] = useState(false);
       }
 
       setSubmissionResult(data);
-
     } catch (err) {
       console.error(
         "Submit code error:",
@@ -380,6 +384,7 @@ const [submittingCode, setSubmittingCode] = useState(false);
       setSubmittingCode(false);
     }
   };
+
   // =========================
   // DIFFICULTY STYLE
   // =========================
@@ -645,7 +650,7 @@ const [submittingCode, setSubmittingCode] = useState(false);
               </>
             )}
 
-                    {/* CODING EDITOR */}
+          {/* CODING EDITOR */}
 
           <div
             style={{
@@ -690,7 +695,9 @@ const [submittingCode, setSubmittingCode] = useState(false);
               <select
                 value={selectedLanguage}
                 onChange={(e) => {
-                  setSelectedLanguage(e.target.value);
+                  setSelectedLanguage(
+                    e.target.value
+                  );
                   setCodeOutput("");
                   setCodeError("");
                 }}
@@ -704,13 +711,17 @@ const [submittingCode, setSubmittingCode] = useState(false);
                   cursor: "pointer"
                 }}
               >
-                <option value="Python">Python</option>
+                <option value="Python">
+                  Python
+                </option>
               </select>
             </div>
 
             <textarea
               value={code}
-              onChange={(e) => setCode(e.target.value)}
+              onChange={(e) =>
+                setCode(e.target.value)
+              }
               spellCheck={false}
               placeholder="Write your code here..."
               style={{
@@ -723,7 +734,8 @@ const [submittingCode, setSubmittingCode] = useState(false);
                 borderRadius: "8px",
                 background: "#1e1e1e",
                 color: "#f5f5f5",
-                fontFamily: "Consolas, Monaco, monospace",
+                fontFamily:
+                  "Consolas, Monaco, monospace",
                 fontSize: "14px",
                 lineHeight: "1.6",
                 outline: "none"
@@ -745,7 +757,9 @@ const [submittingCode, setSubmittingCode] = useState(false);
               <textarea
                 value={customInput}
                 onChange={(e) =>
-                  setCustomInput(e.target.value)
+                  setCustomInput(
+                    e.target.value
+                  )
                 }
                 placeholder="Enter input for your program (optional)"
                 style={{
@@ -772,6 +786,8 @@ const [submittingCode, setSubmittingCode] = useState(false);
                 flexWrap: "wrap"
               }}
             >
+              {/* RUN BUTTON */}
+
               <button
                 type="button"
                 onClick={runCode}
@@ -781,7 +797,9 @@ const [submittingCode, setSubmittingCode] = useState(false);
                   borderRadius: "7px",
                   padding: "11px 20px",
                   background:
-                    runningCode ? "#aaa" : ORANGE,
+                    runningCode
+                      ? "#aaa"
+                      : ORANGE,
                   color: "#fff",
                   cursor:
                     runningCode
@@ -794,28 +812,39 @@ const [submittingCode, setSubmittingCode] = useState(false);
                   ? "Running..."
                   : "▶ Run Code"}
               </button>
+
+              {/* SUBMIT BUTTON */}
+
               <button
-  type="button"
-  onClick={submitCode}
-  disabled={submittingCode || runningCode}
-  style={{
-    border: "none",
-    borderRadius: "7px",
-    padding: "11px 20px",
-    background:
-      submittingCode ? "#aaa" : "#18864b",
-    color: "#fff",
-    cursor:
-      submittingCode || runningCode
-        ? "not-allowed"
-        : "pointer",
-    fontWeight: "700"
-  }}
->
-  {submittingCode
-    ? "Submitting..."
-    : "✓ Submit Code"}
-</button>
+                type="button"
+                onClick={submitCode}
+                disabled={
+                  submittingCode ||
+                  runningCode
+                }
+                style={{
+                  border: "none",
+                  borderRadius: "7px",
+                  padding: "11px 20px",
+                  background:
+                    submittingCode
+                      ? "#aaa"
+                      : "#18864b",
+                  color: "#fff",
+                  cursor:
+                    submittingCode ||
+                    runningCode
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: "700"
+                }}
+              >
+                {submittingCode
+                  ? "Submitting..."
+                  : "✓ Submit Code"}
+              </button>
+
+              {/* RESET BUTTON */}
 
               <button
                 type="button"
@@ -845,6 +874,8 @@ const [submittingCode, setSubmittingCode] = useState(false);
                 Reset
               </button>
             </div>
+
+            {/* OUTPUT */}
 
             <div style={{ marginTop: "18px" }}>
               <h4
@@ -878,6 +909,8 @@ const [submittingCode, setSubmittingCode] = useState(false);
               </div>
             </div>
 
+            {/* ERROR */}
+
             {codeError && (
               <div
                 style={{
@@ -896,151 +929,181 @@ const [submittingCode, setSubmittingCode] = useState(false);
               >
                 <strong>Error</strong>
 
-                <div style={{ marginTop: "5px" }}>
-                  {codeError}
-                </div>
-                {submissionResult && (
-  <div
-    style={{
-      marginTop: "18px",
-      padding: "15px",
-      borderRadius: "8px",
-      background:
-        submissionResult.success
-          ? "#eaf7ef"
-          : "#fff0f0",
-      border:
-        submissionResult.success
-          ? "1px solid #b7dfc5"
-          : "1px solid #f3caca"
-    }}
-  >
-    <h4
-      style={{
-        margin: "0 0 12px",
-        color:
-          submissionResult.success
-            ? "#18864b"
-            : "#c62828"
-      }}
-    >
-      {submissionResult.success
-        ? "✅ Accepted"
-        : submissionResult.verdict ===
-          "Wrong Answer"
-        ? "❌ Wrong Answer"
-        : submissionResult.verdict ===
-          "Runtime Error"
-        ? "⚠️ Runtime Error"
-        : submissionResult.verdict ===
-          "Compilation Error"
-        ? "🔴 Compilation Error"
-        : submissionResult.verdict}
-    </h4>
-
-    {submissionResult.error && (
-      <div
-        style={{
-          marginBottom: "12px",
-          padding: "10px",
-          background: "#fff",
-          borderRadius: "6px",
-          color: "#c62828",
-          whiteSpace: "pre-wrap",
-          fontFamily:
-            "Consolas, Monaco, monospace",
-          fontSize: "13px"
-        }}
-      >
-        {submissionResult.error}
-      </div>
-    )}
-
-    {Array.isArray(
-      submissionResult.testCases
-    ) &&
-      submissionResult.testCases.length > 0 && (
-        <div>
-          <strong>Test Cases</strong>
-
-          <div
-            style={{
-              marginTop: "10px",
-              display: "grid",
-              gap: "7px"
-            }}
-          >
-            {submissionResult.testCases.map(
-              (testCase) => (
                 <div
-                  key={testCase.testCase}
                   style={{
-                    padding: "9px 11px",
-                    borderRadius: "6px",
-                    background: "#fff",
-                    border:
-                      "1px solid #eee",
-                    display: "flex",
-                    justifyContent:
-                      "space-between"
+                    marginTop: "5px"
                   }}
                 >
-                  <span>
-                    Test Case{" "}
-                    {testCase.testCase}
-                  </span>
+                  {codeError}
+                </div>
+              </div>
+            )}
 
-                  <strong
+            {/* SUBMISSION RESULT */}
+
+            {submissionResult && (
+              <div
+                style={{
+                  marginTop: "18px",
+                  padding: "15px",
+                  borderRadius: "8px",
+                  background:
+                    submissionResult.success
+                      ? "#eaf7ef"
+                      : "#fff0f0",
+                  border:
+                    submissionResult.success
+                      ? "1px solid #b7dfc5"
+                      : "1px solid #f3caca"
+                }}
+              >
+                <h4
+                  style={{
+                    margin: "0 0 12px",
+                    color:
+                      submissionResult.success
+                        ? "#18864b"
+                        : "#c62828"
+                  }}
+                >
+                  {submissionResult.success
+                    ? "✅ Accepted"
+                    : submissionResult.verdict ===
+                      "Wrong Answer"
+                    ? "❌ Wrong Answer"
+                    : submissionResult.verdict ===
+                      "Runtime Error"
+                    ? "⚠️ Runtime Error"
+                    : submissionResult.verdict ===
+                      "Compilation Error"
+                    ? "🔴 Compilation Error"
+                    : submissionResult.verdict}
+                </h4>
+
+                {submissionResult.error && (
+                  <div
                     style={{
-                      color:
-                        testCase.passed
-                          ? "#18864b"
-                          : "#c62828"
+                      marginBottom: "12px",
+                      padding: "10px",
+                      background: "#fff",
+                      borderRadius: "6px",
+                      color: "#c62828",
+                      whiteSpace: "pre-wrap",
+                      fontFamily:
+                        "Consolas, Monaco, monospace",
+                      fontSize: "13px"
                     }}
                   >
-                    {testCase.passed
-                      ? "✓ Passed"
-                      : "✗ Failed"}
-                  </strong>
-                </div>
-              )
-            )}
-          </div>
-        </div>
-      )}
+                    {submissionResult.error}
+                  </div>
+                )}
 
-    {!submissionResult.success &&
-      Array.isArray(
-        submissionResult.testCases
-      ) &&
-      submissionResult.testCases.length > 0 &&
-      submissionResult.testCases[
-        submissionResult.testCases.length - 1
-      ].actualOutput !== undefined && (
-        <div style={{ marginTop: "12px" }}>
-          <strong>Your Output</strong>
+                {Array.isArray(
+                  submissionResult.testCases
+                ) &&
+                  submissionResult.testCases.length >
+                    0 && (
+                    <div>
+                      <strong>
+                        Test Cases
+                      </strong>
 
-          <pre
-            style={{
-              marginTop: "7px",
-              padding: "10px",
-              background: "#111",
-              color: "#eee",
-              borderRadius: "6px",
-              whiteSpace: "pre-wrap",
-              overflowX: "auto"
-            }}
-          >
-            {
-              submissionResult.testCases[
-                submissionResult.testCases.length - 1
-              ].actualOutput
-            }
-          </pre>
-        </div>
-      )}
-  </div>
-)}
+                      <div
+                        style={{
+                          marginTop: "10px",
+                          display: "grid",
+                          gap: "7px"
+                        }}
+                      >
+                        {submissionResult.testCases.map(
+                          (testCase) => (
+                            <div
+                              key={
+                                testCase.testCase
+                              }
+                              style={{
+                                padding:
+                                  "9px 11px",
+                                borderRadius:
+                                  "6px",
+                                background:
+                                  "#fff",
+                                border:
+                                  "1px solid #eee",
+                                display:
+                                  "flex",
+                                justifyContent:
+                                  "space-between"
+                              }}
+                            >
+                              <span>
+                                Test Case{" "}
+                                {
+                                  testCase.testCase
+                                }
+                              </span>
+
+                              <strong
+                                style={{
+                                  color:
+                                    testCase.passed
+                                      ? "#18864b"
+                                      : "#c62828"
+                                }}
+                              >
+                                {testCase.passed
+                                  ? "✓ Passed"
+                                  : "✗ Failed"}
+                              </strong>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                {!submissionResult.success &&
+                  Array.isArray(
+                    submissionResult.testCases
+                  ) &&
+                  submissionResult.testCases.length >
+                    0 &&
+                  submissionResult.testCases[
+                    submissionResult.testCases.length -
+                      1
+                  ].actualOutput !==
+                    undefined && (
+                    <div
+                      style={{
+                        marginTop: "12px"
+                      }}
+                    >
+                      <strong>
+                        Your Output
+                      </strong>
+
+                      <pre
+                        style={{
+                          marginTop: "7px",
+                          padding: "10px",
+                          background: "#111",
+                          color: "#eee",
+                          borderRadius: "6px",
+                          whiteSpace: "pre-wrap",
+                          overflowX: "auto"
+                        }}
+                      >
+                        {
+                          submissionResult
+                            .testCases[
+                            submissionResult
+                              .testCases.length -
+                              1
+                          ].actualOutput
+                        }
+                      </pre>
+                    </div>
+                  )}
               </div>
             )}
           </div>
