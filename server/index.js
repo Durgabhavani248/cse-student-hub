@@ -1522,15 +1522,11 @@ app.get(
 );
 
 // =========================================================
-// CODING CODE EXECUTION - WANDBOX DEMO
+// CODING CODE EXECUTION - JUDGE0 CE
 // =========================================================
 
-// =========================================================
-// CODING CODE EXECUTION - WANDBOX
-// =========================================================
-
-const CODING_COMPILERS = {
-  Python: "cpython-head"
+const CODING_LANGUAGES = {
+  Python: 71
 };
 
 const normalizeCodingOutput = (value) => {
@@ -1539,41 +1535,51 @@ const normalizeCodingOutput = (value) => {
     .trim();
 };
 
-const executeOnWandbox = async ({
-  compiler,
+const executeOnJudge0 = async ({
+  languageId,
   code,
-  stdin = ""
+  stdin = "",
+  expectedOutput = null
 }) => {
   const controller = new AbortController();
 
   const timeout = setTimeout(() => {
     controller.abort();
-  }, 15000);
+  }, 20000);
 
   try {
+    const payload = {
+      source_code: String(code),
+      language_id: Number(languageId),
+      stdin: String(stdin || ""),
+      cpu_time_limit: 5,
+      wall_time_limit: 10,
+      memory_limit: 128000
+    };
+
+    if (expectedOutput !== null) {
+      payload.expected_output = String(expectedOutput);
+    }
+
     const response = await fetch(
-      "https://wandbox.org/api/compile.json",
+      "https://ce.judge0.com/submissions?wait=true&base64_encoded=false",
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({
-          compiler,
-          code: String(code),
-          stdin: String(stdin || "")
-        }),
+        body: JSON.stringify(payload),
         signal: controller.signal
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    const responseText = await response.text();
 
+    if (!response.ok) {
       console.error(
-        "Wandbox HTTP error:",
+        "Judge0 HTTP error:",
         response.status,
-        errorText
+        responseText
       );
 
       throw new Error(
@@ -1581,38 +1587,32 @@ const executeOnWandbox = async ({
       );
     }
 
-    const result = await response.json();
-    console.log("========== WANDBOX RAW RESPONSE ==========");
-console.log(JSON.stringify(result, null, 2));
-console.log("==========================================");
+    let result;
+
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.error(
+        "Judge0 invalid JSON response:",
+        responseText
+      );
+
+      throw new Error(
+        "Invalid response from code execution service."
+      );
+    }
 
     return {
-      compilerMessage:
-        result.compiler_message || "",
-
-      compilerError:
-        result.compiler_error || "",
-
-      output:
-        result.program_output ??
-        "",
-
-      programMessage:
-        result.program_message ??
-        "",
-
-      programError:
-        result.program_error ||
-        "",
-
-      status:
-        result.status === "" ||
-        result.status === undefined
-          ? null
-          : Number(result.status),
-
-      signal:
-        result.signal || ""
+      stdout: result.stdout || "",
+      stderr: result.stderr || "",
+      compileOutput: result.compile_output || "",
+      message: result.message || "",
+      statusId:
+        result.status?.id ??
+        null,
+      statusDescription:
+        result.status?.description ||
+        ""
     };
 
   } finally {
@@ -1651,10 +1651,12 @@ app.post(
         });
       }
 
-      const compiler =
-        CODING_COMPILERS[String(language).trim()];
+      const languageId =
+        CODING_LANGUAGES[
+          String(language).trim()
+        ];
 
-      if (!compiler) {
+      if (!languageId) {
         return res.status(400).json({
           message:
             `${language} execution is not enabled yet.`
@@ -1676,58 +1678,66 @@ app.post(
       }
 
       const result =
-        await executeOnWandbox({
-          compiler,
+        await executeOnJudge0({
+          languageId,
           code,
           stdin
         });
 
-      const hasCompileError =
-        Boolean(result.compilerError) ||
-        Boolean(result.compilerMessage);
-
-      const hasRuntimeError =
-        Boolean(result.programError) ||
-        Boolean(result.signal) ||
-        (
-          result.status !== null &&
-          result.status !== 0
-        );
-
-      if (hasCompileError) {
+      // Compilation error
+      if (
+        result.statusId === 6 ||
+        result.compileOutput
+      ) {
         return res.json({
           success: false,
           type: "Compilation Error",
           output: "",
           error:
-            result.compilerMessage ||
-            result.compilerError
+            result.compileOutput ||
+            result.stderr ||
+            result.message ||
+            "Compilation failed."
         });
       }
 
-      if (hasRuntimeError) {
+      // Runtime error
+      if (
+        result.statusId === 7 ||
+        result.statusId === 5 ||
+        result.statusId === 11 ||
+        result.statusId === 12 ||
+        result.statusId === 13 ||
+        result.statusId === 14 ||
+        result.statusId === 15
+      ) {
         return res.json({
           success: false,
-          type: "Runtime Error",
-          output:
-            result.output ||
-            result.programMessage ||
-            "",
+          type:
+            result.statusId === 5
+              ? "Time Limit Exceeded"
+              : "Runtime Error",
+          output: result.stdout,
           error:
-            result.programError ||
-            result.signal ||
+            result.stderr ||
+            result.message ||
+            result.statusDescription ||
             "Program terminated with an error."
         });
       }
 
+      // Accepted / normal execution
       return res.json({
-        success: true,
-        type: "Success",
-        output:
-          result.output ||
-          result.programMessage ||
-          "",
-        error: ""
+        success: result.statusId === 3,
+        type:
+          result.statusId === 3
+            ? "Success"
+            : result.statusDescription || "Execution Finished",
+        output: result.stdout,
+        error:
+          result.stderr ||
+          result.message ||
+          ""
       });
 
     } catch (err) {
@@ -1798,19 +1808,19 @@ app.post(
         });
       }
 
-      const compiler =
-        CODING_COMPILERS[String(language).trim()];
+      const languageId =
+        CODING_LANGUAGES[
+          String(language).trim()
+        ];
 
-      if (!compiler) {
+      if (!languageId) {
         return res.status(400).json({
           message:
             `${language} execution is not enabled yet.`
         });
       }
 
-      // IMPORTANT:
-      // Test cases stay on the backend.
-      // They are NEVER sent to the frontend.
+      // Hidden test cases stay on backend
       const problem =
         await CodingProblem.findOne({
           _id: problemId,
@@ -1865,15 +1875,16 @@ app.post(
 
         try {
           result =
-            await executeOnWandbox({
-              compiler,
+            await executeOnJudge0({
+              languageId,
               code,
-              stdin: input
+              stdin: input,
+              expectedOutput: expected
             });
 
         } catch (executionError) {
           console.error(
-            "Wandbox test execution error:",
+            "Judge0 test execution error:",
             executionError
           );
 
@@ -1885,38 +1896,39 @@ app.post(
 
         // Compilation error
         if (
-          result.compilerError ||
-          result.compilerMessage
+          result.statusId === 6 ||
+          result.compileOutput
         ) {
           return res.json({
             success: false,
             verdict: "Compilation Error",
             testCases: testResults,
             error:
-              result.compilerMessage ||
-              result.compilerError
+              result.compileOutput ||
+              result.stderr ||
+              result.message ||
+              "Compilation failed."
           });
         }
 
         // Runtime error
         if (
-          result.programError ||
-          result.signal ||
-          (
-            result.status !== null &&
-            result.status !== 0
-          )
+          result.statusId === 7 ||
+          result.statusId === 11 ||
+          result.statusId === 12 ||
+          result.statusId === 13 ||
+          result.statusId === 14 ||
+          result.statusId === 15
         ) {
           testResults.push({
             testCase: i + 1,
             passed: false,
             actualOutput:
-              result.output ||
-              result.programMessage ||
-              "",
+              result.stdout,
             error:
-              result.programError ||
-              result.signal ||
+              result.stderr ||
+              result.message ||
+              result.statusDescription ||
               "Runtime error"
           });
 
@@ -1925,17 +1937,36 @@ app.post(
             verdict: "Runtime Error",
             testCases: testResults,
             error:
-              result.programError ||
-              result.signal ||
+              result.stderr ||
+              result.message ||
+              result.statusDescription ||
               "Runtime error"
+          });
+        }
+
+        // Time limit
+        if (result.statusId === 5) {
+          testResults.push({
+            testCase: i + 1,
+            passed: false,
+            actualOutput:
+              result.stdout,
+            error:
+              "Time limit exceeded."
+          });
+
+          return res.json({
+            success: false,
+            verdict: "Time Limit Exceeded",
+            testCases: testResults,
+            error:
+              "Time limit exceeded."
           });
         }
 
         const actualOutput =
           normalizeCodingOutput(
-            result.output ||
-            result.programMessage ||
-            ""
+            result.stdout
           );
 
         const expectedOutput =
@@ -1953,7 +1984,7 @@ app.post(
           actualOutput
         });
 
-        // Stop immediately when one test fails
+        // Wrong answer
         if (!passed) {
           return res.json({
             success: false,
@@ -1963,7 +1994,7 @@ app.post(
         }
       }
 
-      // All test cases passed
+      // All hidden test cases passed
       return res.json({
         success: true,
         verdict: "Accepted",
@@ -1984,6 +2015,9 @@ app.post(
     }
   }
 );
+
+
+// ==================== LMS EXAM ROUTES ====================
 // ==================== LMS EXAM ROUTES ====================
 
 // =========================================================
