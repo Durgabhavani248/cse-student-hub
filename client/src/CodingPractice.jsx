@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 
 const ORANGE = "#F15A29";
 
-export default function CodingPractice({
-  api,
-  token
-}) {
+export default function CodingPractice({ api, token }) {
   const [problems, setProblems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -13,7 +10,6 @@ export default function CodingPractice({
   const [search, setSearch] = useState("");
   const [topic, setTopic] = useState("");
   const [difficulty, setDifficulty] = useState("");
-
   const [page, setPage] = useState(1);
 
   const [pagination, setPagination] = useState({
@@ -25,11 +21,8 @@ export default function CodingPractice({
     hasPreviousPage: false
   });
 
-  const [selectedProblem, setSelectedProblem] =
-    useState(null);
-
-  const [detailLoading, setDetailLoading] =
-    useState(false);
+  const [selectedProblem, setSelectedProblem] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const topics = [
     "Arrays",
@@ -49,13 +42,22 @@ export default function CodingPractice({
   // Remove trailing slash from API URL
   const API_BASE = (api || "").replace(/\/$/, "");
 
+  // Student authentication token
+  // Existing token prop is preferred.
+  // If it is not available, use the actual student login token.
+  const authToken =
+    token || localStorage.getItem("studentToken");
+
   // =========================
   // LOAD CODING PROBLEMS
   // =========================
-  const loadProblems = async (
-    requestedPage = page
-  ) => {
-    if (!token) return;
+
+  const loadProblems = async (requestedPage = page) => {
+    if (!authToken) {
+      setError("Student authentication token not found.");
+      setProblems([]);
+      return;
+    }
 
     try {
       setLoading(true);
@@ -63,18 +65,11 @@ export default function CodingPractice({
 
       const params = new URLSearchParams();
 
-      params.set(
-        "page",
-        String(requestedPage)
-      );
-
+      params.set("page", String(requestedPage));
       params.set("limit", "12");
 
       if (search.trim()) {
-        params.set(
-          "search",
-          search.trim()
-        );
+        params.set("search", search.trim());
       }
 
       if (topic) {
@@ -82,17 +77,15 @@ export default function CodingPractice({
       }
 
       if (difficulty) {
-        params.set(
-          "difficulty",
-          difficulty
-        );
+        params.set("difficulty", difficulty);
       }
 
       const response = await fetch(
         `${API_BASE}/api/lms/coding/problems?${params.toString()}`,
         {
+          method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${authToken}`
           }
         }
       );
@@ -139,18 +132,18 @@ export default function CodingPractice({
     }
   };
 
-  // Load when page/topic/difficulty changes
+  // =========================
+  // LOAD WHEN PAGE/FILTER CHANGES
+  // =========================
+
   useEffect(() => {
     loadProblems();
-  }, [
-    page,
-    topic,
-    difficulty
-  ]);
+  }, [page, topic, difficulty]);
 
   // =========================
   // SEARCH
   // =========================
+
   const handleSearch = async (event) => {
     event.preventDefault();
 
@@ -162,6 +155,7 @@ export default function CodingPractice({
   // =========================
   // CLEAR FILTERS
   // =========================
+
   const clearFilters = () => {
     setSearch("");
     setTopic("");
@@ -172,12 +166,16 @@ export default function CodingPractice({
   // =========================
   // OPEN PROBLEM DETAILS
   // =========================
-  const openProblem = async (
-    problemId
-  ) => {
+
+  const openProblem = async (problemId) => {
     if (!problemId) {
+      setError("Invalid coding problem.");
+      return;
+    }
+
+    if (!authToken) {
       setError(
-        "Invalid coding problem."
+        "Student authentication token not found."
       );
       return;
     }
@@ -189,8 +187,9 @@ export default function CodingPractice({
       const response = await fetch(
         `${API_BASE}/api/lms/coding/problems/${problemId}`,
         {
+          method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`
+            Authorization: `Bearer ${authToken}`
           }
         }
       );
@@ -210,9 +209,7 @@ export default function CodingPractice({
         );
       }
 
-      setSelectedProblem(
-        data.problem
-      );
+      setSelectedProblem(data.problem);
     } catch (err) {
       console.error(
         "Coding problem details error:",
@@ -231,17 +228,16 @@ export default function CodingPractice({
   // =========================
   // DIFFICULTY STYLE
   // =========================
-  const difficultyStyle = (
-    difficulty
-  ) => {
-    if (difficulty === "Easy") {
+
+  const difficultyStyle = (difficultyValue) => {
+    if (difficultyValue === "Easy") {
       return {
         background: "#eaf7ef",
         color: "#18864b"
       };
     }
 
-    if (difficulty === "Medium") {
+    if (difficultyValue === "Medium") {
       return {
         background: "#fff7e6",
         color: "#b26a00"
@@ -257,13 +253,15 @@ export default function CodingPractice({
   // =========================
   // PROBLEM DETAILS PAGE
   // =========================
+
   if (selectedProblem) {
     return (
       <div>
         <button
-          onClick={() =>
-            setSelectedProblem(null)
-          }
+          onClick={() => {
+            setSelectedProblem(null);
+            setError("");
+          }}
           style={{
             border: "1px solid #ddd",
             borderRadius: "7px",
@@ -278,6 +276,21 @@ export default function CodingPractice({
           ← Back to Problems
         </button>
 
+        {error && (
+          <div
+            style={{
+              marginBottom: "14px",
+              padding: "11px 13px",
+              borderRadius: "8px",
+              background: "#fff0f0",
+              color: "#d33",
+              fontSize: "14px"
+            }}
+          >
+            {error}
+          </div>
+        )}
+
         <div
           style={{
             background: "#fff",
@@ -289,13 +302,12 @@ export default function CodingPractice({
           }}
         >
           {/* TITLE + DIFFICULTY */}
+
           <div
             style={{
               display: "flex",
-              justifyContent:
-                "space-between",
-              alignItems:
-                "flex-start",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
               gap: "12px",
               flexWrap: "wrap"
             }}
@@ -338,104 +350,87 @@ export default function CodingPractice({
           <hr
             style={{
               border: 0,
-              borderTop:
-                "1px solid #eee",
+              borderTop: "1px solid #eee",
               margin: "18px 0"
             }}
           />
 
           {/* DESCRIPTION */}
-          <h3>
-            Description
-          </h3>
+
+          <h3>Description</h3>
 
           <p
             style={{
               color: "#555",
               lineHeight: 1.7,
-              whiteSpace:
-                "pre-wrap"
+              whiteSpace: "pre-wrap"
             }}
           >
             {selectedProblem.description}
           </p>
 
           {/* INPUT FORMAT */}
+
           {selectedProblem.inputFormat && (
             <>
-              <h3>
-                Input Format
-              </h3>
+              <h3>Input Format</h3>
 
               <p
                 style={{
                   color: "#555",
-                  whiteSpace:
-                    "pre-wrap",
+                  whiteSpace: "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {
-                  selectedProblem.inputFormat
-                }
+                {selectedProblem.inputFormat}
               </p>
             </>
           )}
 
           {/* OUTPUT FORMAT */}
+
           {selectedProblem.outputFormat && (
             <>
-              <h3>
-                Output Format
-              </h3>
+              <h3>Output Format</h3>
 
               <p
                 style={{
                   color: "#555",
-                  whiteSpace:
-                    "pre-wrap",
+                  whiteSpace: "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {
-                  selectedProblem.outputFormat
-                }
+                {selectedProblem.outputFormat}
               </p>
             </>
           )}
 
           {/* CONSTRAINTS */}
+
           {selectedProblem.constraints && (
             <>
-              <h3>
-                Constraints
-              </h3>
+              <h3>Constraints</h3>
 
               <p
                 style={{
                   color: "#555",
-                  whiteSpace:
-                    "pre-wrap",
+                  whiteSpace: "pre-wrap",
                   lineHeight: 1.6
                 }}
               >
-                {
-                  selectedProblem.constraints
-                }
+                {selectedProblem.constraints}
               </p>
             </>
           )}
 
           {/* EXAMPLES */}
+
           {Array.isArray(
             selectedProblem.examples
           ) &&
-            selectedProblem
-              .examples.length > 0 && (
+            selectedProblem.examples.length > 0 && (
               <>
-                <h3>
-                  Examples
-                </h3>
+                <h3>Examples</h3>
 
                 <div
                   style={{
@@ -444,72 +439,48 @@ export default function CodingPractice({
                   }}
                 >
                   {selectedProblem.examples.map(
-                    (
-                      example,
-                      index
-                    ) => (
+                    (example, index) => (
                       <div
                         key={index}
                         style={{
-                          background:
-                            "#fafafa",
-                          border:
-                            "1px solid #eee",
-                          borderRadius:
-                            "8px",
-                          padding:
-                            "14px"
+                          background: "#fafafa",
+                          border: "1px solid #eee",
+                          borderRadius: "8px",
+                          padding: "14px"
                         }}
                       >
                         <strong>
-                          Example{" "}
-                          {index + 1}
+                          Example {index + 1}
                         </strong>
 
                         <p
                           style={{
-                            margin:
-                              "8px 0 4px",
-                            whiteSpace:
-                              "pre-wrap"
+                            margin: "8px 0 4px",
+                            whiteSpace: "pre-wrap"
                           }}
                         >
-                          <b>
-                            Input:
-                          </b>{" "}
-                          {
-                            example.input
-                          }
+                          <b>Input:</b>{" "}
+                          {example.input}
                         </p>
 
                         <p
                           style={{
-                            margin:
-                              "4px 0",
-                            whiteSpace:
-                              "pre-wrap"
+                            margin: "4px 0",
+                            whiteSpace: "pre-wrap"
                           }}
                         >
-                          <b>
-                            Output:
-                          </b>{" "}
-                          {
-                            example.output
-                          }
+                          <b>Output:</b>{" "}
+                          {example.output}
                         </p>
 
                         {example.explanation && (
                           <p
                             style={{
-                              margin:
-                                "4px 0",
-                              color:
-                                "#777"
+                              margin: "4px 0",
+                              color: "#777"
                             }}
                           >
-                            {
-                              example.explanation
-                            }
+                            {example.explanation}
                           </p>
                         )}
                       </div>
@@ -520,15 +491,14 @@ export default function CodingPractice({
             )}
 
           {/* CODING EDITOR PLACEHOLDER */}
+
           <div
             style={{
               marginTop: "22px",
               padding: "16px",
               borderRadius: "10px",
-              background:
-                "#fff8f4",
-              border:
-                `1px solid ${ORANGE}`
+              background: "#fff8f4",
+              border: `1px solid ${ORANGE}`
             }}
           >
             <h3
@@ -560,9 +530,11 @@ export default function CodingPractice({
   // =========================
   // PROBLEM LIST PAGE
   // =========================
+
   return (
     <div>
       {/* FILTERS */}
+
       <form
         onSubmit={handleSearch}
         style={{
@@ -584,41 +556,34 @@ export default function CodingPractice({
           }}
         >
           {/* SEARCH */}
+
           <input
             value={search}
             onChange={(e) =>
-              setSearch(
-                e.target.value
-              )
+              setSearch(e.target.value)
             }
             placeholder="Search problems..."
             style={{
               width: "100%",
-              boxSizing:
-                "border-box",
-              padding:
-                "10px 12px",
-              border:
-                "1px solid #ddd",
+              boxSizing: "border-box",
+              padding: "10px 12px",
+              border: "1px solid #ddd",
               borderRadius: "7px",
               outline: "none"
             }}
           />
 
           {/* TOPIC */}
+
           <select
             value={topic}
             onChange={(e) => {
-              setTopic(
-                e.target.value
-              );
+              setTopic(e.target.value);
               setPage(1);
             }}
             style={{
-              padding:
-                "10px 12px",
-              border:
-                "1px solid #ddd",
+              padding: "10px 12px",
+              border: "1px solid #ddd",
               borderRadius: "7px",
               background: "#fff"
             }}
@@ -627,32 +592,27 @@ export default function CodingPractice({
               All Topics
             </option>
 
-            {topics.map(
-              (item) => (
-                <option
-                  key={item}
-                  value={item}
-                >
-                  {item}
-                </option>
-              )
-            )}
+            {topics.map((item) => (
+              <option
+                key={item}
+                value={item}
+              >
+                {item}
+              </option>
+            ))}
           </select>
 
           {/* DIFFICULTY */}
+
           <select
             value={difficulty}
             onChange={(e) => {
-              setDifficulty(
-                e.target.value
-              );
+              setDifficulty(e.target.value);
               setPage(1);
             }}
             style={{
-              padding:
-                "10px 12px",
-              border:
-                "1px solid #ddd",
+              padding: "10px 12px",
+              border: "1px solid #ddd",
               borderRadius: "7px",
               background: "#fff"
             }}
@@ -675,13 +635,13 @@ export default function CodingPractice({
           </select>
 
           {/* SEARCH BUTTON */}
+
           <button
             type="submit"
             style={{
               border: "none",
               borderRadius: "7px",
-              padding:
-                "10px 16px",
+              padding: "10px 16px",
               background: ORANGE,
               color: "#fff",
               cursor: "pointer",
@@ -692,17 +652,14 @@ export default function CodingPractice({
           </button>
 
           {/* CLEAR BUTTON */}
+
           <button
             type="button"
-            onClick={
-              clearFilters
-            }
+            onClick={clearFilters}
             style={{
-              border:
-                "1px solid #ddd",
+              border: "1px solid #ddd",
               borderRadius: "7px",
-              padding:
-                "10px 16px",
+              padding: "10px 16px",
               background: "#fff",
               color: "#444",
               cursor: "pointer",
@@ -715,15 +672,14 @@ export default function CodingPractice({
       </form>
 
       {/* ERROR */}
+
       {error && (
         <div
           style={{
             marginBottom: "14px",
-            padding:
-              "11px 13px",
+            padding: "11px 13px",
             borderRadius: "8px",
-            background:
-              "#fff0f0",
+            background: "#fff0f0",
             color: "#d33",
             fontSize: "14px"
           }}
@@ -733,11 +689,11 @@ export default function CodingPractice({
       )}
 
       {/* HEADER */}
+
       <div
         style={{
           display: "flex",
-          justifyContent:
-            "space-between",
+          justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "14px",
           gap: "10px",
@@ -756,51 +712,43 @@ export default function CodingPractice({
 
           <p
             style={{
-              margin:
-                "5px 0 0",
+              margin: "5px 0 0",
               color: "#999",
               fontSize: "14px"
             }}
           >
-            {
-              pagination.total
-            }{" "}
-            problems available
+            {pagination.total} problems available
           </p>
         </div>
       </div>
 
       {/* PROBLEMS */}
+
       {loading ? (
         <div
           style={{
             background: "#fff",
-            border:
-              "1px solid #eee",
+            border: "1px solid #eee",
             borderRadius: "12px",
             padding: "35px",
             textAlign: "center",
             color: "#999"
           }}
         >
-          Loading coding
-          problems...
+          Loading coding problems...
         </div>
-      ) : problems.length ===
-        0 ? (
+      ) : problems.length === 0 ? (
         <div
           style={{
             background: "#fff",
-            border:
-              "1px solid #eee",
+            border: "1px solid #eee",
             borderRadius: "12px",
             padding: "35px",
             textAlign: "center",
             color: "#999"
           }}
         >
-          No coding
-          problems found.
+          No coding problems found.
         </div>
       ) : (
         <div
@@ -811,184 +759,142 @@ export default function CodingPractice({
             gap: "16px"
           }}
         >
-          {problems.map(
-            (problem) => (
+          {problems.map((problem) => (
+            <div
+              key={problem._id}
+              style={{
+                background: "#fff",
+                border: "1px solid #eee",
+                borderRadius: "12px",
+                padding: "18px",
+                boxShadow:
+                  "0 2px 8px rgba(0,0,0,0.05)",
+                display: "flex",
+                flexDirection: "column"
+              }}
+            >
+              {/* TITLE + DIFFICULTY */}
+
               <div
-                key={
-                  problem._id
-                }
                 style={{
-                  background:
-                    "#fff",
-                  border:
-                    "1px solid #eee",
-                  borderRadius:
-                    "12px",
-                  padding:
-                    "18px",
-                  boxShadow:
-                    "0 2px 8px rgba(0,0,0,0.05)",
-                  display:
-                    "flex",
-                  flexDirection:
-                    "column"
+                  display: "flex",
+                  justifyContent:
+                    "space-between",
+                  gap: "8px",
+                  alignItems: "flex-start"
                 }}
               >
-                {/* TITLE + DIFFICULTY */}
-                <div
+                <h3
                   style={{
-                    display:
-                      "flex",
-                    justifyContent:
-                      "space-between",
-                    gap: "8px",
-                    alignItems:
-                      "flex-start"
+                    margin: 0,
+                    color: "#333",
+                    fontSize: "17px",
+                    lineHeight: 1.4
                   }}
                 >
-                  <h3
-                    style={{
-                      margin: 0,
-                      color: "#333",
-                      fontSize:
-                        "17px",
-                      lineHeight:
-                        1.4
-                    }}
-                  >
-                    {
-                      problem.title
-                    }
-                  </h3>
+                  {problem.title}
+                </h3>
 
-                  <span
-                    style={{
-                      ...difficultyStyle(
-                        problem.difficulty
-                      ),
-                      padding:
-                        "5px 8px",
-                      borderRadius:
-                        "15px",
-                      fontSize:
-                        "11px",
-                      fontWeight:
-                        "700",
-                      whiteSpace:
-                        "nowrap"
-                    }}
-                  >
-                    {
+                <span
+                  style={{
+                    ...difficultyStyle(
                       problem.difficulty
-                    }
-                  </span>
-                </div>
-
-                {/* TOPIC */}
-                <p
-                  style={{
-                    color: ORANGE,
-                    fontSize:
-                      "13px",
-                    fontWeight:
-                      "600",
-                    margin:
-                      "9px 0"
+                    ),
+                    padding: "5px 8px",
+                    borderRadius: "15px",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                    whiteSpace: "nowrap"
                   }}
                 >
-                  {
-                    problem.topic
-                  }
-                </p>
-
-                {/* DESCRIPTION */}
-                <p
-                  style={{
-                    color: "#777",
-                    fontSize:
-                      "14px",
-                    lineHeight:
-                      1.5,
-                    flex: 1
-                  }}
-                >
-                  {
-                    problem.description
-                  }
-                </p>
-
-                {/* PRACTICE */}
-                <button
-                  onClick={() =>
-                    openProblem(
-                      problem._id
-                    )
-                  }
-                  disabled={
-                    detailLoading
-                  }
-                  style={{
-                    border: "none",
-                    borderRadius:
-                      "7px",
-                    padding:
-                      "10px 14px",
-                    background:
-                      ORANGE,
-                    color: "#fff",
-                    cursor:
-                      detailLoading
-                        ? "not-allowed"
-                        : "pointer",
-                    fontWeight:
-                      "600",
-                    opacity:
-                      detailLoading
-                        ? 0.7
-                        : 1
-                  }}
-                >
-                  {detailLoading
-                    ? "Loading..."
-                    : "Practice"}
-                </button>
+                  {problem.difficulty}
+                </span>
               </div>
-            )
-          )}
+
+              {/* TOPIC */}
+
+              <p
+                style={{
+                  color: ORANGE,
+                  fontSize: "13px",
+                  fontWeight: "600",
+                  margin: "9px 0"
+                }}
+              >
+                {problem.topic}
+              </p>
+
+              {/* DESCRIPTION */}
+
+              <p
+                style={{
+                  color: "#777",
+                  fontSize: "14px",
+                  lineHeight: 1.5,
+                  flex: 1
+                }}
+              >
+                {problem.description}
+              </p>
+
+              {/* PRACTICE */}
+
+              <button
+                onClick={() =>
+                  openProblem(problem._id)
+                }
+                disabled={detailLoading}
+                style={{
+                  border: "none",
+                  borderRadius: "7px",
+                  padding: "10px 14px",
+                  background: ORANGE,
+                  color: "#fff",
+                  cursor: detailLoading
+                    ? "not-allowed"
+                    : "pointer",
+                  fontWeight: "600",
+                  opacity: detailLoading
+                    ? 0.7
+                    : 1
+                }}
+              >
+                {detailLoading
+                  ? "Loading..."
+                  : "Practice"}
+              </button>
+            </div>
+          ))}
         </div>
       )}
 
       {/* PAGINATION */}
-      {pagination.totalPages >
-        1 && (
+
+      {pagination.totalPages > 1 && (
         <div
           style={{
             display: "flex",
-            justifyContent:
-              "center",
-            alignItems:
-              "center",
+            justifyContent: "center",
+            alignItems: "center",
             gap: "12px",
             marginTop: "20px"
           }}
         >
           {/* PREVIOUS */}
+
           <button
             disabled={
               !pagination.hasPreviousPage
             }
             onClick={() =>
               setPage(
-                (prev) =>
-                  prev - 1
+                (prev) => prev - 1
               )
             }
             style={{
-              border:
-                "1px solid #ddd",
+              border: "1px solid #ddd",
               borderRadius: "7px",
-              padding:
-                "9px 14px",
+              padding: "9px 14px",
               background:
                 pagination.hasPreviousPage
                   ? "#fff"
@@ -1003,39 +909,32 @@ export default function CodingPractice({
           </button>
 
           {/* PAGE NUMBER */}
+
           <span
             style={{
               color: "#666",
               fontSize: "14px"
             }}
           >
-            Page{" "}
-            {
-              pagination.page
-            }{" "}
-            of{" "}
-            {
-              pagination.totalPages
-            }
+            Page {pagination.page} of{" "}
+            {pagination.totalPages}
           </span>
 
           {/* NEXT */}
+
           <button
             disabled={
               !pagination.hasNextPage
             }
             onClick={() =>
               setPage(
-                (prev) =>
-                  prev + 1
+                (prev) => prev + 1
               )
             }
             style={{
-              border:
-                "1px solid #ddd",
+              border: "1px solid #ddd",
               borderRadius: "7px",
-              padding:
-                "9px 14px",
+              padding: "9px 14px",
               background:
                 pagination.hasNextPage
                   ? "#fff"

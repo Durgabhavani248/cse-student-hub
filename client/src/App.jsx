@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import CodingPractice from "./CodingPractice";
 import Login from "./Login";
 import StudentLogin from "./StudentLogin";
 import RoleSelector from "./RoleSelector";
