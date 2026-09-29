@@ -1520,6 +1520,185 @@ app.get(
     }
   }
 );
+
+// =========================================================
+// CODING CODE EXECUTION - WANDBOX DEMO
+// =========================================================
+
+app.post(
+  "/api/lms/coding/run",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      const role = req.user?.role;
+
+      if (role !== "student") {
+        return res.status(403).json({
+          message: "Only students can run code"
+        });
+      }
+
+      const {
+        language,
+        code,
+        stdin = ""
+      } = req.body;
+
+      if (!language || !code || !String(code).trim()) {
+        return res.status(400).json({
+          message: "Language and code are required"
+        });
+      }
+
+      const normalizedLanguage =
+        String(language).trim();
+
+      const compilerMap = {
+        Python: "cpython-head"
+      };
+
+      const compiler =
+        compilerMap[normalizedLanguage];
+
+      if (!compiler) {
+        return res.status(400).json({
+          message:
+            `${normalizedLanguage} execution is not enabled yet. ` +
+            "Python is currently available."
+        });
+      }
+
+      if (String(code).length > 50000) {
+        return res.status(400).json({
+          message:
+            "Code is too large. Maximum 50,000 characters allowed."
+        });
+      }
+
+      if (String(stdin).length > 10000) {
+        return res.status(400).json({
+          message:
+            "Input is too large. Maximum 10,000 characters allowed."
+        });
+      }
+
+      const controller =
+        new AbortController();
+
+      const timeout = setTimeout(() => {
+        controller.abort();
+      }, 15000);
+
+      let wandboxResponse;
+
+      try {
+        wandboxResponse = await fetch(
+          "https://wandbox.org/api/compile.json",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+              compiler,
+              code: String(code),
+              stdin: String(stdin || "")
+            }),
+
+            signal: controller.signal
+          }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!wandboxResponse.ok) {
+        const errorText =
+          await wandboxResponse.text();
+
+        console.error(
+          "Wandbox HTTP error:",
+          wandboxResponse.status,
+          errorText
+        );
+
+        return res.status(502).json({
+          message:
+            "Code execution service is temporarily unavailable."
+        });
+      }
+
+      const result =
+        await wandboxResponse.json();
+
+      const compilerMessage =
+        result.compiler_message || "";
+
+      const programOutput =
+        result.program_output ??
+        result.program_message ??
+        "";
+
+      const status =
+        result.status ?? null;
+
+      const signal =
+        result.signal || "";
+
+      const hasCompilerError =
+        Boolean(compilerMessage);
+
+      const hasRuntimeSignal =
+        Boolean(signal);
+
+      const numericStatus =
+        status === null ||
+        status === undefined ||
+        status === ""
+          ? null
+          : Number(status);
+
+      const success =
+        !hasCompilerError &&
+        !hasRuntimeSignal &&
+        (
+          numericStatus === null ||
+          numericStatus === 0
+        );
+
+      return res.json({
+        success,
+        language: normalizedLanguage,
+        output:
+          String(programOutput || ""),
+        error:
+          String(compilerMessage || ""),
+        status: numericStatus,
+        signal: signal || ""
+      });
+
+    } catch (err) {
+      console.error(
+        "Code execution error:",
+        err
+      );
+
+      if (err.name === "AbortError") {
+        return res.status(504).json({
+          message:
+            "Code execution timed out. Please check your program and try again."
+        });
+      }
+
+      return res.status(500).json({
+        message:
+          "Failed to execute code. Please try again."
+      });
+    }
+  }
+);
 // ==================== LMS EXAM ROUTES ====================
 
 // =========================================================

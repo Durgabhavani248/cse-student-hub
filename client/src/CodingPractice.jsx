@@ -23,6 +23,14 @@ export default function CodingPractice({ api, token }) {
 
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+    const [selectedLanguage, setSelectedLanguage] = useState("Python");
+  const [code, setCode] = useState(
+    '# Write your Python code here\nprint("Hello World")'
+  );
+  const [customInput, setCustomInput] = useState("");
+  const [codeOutput, setCodeOutput] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [runningCode, setRunningCode] = useState(false);
 
   const topics = [
     "Arrays",
@@ -224,7 +232,79 @@ export default function CodingPractice({ api, token }) {
       setDetailLoading(false);
     }
   };
+  // =========================
+  // RUN CODE
+  // =========================
 
+  const runCode = async () => {
+    if (!authToken) {
+      setCodeError("Student authentication token not found.");
+      return;
+    }
+
+    if (!code.trim()) {
+      setCodeError("Please enter some code before running.");
+      return;
+    }
+
+    try {
+      setRunningCode(true);
+      setCodeOutput("");
+      setCodeError("");
+
+      const response = await fetch(
+        `${API_BASE}/api/lms/coding/run`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            language: selectedLanguage,
+            code,
+            stdin: customInput
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "Failed to execute code"
+        );
+      }
+
+      if (data.output) {
+        setCodeOutput(data.output);
+      } else {
+        setCodeOutput(
+          data.success
+            ? "Program executed successfully with no output."
+            : ""
+        );
+      }
+
+      if (data.error) {
+        setCodeError(data.error);
+      }
+
+      if (data.signal && !data.error) {
+        setCodeError(
+          `Program stopped by signal: ${data.signal}`
+        );
+      }
+    } catch (err) {
+      console.error("Run code error:", err);
+
+      setCodeError(
+        err.message || "Unable to run code."
+      );
+    } finally {
+      setRunningCode(false);
+    }
+  };
   // =========================
   // DIFFICULTY STYLE
   // =========================
@@ -490,37 +570,239 @@ export default function CodingPractice({ api, token }) {
               </>
             )}
 
-          {/* CODING EDITOR PLACEHOLDER */}
+                    {/* CODING EDITOR */}
 
           <div
             style={{
               marginTop: "22px",
-              padding: "16px",
+              padding: "18px",
               borderRadius: "10px",
               background: "#fff8f4",
               border: `1px solid ${ORANGE}`
             }}
           >
-            <h3
+            <div
               style={{
-                marginTop: 0,
-                color: ORANGE
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: "12px",
+                flexWrap: "wrap",
+                marginBottom: "14px"
               }}
             >
-              Coding Editor
-            </h3>
+              <div>
+                <h3
+                  style={{
+                    margin: 0,
+                    color: ORANGE
+                  }}
+                >
+                  Coding Editor
+                </h3>
 
-            <p
+                <p
+                  style={{
+                    margin: "5px 0 0",
+                    color: "#777",
+                    fontSize: "13px"
+                  }}
+                >
+                  Write your code and run it online.
+                </p>
+              </div>
+
+              <select
+                value={selectedLanguage}
+                onChange={(e) => {
+                  setSelectedLanguage(e.target.value);
+                  setCodeOutput("");
+                  setCodeError("");
+                }}
+                style={{
+                  padding: "9px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: "7px",
+                  background: "#fff",
+                  color: "#333",
+                  fontWeight: "600",
+                  cursor: "pointer"
+                }}
+              >
+                <option value="Python">Python</option>
+              </select>
+            </div>
+
+            <textarea
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              spellCheck={false}
+              placeholder="Write your code here..."
               style={{
-                marginBottom: 0,
-                color: "#666"
+                width: "100%",
+                minHeight: "280px",
+                boxSizing: "border-box",
+                resize: "vertical",
+                padding: "15px",
+                border: "1px solid #333",
+                borderRadius: "8px",
+                background: "#1e1e1e",
+                color: "#f5f5f5",
+                fontFamily: "Consolas, Monaco, monospace",
+                fontSize: "14px",
+                lineHeight: "1.6",
+                outline: "none"
+              }}
+            />
+
+            <div style={{ marginTop: "14px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "7px",
+                  fontWeight: "600",
+                  color: "#444"
+                }}
+              >
+                Custom Input
+              </label>
+
+              <textarea
+                value={customInput}
+                onChange={(e) =>
+                  setCustomInput(e.target.value)
+                }
+                placeholder="Enter input for your program (optional)"
+                style={{
+                  width: "100%",
+                  minHeight: "80px",
+                  boxSizing: "border-box",
+                  resize: "vertical",
+                  padding: "11px",
+                  border: "1px solid #ddd",
+                  borderRadius: "7px",
+                  fontFamily:
+                    "Consolas, Monaco, monospace",
+                  fontSize: "14px",
+                  outline: "none"
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                marginTop: "14px",
+                display: "flex",
+                gap: "10px",
+                flexWrap: "wrap"
               }}
             >
-              Code editor and secure
-              test-case execution will
-              be added in the next
-              Coding Platform phase.
-            </p>
+              <button
+                type="button"
+                onClick={runCode}
+                disabled={runningCode}
+                style={{
+                  border: "none",
+                  borderRadius: "7px",
+                  padding: "11px 20px",
+                  background:
+                    runningCode ? "#aaa" : ORANGE,
+                  color: "#fff",
+                  cursor:
+                    runningCode
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: "700"
+                }}
+              >
+                {runningCode
+                  ? "Running..."
+                  : "▶ Run Code"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCode(
+                    '# Write your Python code here\nprint("Hello World")'
+                  );
+                  setCustomInput("");
+                  setCodeOutput("");
+                  setCodeError("");
+                }}
+                disabled={runningCode}
+                style={{
+                  border: "1px solid #ddd",
+                  borderRadius: "7px",
+                  padding: "11px 18px",
+                  background: "#fff",
+                  color: "#444",
+                  cursor:
+                    runningCode
+                      ? "not-allowed"
+                      : "pointer",
+                  fontWeight: "600"
+                }}
+              >
+                Reset
+              </button>
+            </div>
+
+            <div style={{ marginTop: "18px" }}>
+              <h4
+                style={{
+                  margin: "0 0 8px",
+                  color: "#333"
+                }}
+              >
+                Output
+              </h4>
+
+              <div
+                style={{
+                  minHeight: "80px",
+                  padding: "13px",
+                  borderRadius: "8px",
+                  background: "#111",
+                  color: "#eee",
+                  fontFamily:
+                    "Consolas, Monaco, monospace",
+                  fontSize: "14px",
+                  lineHeight: "1.6",
+                  whiteSpace: "pre-wrap",
+                  overflowX: "auto"
+                }}
+              >
+                {codeOutput ||
+                  (runningCode
+                    ? "Executing your code..."
+                    : "Output will appear here.")}
+              </div>
+            </div>
+
+            {codeError && (
+              <div
+                style={{
+                  marginTop: "12px",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  background: "#fff0f0",
+                  border: "1px solid #f3caca",
+                  color: "#c62828",
+                  fontFamily:
+                    "Consolas, Monaco, monospace",
+                  fontSize: "13px",
+                  lineHeight: "1.5",
+                  whiteSpace: "pre-wrap"
+                }}
+              >
+                <strong>Error</strong>
+
+                <div style={{ marginTop: "5px" }}>
+                  {codeError}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

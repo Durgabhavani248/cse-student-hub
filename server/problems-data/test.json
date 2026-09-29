@@ -1,0 +1,18 @@
+[
+  {
+    "title": "Find Maximum Element in an Array",
+    "topic": "Arrays",
+    "difficulty": "Easy",
+    "description": "Given an array of integers, print the largest element.",
+    "inputFormat": "First line N. Second line N integers.",
+    "outputFormat": "Print the maximum element.",
+    "constraints": "1 <= N <= 1000",
+    "examples": [
+      { "input": "5\n3 9 2 7 5", "output": "9", "explanation": "9 is the largest." }
+    ],
+    "testCases": [
+      { "input": "5\n3 9 2 7 5", "expectedOutput": "9" },
+      { "input": "3\n-4 -1 -8", "expectedOutput": "-1" }
+    ]
+  }
+]
