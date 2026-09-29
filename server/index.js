@@ -1525,14 +1525,107 @@ app.get(
 // CODING CODE EXECUTION - WANDBOX DEMO
 // =========================================================
 
+// =========================================================
+// CODING CODE EXECUTION - WANDBOX
+// =========================================================
+
+const CODING_COMPILERS = {
+  Python: "cpython-head"
+};
+
+const normalizeCodingOutput = (value) => {
+  return String(value ?? "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+};
+
+const executeOnWandbox = async ({
+  compiler,
+  code,
+  stdin = ""
+}) => {
+  const controller = new AbortController();
+
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, 15000);
+
+  try {
+    const response = await fetch(
+      "https://wandbox.org/api/compile.json",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          compiler,
+          code: String(code),
+          stdin: String(stdin || "")
+        }),
+        signal: controller.signal
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      console.error(
+        "Wandbox HTTP error:",
+        response.status,
+        errorText
+      );
+
+      throw new Error(
+        "Code execution service is temporarily unavailable."
+      );
+    }
+
+    const result = await response.json();
+
+    return {
+      compilerMessage:
+        result.compiler_message || "",
+
+      compilerError:
+        result.compiler_error || "",
+
+      output:
+        result.program_output ??
+        "",
+
+      programMessage:
+        result.program_message ??
+        "",
+
+      programError:
+        result.program_error ||
+        "",
+
+      status:
+        result.status === "" ||
+        result.status === undefined
+          ? null
+          : Number(result.status),
+
+      signal:
+        result.signal || ""
+    };
+
+  } finally {
+    clearTimeout(timeout);
+  }
+};
+
+
+// ==================== RUN WITH CUSTOM INPUT ====================
+
 app.post(
   "/api/lms/coding/run",
   verifyAnyToken,
   async (req, res) => {
     try {
-      const role = req.user?.role;
-
-      if (role !== "student") {
+      if (req.user?.role !== "student") {
         return res.status(403).json({
           message: "Only students can run code"
         });
@@ -1544,27 +1637,24 @@ app.post(
         stdin = ""
       } = req.body;
 
-      if (!language || !code || !String(code).trim()) {
+      if (
+        !language ||
+        !code ||
+        !String(code).trim()
+      ) {
         return res.status(400).json({
-          message: "Language and code are required"
+          message:
+            "Language and code are required"
         });
       }
 
-      const normalizedLanguage =
-        String(language).trim();
-
-      const compilerMap = {
-        Python: "cpython-head"
-      };
-
       const compiler =
-        compilerMap[normalizedLanguage];
+        CODING_COMPILERS[String(language).trim()];
 
       if (!compiler) {
         return res.status(400).json({
           message:
-            `${normalizedLanguage} execution is not enabled yet. ` +
-            "Python is currently available."
+            `${language} execution is not enabled yet.`
         });
       }
 
@@ -1582,119 +1672,311 @@ app.post(
         });
       }
 
-      const controller =
-        new AbortController();
+      const result =
+        await executeOnWandbox({
+          compiler,
+          code,
+          stdin
+        });
 
-      const timeout = setTimeout(() => {
-        controller.abort();
-      }, 15000);
+      const hasCompileError =
+        Boolean(result.compilerError) ||
+        Boolean(result.compilerMessage);
 
-      let wandboxResponse;
-
-      try {
-        wandboxResponse = await fetch(
-          "https://wandbox.org/api/compile.json",
-          {
-            method: "POST",
-
-            headers: {
-              "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-              compiler,
-              code: String(code),
-              stdin: String(stdin || "")
-            }),
-
-            signal: controller.signal
-          }
-        );
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      if (!wandboxResponse.ok) {
-        const errorText =
-          await wandboxResponse.text();
-
-        console.error(
-          "Wandbox HTTP error:",
-          wandboxResponse.status,
-          errorText
+      const hasRuntimeError =
+        Boolean(result.programError) ||
+        Boolean(result.signal) ||
+        (
+          result.status !== null &&
+          result.status !== 0
         );
 
-        return res.status(502).json({
-          message:
-            "Code execution service is temporarily unavailable."
+      if (hasCompileError) {
+        return res.json({
+          success: false,
+          type: "Compilation Error",
+          output: "",
+          error:
+            result.compilerMessage ||
+            result.compilerError
         });
       }
 
-      const result =
-        await wandboxResponse.json();
-
-      const compilerMessage =
-        result.compiler_message || "";
-
-      const programOutput =
-        result.program_output ??
-        result.program_message ??
-        "";
-
-      const status =
-        result.status ?? null;
-
-      const signal =
-        result.signal || "";
-
-      const hasCompilerError =
-        Boolean(compilerMessage);
-
-      const hasRuntimeSignal =
-        Boolean(signal);
-
-      const numericStatus =
-        status === null ||
-        status === undefined ||
-        status === ""
-          ? null
-          : Number(status);
-
-      const success =
-        !hasCompilerError &&
-        !hasRuntimeSignal &&
-        (
-          numericStatus === null ||
-          numericStatus === 0
-        );
+      if (hasRuntimeError) {
+        return res.json({
+          success: false,
+          type: "Runtime Error",
+          output:
+            result.output ||
+            result.programMessage ||
+            "",
+          error:
+            result.programError ||
+            result.signal ||
+            "Program terminated with an error."
+        });
+      }
 
       return res.json({
-        success,
-        language: normalizedLanguage,
+        success: true,
+        type: "Success",
         output:
-          String(programOutput || ""),
-        error:
-          String(compilerMessage || ""),
-        status: numericStatus,
-        signal: signal || ""
+          result.output ||
+          result.programMessage ||
+          "",
+        error: ""
       });
 
     } catch (err) {
       console.error(
-        "Code execution error:",
+        "Coding run error:",
         err
       );
 
       if (err.name === "AbortError") {
         return res.status(504).json({
           message:
-            "Code execution timed out. Please check your program and try again."
+            "Code execution timed out."
         });
       }
 
       return res.status(500).json({
         message:
-          "Failed to execute code. Please try again."
+          err.message ||
+          "Failed to execute code."
+      });
+    }
+  }
+);
+
+
+// ==================== SUBMIT AGAINST HIDDEN TEST CASES ====================
+
+app.post(
+  "/api/lms/coding/submit",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      if (req.user?.role !== "student") {
+        return res.status(403).json({
+          message:
+            "Only students can submit coding problems"
+        });
+      }
+
+      const {
+        problemId,
+        language,
+        code
+      } = req.body;
+
+      if (!problemId) {
+        return res.status(400).json({
+          message:
+            "Problem ID is required"
+        });
+      }
+
+      if (
+        !language ||
+        !code ||
+        !String(code).trim()
+      ) {
+        return res.status(400).json({
+          message:
+            "Language and code are required"
+        });
+      }
+
+      if (String(code).length > 50000) {
+        return res.status(400).json({
+          message:
+            "Code is too large. Maximum 50,000 characters allowed."
+        });
+      }
+
+      const compiler =
+        CODING_COMPILERS[String(language).trim()];
+
+      if (!compiler) {
+        return res.status(400).json({
+          message:
+            `${language} execution is not enabled yet.`
+        });
+      }
+
+      // IMPORTANT:
+      // Test cases stay on the backend.
+      // They are NEVER sent to the frontend.
+      const problem =
+        await CodingProblem.findOne({
+          _id: problemId,
+          active: { $ne: false }
+        })
+          .select("title testCases")
+          .lean();
+
+      if (!problem) {
+        return res.status(404).json({
+          message:
+            "Coding problem not found"
+        });
+      }
+
+      const testCases =
+        Array.isArray(problem.testCases)
+          ? problem.testCases
+          : [];
+
+      if (testCases.length === 0) {
+        return res.status(400).json({
+          message:
+            "This problem does not have test cases yet."
+        });
+      }
+
+      const testResults = [];
+
+      for (
+        let i = 0;
+        i < testCases.length;
+        i++
+      ) {
+        const testCase =
+          testCases[i];
+
+        const input =
+          testCase?.input || "";
+
+        const expected =
+          testCase?.expectedOutput || "";
+
+        if (String(input).length > 10000) {
+          return res.status(400).json({
+            message:
+              "A test case input is too large."
+          });
+        }
+
+        let result;
+
+        try {
+          result =
+            await executeOnWandbox({
+              compiler,
+              code,
+              stdin: input
+            });
+
+        } catch (executionError) {
+          console.error(
+            "Wandbox test execution error:",
+            executionError
+          );
+
+          return res.status(502).json({
+            message:
+              "Code execution service is temporarily unavailable."
+          });
+        }
+
+        // Compilation error
+        if (
+          result.compilerError ||
+          result.compilerMessage
+        ) {
+          return res.json({
+            success: false,
+            verdict: "Compilation Error",
+            testCases: testResults,
+            error:
+              result.compilerMessage ||
+              result.compilerError
+          });
+        }
+
+        // Runtime error
+        if (
+          result.programError ||
+          result.signal ||
+          (
+            result.status !== null &&
+            result.status !== 0
+          )
+        ) {
+          testResults.push({
+            testCase: i + 1,
+            passed: false,
+            actualOutput:
+              result.output ||
+              result.programMessage ||
+              "",
+            error:
+              result.programError ||
+              result.signal ||
+              "Runtime error"
+          });
+
+          return res.json({
+            success: false,
+            verdict: "Runtime Error",
+            testCases: testResults,
+            error:
+              result.programError ||
+              result.signal ||
+              "Runtime error"
+          });
+        }
+
+        const actualOutput =
+          normalizeCodingOutput(
+            result.output ||
+            result.programMessage ||
+            ""
+          );
+
+        const expectedOutput =
+          normalizeCodingOutput(
+            expected
+          );
+
+        const passed =
+          actualOutput ===
+          expectedOutput;
+
+        testResults.push({
+          testCase: i + 1,
+          passed,
+          actualOutput
+        });
+
+        // Stop immediately when one test fails
+        if (!passed) {
+          return res.json({
+            success: false,
+            verdict: "Wrong Answer",
+            testCases: testResults
+          });
+        }
+      }
+
+      // All test cases passed
+      return res.json({
+        success: true,
+        verdict: "Accepted",
+        testCases: testResults
+      });
+
+    } catch (err) {
+      console.error(
+        "Coding submission error:",
+        err
+      );
+
+      return res.status(500).json({
+        message:
+          err.message ||
+          "Failed to submit code."
       });
     }
   }

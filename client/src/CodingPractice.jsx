@@ -31,6 +31,8 @@ export default function CodingPractice({ api, token }) {
   const [codeOutput, setCodeOutput] = useState("");
   const [codeError, setCodeError] = useState("");
   const [runningCode, setRunningCode] = useState(false);
+  const [submissionResult, setSubmissionResult] = useState(null);
+const [submittingCode, setSubmittingCode] = useState(false);
 
   const topics = [
     "Arrays",
@@ -303,6 +305,79 @@ export default function CodingPractice({ api, token }) {
       );
     } finally {
       setRunningCode(false);
+    }
+  };
+    // =========================
+  // SUBMIT CODE
+  // =========================
+
+  const submitCode = async () => {
+    if (!authToken) {
+      setCodeError(
+        "Student authentication token not found."
+      );
+      return;
+    }
+
+    if (!selectedProblem?._id) {
+      setCodeError(
+        "Please select a coding problem first."
+      );
+      return;
+    }
+
+    if (!code.trim()) {
+      setCodeError(
+        "Please enter some code before submitting."
+      );
+      return;
+    }
+
+    try {
+      setSubmittingCode(true);
+      setSubmissionResult(null);
+      setCodeError("");
+      setCodeOutput("");
+
+      const response = await fetch(
+        `${API_BASE}/api/lms/coding/submit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            problemId: selectedProblem._id,
+            language: selectedLanguage,
+            code
+          })
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message ||
+            "Failed to submit code"
+        );
+      }
+
+      setSubmissionResult(data);
+
+    } catch (err) {
+      console.error(
+        "Submit code error:",
+        err
+      );
+
+      setCodeError(
+        err.message ||
+          "Unable to submit code."
+      );
+    } finally {
+      setSubmittingCode(false);
     }
   };
   // =========================
@@ -719,6 +794,28 @@ export default function CodingPractice({ api, token }) {
                   ? "Running..."
                   : "▶ Run Code"}
               </button>
+              <button
+  type="button"
+  onClick={submitCode}
+  disabled={submittingCode || runningCode}
+  style={{
+    border: "none",
+    borderRadius: "7px",
+    padding: "11px 20px",
+    background:
+      submittingCode ? "#aaa" : "#18864b",
+    color: "#fff",
+    cursor:
+      submittingCode || runningCode
+        ? "not-allowed"
+        : "pointer",
+    fontWeight: "700"
+  }}
+>
+  {submittingCode
+    ? "Submitting..."
+    : "✓ Submit Code"}
+</button>
 
               <button
                 type="button"
@@ -729,6 +826,7 @@ export default function CodingPractice({ api, token }) {
                   setCustomInput("");
                   setCodeOutput("");
                   setCodeError("");
+                  setSubmissionResult(null);
                 }}
                 disabled={runningCode}
                 style={{
@@ -801,6 +899,148 @@ export default function CodingPractice({ api, token }) {
                 <div style={{ marginTop: "5px" }}>
                   {codeError}
                 </div>
+                {submissionResult && (
+  <div
+    style={{
+      marginTop: "18px",
+      padding: "15px",
+      borderRadius: "8px",
+      background:
+        submissionResult.success
+          ? "#eaf7ef"
+          : "#fff0f0",
+      border:
+        submissionResult.success
+          ? "1px solid #b7dfc5"
+          : "1px solid #f3caca"
+    }}
+  >
+    <h4
+      style={{
+        margin: "0 0 12px",
+        color:
+          submissionResult.success
+            ? "#18864b"
+            : "#c62828"
+      }}
+    >
+      {submissionResult.success
+        ? "✅ Accepted"
+        : submissionResult.verdict ===
+          "Wrong Answer"
+        ? "❌ Wrong Answer"
+        : submissionResult.verdict ===
+          "Runtime Error"
+        ? "⚠️ Runtime Error"
+        : submissionResult.verdict ===
+          "Compilation Error"
+        ? "🔴 Compilation Error"
+        : submissionResult.verdict}
+    </h4>
+
+    {submissionResult.error && (
+      <div
+        style={{
+          marginBottom: "12px",
+          padding: "10px",
+          background: "#fff",
+          borderRadius: "6px",
+          color: "#c62828",
+          whiteSpace: "pre-wrap",
+          fontFamily:
+            "Consolas, Monaco, monospace",
+          fontSize: "13px"
+        }}
+      >
+        {submissionResult.error}
+      </div>
+    )}
+
+    {Array.isArray(
+      submissionResult.testCases
+    ) &&
+      submissionResult.testCases.length > 0 && (
+        <div>
+          <strong>Test Cases</strong>
+
+          <div
+            style={{
+              marginTop: "10px",
+              display: "grid",
+              gap: "7px"
+            }}
+          >
+            {submissionResult.testCases.map(
+              (testCase) => (
+                <div
+                  key={testCase.testCase}
+                  style={{
+                    padding: "9px 11px",
+                    borderRadius: "6px",
+                    background: "#fff",
+                    border:
+                      "1px solid #eee",
+                    display: "flex",
+                    justifyContent:
+                      "space-between"
+                  }}
+                >
+                  <span>
+                    Test Case{" "}
+                    {testCase.testCase}
+                  </span>
+
+                  <strong
+                    style={{
+                      color:
+                        testCase.passed
+                          ? "#18864b"
+                          : "#c62828"
+                    }}
+                  >
+                    {testCase.passed
+                      ? "✓ Passed"
+                      : "✗ Failed"}
+                  </strong>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+    {!submissionResult.success &&
+      Array.isArray(
+        submissionResult.testCases
+      ) &&
+      submissionResult.testCases.length > 0 &&
+      submissionResult.testCases[
+        submissionResult.testCases.length - 1
+      ].actualOutput !== undefined && (
+        <div style={{ marginTop: "12px" }}>
+          <strong>Your Output</strong>
+
+          <pre
+            style={{
+              marginTop: "7px",
+              padding: "10px",
+              background: "#111",
+              color: "#eee",
+              borderRadius: "6px",
+              whiteSpace: "pre-wrap",
+              overflowX: "auto"
+            }}
+          >
+            {
+              submissionResult.testCases[
+                submissionResult.testCases.length - 1
+              ].actualOutput
+            }
+          </pre>
+        </div>
+      )}
+  </div>
+)}
               </div>
             )}
           </div>
