@@ -730,6 +730,103 @@ const CodingProgress = mongoose.model(
   "CodingProgress",
   CodingProgressSchema
 );
+// ==================== DAILY CHALLENGE ====================
+
+const DailyChallengeAttemptSchema = new mongoose.Schema(
+  {
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
+
+    challengeDate: {
+      type: String,
+      required: true
+    },
+
+    problemId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "CodingProblem",
+      required: true
+    },
+
+    branch: {
+      type: String,
+      default: ""
+    },
+
+    section: {
+      type: String,
+      default: ""
+    },
+
+    startedAt: {
+      type: Date,
+      required: true
+    },
+
+    submittedAt: {
+      type: Date,
+      default: null
+    },
+
+    completionTimeMs: {
+      type: Number,
+      default: null
+    },
+
+    language: {
+      type: String,
+      default: ""
+    },
+
+    verdict: {
+      type: String,
+      enum: [
+        "Not Attempted",
+        "Wrong Answer",
+        "Runtime Error",
+        "Compilation Error",
+        "Time Limit Exceeded",
+        "Accepted"
+      ],
+      default: "Not Attempted"
+    },
+
+    xpEarned: {
+      type: Number,
+      default: 0
+    },
+
+    completed: {
+      type: Boolean,
+      default: false
+    }
+  },
+  {
+    timestamps: true
+  }
+);
+
+
+// One daily challenge attempt per student per day
+DailyChallengeAttemptSchema.index(
+  {
+    studentId: 1,
+    challengeDate: 1
+  },
+  {
+    unique: true
+  }
+);
+
+const DailyChallengeAttempt =
+  mongoose.model(
+    "DailyChallengeAttempt",
+    DailyChallengeAttemptSchema
+  );
+  
 
 // ============== MIDDLEWARE FUNCTIONS ==============
 
@@ -2062,6 +2159,792 @@ async function getLmsStudentFromToken(user) {
 
   return null;
 }
+function getDailyChallengeDate() {
+  return new Intl.DateTimeFormat(
+    "en-CA",
+    {
+      timeZone: "Asia/Kolkata"
+    }
+  ).format(new Date());
+}
+// ==================== DAILY CHALLENGE - TODAY ====================
+
+app.get(
+  "/api/lms/coding/daily-challenge",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      if (req.user?.role !== "student") {
+        return res.status(403).json({
+          message:
+            "Only students can access Daily Challenge"
+        });
+      }
+
+      const student =
+        await getLmsStudentFromToken(req.user);
+
+      if (!student) {
+        return res.status(404).json({
+          message: "Student account not found"
+        });
+      }
+
+      const challengeDate =
+        getDailyChallengeDate();
+
+      const totalProblems =
+        await CodingProblem.countDocuments({
+          active: { $ne: false }
+        });
+
+      if (totalProblems === 0) {
+        return res.status(404).json({
+          message:
+            "No coding problems are available."
+        });
+      }
+
+      const currentDate =
+        new Date(
+          `${challengeDate}T00:00:00+05:30`
+        );
+
+      const startOfYear =
+        new Date(
+          `${challengeDate.substring(
+            0,
+            4
+          )}-01-01T00:00:00+05:30`
+        );
+
+      const dayNumber =
+        Math.floor(
+          (
+            currentDate.getTime() -
+            startOfYear.getTime()
+          ) /
+          (24 * 60 * 60 * 1000)
+        );
+
+      const skip =
+        dayNumber % totalProblems;
+
+      const problem =
+        await CodingProblem.findOne({
+          active: { $ne: false }
+        })
+          .sort({
+            createdAt: 1,
+            _id: 1
+          })
+          .skip(skip)
+          .select("-testCases")
+          .lean();
+
+      if (!problem) {
+        return res.status(404).json({
+          message:
+            "Today's challenge could not be loaded."
+        });
+      }
+
+      const existingAttempt =
+        await DailyChallengeAttempt.findOne({
+          studentId: student._id,
+          challengeDate
+        }).lean();
+
+      return res.json({
+        challengeDate,
+        problem,
+        attempt: existingAttempt
+          ? {
+              startedAt:
+                existingAttempt.startedAt,
+              submittedAt:
+                existingAttempt.submittedAt,
+              completionTimeMs:
+                existingAttempt.completionTimeMs,
+              verdict:
+                existingAttempt.verdict,
+              completed:
+                existingAttempt.completed,
+              xpEarned:
+                existingAttempt.xpEarned
+            }
+          : null
+      });
+
+    } catch (err) {
+      console.error(
+        "Daily challenge load error:",
+        err
+      );
+
+      return res.status(500).json({
+        message:
+          "Failed to load Daily Challenge"
+      });
+    }
+  }
+);
+
+
+// ==================== DAILY CHALLENGE - START ====================
+
+app.post(
+  "/api/lms/coding/daily-challenge/start",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      if (req.user?.role !== "student") {
+        return res.status(403).json({
+          message:
+            "Only students can start Daily Challenge"
+        });
+      }
+
+      const student =
+        await getLmsStudentFromToken(req.user);
+
+      if (!student) {
+        return res.status(404).json({
+          message: "Student account not found"
+        });
+      }
+
+      const challengeDate =
+        getDailyChallengeDate();
+
+      const existing =
+        await DailyChallengeAttempt.findOne({
+          studentId: student._id,
+          challengeDate
+        });
+
+      if (existing) {
+        return res.json({
+          success: true,
+          alreadyStarted: true,
+          startedAt: existing.startedAt,
+          completed: existing.completed,
+          verdict: existing.verdict
+        });
+      }
+
+      const totalProblems =
+        await CodingProblem.countDocuments({
+          active: { $ne: false }
+        });
+
+      if (totalProblems === 0) {
+        return res.status(404).json({
+          message:
+            "No coding problems are available."
+        });
+      }
+
+      const currentDate =
+        new Date(
+          `${challengeDate}T00:00:00+05:30`
+        );
+
+      const startOfYear =
+        new Date(
+          `${challengeDate.substring(
+            0,
+            4
+          )}-01-01T00:00:00+05:30`
+        );
+
+      const dayNumber =
+        Math.floor(
+          (
+            currentDate.getTime() -
+            startOfYear.getTime()
+          ) /
+          (24 * 60 * 60 * 1000)
+        );
+
+      const skip =
+        dayNumber % totalProblems;
+
+      const problem =
+        await CodingProblem.findOne({
+          active: { $ne: false }
+        })
+          .sort({
+            createdAt: 1,
+            _id: 1
+          })
+          .skip(skip)
+          .select("_id")
+          .lean();
+
+      if (!problem) {
+        return res.status(404).json({
+          message:
+            "Today's challenge could not be loaded."
+        });
+      }
+
+      const attempt =
+        await DailyChallengeAttempt.create({
+          studentId: student._id,
+          challengeDate,
+          problemId: problem._id,
+          branch:
+            student.branch || "CSE",
+          section:
+            student.section || "",
+          startedAt: new Date(),
+          verdict: "Not Attempted"
+        });
+
+      return res.json({
+        success: true,
+        alreadyStarted: false,
+        startedAt:
+          attempt.startedAt
+      });
+
+    } catch (err) {
+      console.error(
+        "Daily challenge start error:",
+        err
+      );
+
+      return res.status(500).json({
+        message:
+          "Failed to start Daily Challenge"
+      });
+    }
+  }
+);
+
+// ==================== DAILY CHALLENGE - SUBMIT ====================
+
+app.post(
+  "/api/lms/coding/daily-challenge/submit",
+  verifyAnyToken,
+  async (req, res) => {
+    try {
+      if (req.user?.role !== "student") {
+        return res.status(403).json({
+          message:
+            "Only students can submit Daily Challenge"
+        });
+      }
+
+      const student =
+        await getLmsStudentFromToken(req.user);
+
+      if (!student) {
+        return res.status(404).json({
+          message: "Student account not found"
+        });
+      }
+
+      const {
+        language,
+        code
+      } = req.body;
+
+      if (
+        !language ||
+        !code ||
+        !String(code).trim()
+      ) {
+        return res.status(400).json({
+          message:
+            "Language and code are required"
+        });
+      }
+
+      if (String(code).length > 50000) {
+        return res.status(400).json({
+          message:
+            "Code is too large. Maximum 50,000 characters allowed."
+        });
+      }
+
+      const languageId =
+        CODING_LANGUAGES[
+          String(language).trim()
+        ];
+
+      if (!languageId) {
+        return res.status(400).json({
+          message:
+            `${language} execution is not enabled yet.`
+        });
+      }
+
+      const challengeDate =
+        getDailyChallengeDate();
+
+      const attempt =
+        await DailyChallengeAttempt.findOne({
+          studentId: student._id,
+          challengeDate
+        });
+
+      if (!attempt) {
+        return res.status(400).json({
+          message:
+            "Please start today's Daily Challenge first."
+        });
+      }
+
+      if (attempt.completed) {
+        return res.status(400).json({
+          message:
+            "You have already completed today's challenge.",
+          verdict: "Accepted",
+          xpEarned: attempt.xpEarned,
+          completionTimeMs:
+            attempt.completionTimeMs
+        });
+      }
+
+      const problem =
+        await CodingProblem.findOne({
+          _id: attempt.problemId,
+          active: { $ne: false }
+        })
+          .select(
+            "title difficulty testCases"
+          )
+          .lean();
+
+      if (!problem) {
+        return res.status(404).json({
+          message:
+            "Today's coding problem was not found."
+        });
+      }
+
+      const testCases =
+        Array.isArray(problem.testCases)
+          ? problem.testCases
+          : [];
+
+      if (testCases.length === 0) {
+        return res.status(400).json({
+          message:
+            "Today's challenge has no test cases."
+        });
+      }
+
+      const testResults = [];
+
+      // ==================== HIDDEN TEST CASES ====================
+
+      for (
+        let i = 0;
+        i < testCases.length;
+        i++
+      ) {
+        const testCase =
+          testCases[i];
+
+        const input =
+          testCase?.input || "";
+
+        const expected =
+          testCase?.expectedOutput || "";
+
+        let result;
+
+        try {
+          result =
+            await executeOnJudge0({
+              languageId,
+              code,
+              stdin: input,
+              expectedOutput: expected
+            });
+
+        } catch (executionError) {
+          console.error(
+            "Daily Challenge Judge0 error:",
+            executionError
+          );
+
+          return res.status(502).json({
+            message:
+              "Code execution service is temporarily unavailable."
+          });
+        }
+
+        // Compilation Error
+        if (
+          result.statusId === 6 ||
+          result.compileOutput
+        ) {
+          attempt.verdict =
+            "Compilation Error";
+
+          await attempt.save();
+
+          return res.json({
+            success: false,
+            verdict:
+              "Compilation Error",
+            testCases: testResults,
+            error:
+              result.compileOutput ||
+              result.stderr ||
+              result.message ||
+              "Compilation failed."
+          });
+        }
+
+        // Runtime Error
+        if (
+          result.statusId === 7 ||
+          result.statusId === 11 ||
+          result.statusId === 12 ||
+          result.statusId === 13 ||
+          result.statusId === 14 ||
+          result.statusId === 15
+        ) {
+          attempt.verdict =
+            "Runtime Error";
+
+          await attempt.save();
+
+          testResults.push({
+            testCase: i + 1,
+            passed: false,
+            actualOutput:
+              result.stdout,
+            error:
+              result.stderr ||
+              result.message ||
+              result.statusDescription ||
+              "Runtime error"
+          });
+
+          return res.json({
+            success: false,
+            verdict:
+              "Runtime Error",
+            testCases: testResults,
+            error:
+              result.stderr ||
+              result.message ||
+              result.statusDescription ||
+              "Runtime error"
+          });
+        }
+
+        // Time Limit
+        if (result.statusId === 5) {
+          attempt.verdict =
+            "Time Limit Exceeded";
+
+          await attempt.save();
+
+          testResults.push({
+            testCase: i + 1,
+            passed: false,
+            actualOutput:
+              result.stdout,
+            error:
+              "Time limit exceeded."
+          });
+
+          return res.json({
+            success: false,
+            verdict:
+              "Time Limit Exceeded",
+            testCases: testResults,
+            error:
+              "Time limit exceeded."
+          });
+        }
+
+        const actualOutput =
+          normalizeCodingOutput(
+            result.stdout
+          );
+
+        const expectedOutput =
+          normalizeCodingOutput(
+            expected
+          );
+
+        const passed =
+          actualOutput ===
+          expectedOutput;
+
+        testResults.push({
+          testCase: i + 1,
+          passed,
+          actualOutput
+        });
+
+        // Wrong Answer
+        if (!passed) {
+          attempt.verdict =
+            "Wrong Answer";
+
+          await attempt.save();
+
+          return res.json({
+            success: false,
+            verdict:
+              "Wrong Answer",
+            testCases: testResults
+          });
+        }
+      }
+
+      // ==================== ACCEPTED ====================
+
+      const submittedAt =
+        new Date();
+
+      const completionTimeMs =
+        submittedAt.getTime() -
+        new Date(
+          attempt.startedAt
+        ).getTime();
+
+      // Base XP
+      let xpEarned = 100;
+
+      const minutes =
+        completionTimeMs /
+        (60 * 1000);
+
+      // Speed bonus
+      if (minutes <= 10) {
+        xpEarned += 50;
+      } else if (minutes <= 20) {
+        xpEarned += 30;
+      } else if (minutes <= 30) {
+        xpEarned += 15;
+      }
+
+      // ==================== UPDATE ATTEMPT ====================
+
+      attempt.submittedAt =
+        submittedAt;
+
+      attempt.completionTimeMs =
+        completionTimeMs;
+
+      attempt.language =
+        String(language).trim();
+
+      attempt.verdict =
+        "Accepted";
+
+      attempt.completed =
+        true;
+
+      attempt.xpEarned =
+        xpEarned;
+
+      await attempt.save();
+
+      // ==================== CODING PROGRESS ====================
+
+      let progress =
+        await CodingProgress.findOne({
+          studentId:
+            student._id
+        });
+
+      if (!progress) {
+        progress =
+          await CodingProgress.create({
+            studentId:
+              student._id
+          });
+      }
+
+      const previousDate =
+        progress.lastChallengeDate;
+
+      const previousDay =
+        new Date(
+          `${challengeDate}T00:00:00+05:30`
+        );
+
+      previousDay.setDate(
+        previousDay.getDate() - 1
+      );
+
+      const previousDayString =
+        new Intl.DateTimeFormat(
+          "en-CA",
+          {
+            timeZone:
+              "Asia/Kolkata"
+          }
+        ).format(previousDay);
+
+      if (
+        previousDate ===
+        challengeDate
+      ) {
+        // Already counted today
+      } else if (
+        previousDate ===
+        previousDayString
+      ) {
+        progress.currentStreak =
+          Number(
+            progress.currentStreak || 0
+          ) + 1;
+      } else {
+        progress.currentStreak = 1;
+      }
+
+      progress.longestStreak =
+        Math.max(
+          Number(
+            progress.longestStreak || 0
+          ),
+          Number(
+            progress.currentStreak || 0
+          )
+        );
+
+      progress.lastChallengeDate =
+        challengeDate;
+
+      progress.totalChallengesSolved =
+        Number(
+          progress.totalChallengesSolved || 0
+        ) + 1;
+
+      progress.xp =
+        Number(progress.xp || 0) +
+        xpEarned;
+
+      progress.level =
+        Math.floor(
+          Number(progress.xp || 0) /
+          500
+        ) + 1;
+
+      // ==================== BADGES ====================
+
+      const badges =
+        Array.isArray(progress.badges)
+          ? progress.badges
+          : [];
+
+      const addBadge = badge => {
+        if (!badges.includes(badge)) {
+          badges.push(badge);
+        }
+      };
+
+      addBadge("First Daily Challenge");
+
+      if (
+        progress.currentStreak >= 7
+      ) {
+        addBadge("7 Day Streak");
+      }
+
+      if (
+        progress.currentStreak >= 30
+      ) {
+        addBadge("30 Day Streak");
+      }
+
+      if (
+        progress.totalChallengesSolved >= 10
+      ) {
+        addBadge("10 Daily Challenges");
+      }
+
+      progress.badges =
+        badges;
+
+      // ==================== HISTORY ====================
+
+      if (
+        !Array.isArray(
+          progress.dailyChallengeHistory
+        )
+      ) {
+        progress.dailyChallengeHistory =
+          [];
+      }
+
+      const alreadyInHistory =
+        progress.dailyChallengeHistory.some(
+          item =>
+            item.date ===
+            challengeDate
+        );
+
+      if (!alreadyInHistory) {
+        progress.dailyChallengeHistory.push({
+          date:
+            challengeDate,
+          problemId:
+            problem._id
+        });
+      }
+
+      progress.updatedAt =
+        new Date();
+
+      await progress.save();
+
+      return res.json({
+        success: true,
+        verdict: "Accepted",
+
+        testCases:
+          testResults,
+
+        completionTimeMs:
+          completionTimeMs,
+
+        xpEarned:
+          xpEarned,
+
+        totalXp:
+          progress.xp,
+
+        level:
+          progress.level,
+
+        currentStreak:
+          progress.currentStreak,
+
+        longestStreak:
+          progress.longestStreak,
+
+        badges:
+          progress.badges
+      });
+
+    } catch (err) {
+      console.error(
+        "Daily Challenge submit error:",
+        err
+      );
+
+      return res.status(500).json({
+        message:
+          "Failed to submit Daily Challenge",
+        error:
+          err.message
+      });
+    }
+  }
+);
 
 function getExamHardEnd(exam, attempt) {
   const sectionSchedule = exam.sections.find(
@@ -5424,7 +6307,60 @@ app.get("/api/hod/stats", hodOrAdminMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// ============== CODING ANALYTICS ==============
 
+app.get("/api/lms/coding/analytics", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const isAdmin = req.user.role === "admin";
+    const isHod = req.user.role === "hod";
+
+    if (!isAdmin && !isHod) {
+      return res.status(403).json({
+        message: "Only Admin and HOD can view coding analytics"
+      });
+    }
+
+    // Admin → all students
+    // HOD → only students from their branch
+    const studentFilter = isHod
+      ? { role: "student", branch: req.user.branch }
+      : { role: "student" };
+
+    const students = await User.find(
+      studentFilter,
+      "_id name rollNo branch section"
+    ).lean();
+
+    const studentIds = students.map(student => student._id);
+
+    const progress = await CodingProgress.find({
+      studentId: { $in: studentIds }
+    })
+      .populate("studentId", "name rollNo branch section")
+      .lean();
+
+    const attempts = await DailyChallengeAttempt.find({
+      studentId: { $in: studentIds }
+    })
+      .populate("studentId", "name rollNo branch section")
+      .lean();
+
+    res.json({
+      success: true,
+      scope: isAdmin ? "all" : "branch",
+      branch: isAdmin ? "ALL" : req.user.branch,
+      students,
+      progress,
+      attempts
+    });
+
+  } catch (err) {
+    console.error("Coding analytics error:", err);
+    res.status(500).json({
+      message: "Failed to load coding analytics"
+    });
+  }
+});
 // ============== HEALTH CHECK ==============
 
 app.get("/api/health", (req, res) => {

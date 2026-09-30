@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import CodingPractice from "./CodingPractice";
+import CodingAnalytics from "./CodingAnalytics";
+import DailyChallenge from "./DailyChallenge";
 import Login from "./Login";
 import StudentLogin from "./StudentLogin";
 import RoleSelector from "./RoleSelector";
@@ -434,6 +436,31 @@ if (
 >
   📚 LMS
 </button>
+{(isAdmin || facultyInfo?.role === "hod") && (
+  <button
+    className={navBtnClass("coding-analytics")}
+    onClick={() => setActivePage("coding-analytics")}
+  >
+    📊 Coding Analytics
+  </button>
+)}
+{studentLoggedIn && (
+  <>
+    <button
+      className={navBtnClass("coding-practice")}
+      onClick={() => setActivePage("coding-practice")}
+    >
+      💻 Coding Practice
+    </button>
+
+    <button
+      className={navBtnClass("daily-challenge")}
+      onClick={() => setActivePage("daily-challenge")}
+    >
+      🔥 Daily Challenge
+    </button>
+  </>
+)}
 
 
       <button
@@ -491,6 +518,22 @@ if (
     isAdmin={isAdmin}
     facultyInfo={facultyInfo}
     studentInfo={studentData}
+  />
+)}
+{activePage === "coding-practice" && studentLoggedIn && (
+  <CodingPractice
+    api={API}
+    token={localStorage.getItem("studentToken")}
+  />
+)}
+{activePage === "coding-analytics" &&
+  (isAdmin || facultyInfo?.role === "hod") && (
+    <CodingAnalytics api={API} />
+)}
+
+{activePage === "daily-challenge" && studentLoggedIn && (
+  <DailyChallenge
+    api={API}
   />
 )}
 {activePage === "admin" && isAdmin && (
