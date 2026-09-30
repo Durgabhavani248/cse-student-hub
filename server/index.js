@@ -89,9 +89,30 @@ app.use(fileUpload());
 
 // ============== DATABASE CONNECTION ==============
 
-mongoose.connect(process.env.MONGO_URI)
+
+
+const mongoUri = process.env.MONGO_URI;
+
+if (!mongoUri) {
+  console.error("❌ MONGO_URI is not configured.");
+  process.exit(1);
+}
+
+// Direct Atlas connection.
+// mongodb+srv DNS lookup is currently failing in Node.js,
+// while the individual Atlas hosts are reachable.
+const directMongoUri = mongoUri.replace(
+  /^mongodb\+srv:\/\/([^@]+)@[^/]+\/([^?]+)(\?.*)?$/,
+  "mongodb://$1@ac-nnforld-shard-00-00.wvgiihe.mongodb.net:27017,ac-nnforld-shard-00-01.wvgiihe.mongodb.net:27017,ac-nnforld-shard-00-02.wvgiihe.mongodb.net:27017/$2?ssl=true&replicaSet=atlas-14gm3n-shard-0&authSource=admin&retryWrites=true&w=majority"
+);
+
+mongoose.connect(directMongoUri)
+
   .then(() => console.log("✅ MongoDB Connected ✅"))
+
   .catch(err => console.error("MongoDB Error:", err));
+
+// ============== CLOUDINARY CONFIG =============
 
 // ============== CLOUDINARY CONFIG =============
 cloudinary.config({
@@ -1526,7 +1547,9 @@ app.get(
 // =========================================================
 
 const CODING_LANGUAGES = {
-  Python: 71
+  Python: 71,
+  Cpp: 54,
+  Java: 62
 };
 
 const normalizeCodingOutput = (value) => {

@@ -22,13 +22,12 @@ export default function CodingPractice({ api, token }) {
 
   const [selectedProblem, setSelectedProblem] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("Python");
+  const [selectedLanguage, setSelectedLanguage] =
+  useState("Python");
 
-  const [code, setCode] = useState(
-    '# Write your Python code here\nprint("Hello World")'
-  );
+const [code, setCode] = useState("");
 
-  const [customInput, setCustomInput] = useState("");
+const [customInput, setCustomInput] = useState("");
   const [codeOutput, setCodeOutput] = useState("");
   const [codeError, setCodeError] = useState("");
   const [runningCode, setRunningCode] = useState(false);
@@ -216,7 +215,32 @@ export default function CodingPractice({ api, token }) {
         );
       }
 
-      setSelectedProblem(data.problem);
+      const problem = data.problem;
+
+const firstExample =
+  Array.isArray(problem.examples) &&
+  problem.examples.length > 0
+    ? problem.examples[0]
+    : null;
+
+const sampleInput =
+  firstExample?.input || "";
+
+const starterCode =
+  problem.starterCode?.Python ||
+  `# ${problem.inputFormat || "Read input according to the problem statement"}
+
+# Write your Python solution here
+`;
+
+setSelectedLanguage("Python");
+setCode(starterCode);
+setCustomInput(sampleInput);
+setCodeOutput("");
+setCodeError("");
+setSubmissionResult(null);
+
+setSelectedProblem(problem);
     } catch (err) {
       console.error(
         "Coding problem details error:",
@@ -692,15 +716,33 @@ export default function CodingPractice({ api, token }) {
                 </p>
               </div>
 
-              <select
-                value={selectedLanguage}
-                onChange={(e) => {
-                  setSelectedLanguage(
-                    e.target.value
-                  );
-                  setCodeOutput("");
-                  setCodeError("");
-                }}
+             <select
+  value={selectedLanguage}
+  onChange={(e) => {
+    const newLanguage = e.target.value;
+
+    setSelectedLanguage(newLanguage);
+
+    const firstExample =
+      Array.isArray(selectedProblem?.examples) &&
+      selectedProblem.examples.length > 0
+        ? selectedProblem.examples[0]
+        : null;
+
+    const sampleInput =
+      firstExample?.input || "";
+
+    const newStarterCode =
+      selectedProblem?.starterCode?.[newLanguage] ||
+      "";
+
+    setCode(newStarterCode);
+    setCustomInput(sampleInput);
+
+    setCodeOutput("");
+    setCodeError("");
+    setSubmissionResult(null);
+  }}
                 style={{
                   padding: "9px 12px",
                   border: "1px solid #ddd",
@@ -711,9 +753,17 @@ export default function CodingPractice({ api, token }) {
                   cursor: "pointer"
                 }}
               >
-                <option value="Python">
-                  Python
-                </option>
+               <option value="Python">
+  Python
+</option>
+
+<option value="Cpp">
+  C++
+</option>
+
+<option value="Java">
+  Java
+</option>
               </select>
             </div>
 
@@ -761,7 +811,7 @@ export default function CodingPractice({ api, token }) {
                     e.target.value
                   )
                 }
-                placeholder="Enter input for your program (optional)"
+                placeholder="Example 1 input is loaded automatically. You can edit it to test custom cases."
                 style={{
                   width: "100%",
                   minHeight: "80px",
@@ -852,10 +902,25 @@ export default function CodingPractice({ api, token }) {
                   setCode(
                     '# Write your Python code here\nprint("Hello World")'
                   );
-                  setCustomInput("");
-                  setCodeOutput("");
-                  setCodeError("");
-                  setSubmissionResult(null);
+                const firstExample =
+  Array.isArray(selectedProblem?.examples) &&
+  selectedProblem.examples.length > 0
+    ? selectedProblem.examples[0]
+    : null;
+
+const sampleInput =
+  firstExample?.input || "";
+
+const starterCode =
+  selectedProblem?.starterCode?.[
+    selectedLanguage
+  ] || "";
+
+setCode(starterCode);
+setCustomInput(sampleInput);
+setCodeOutput("");
+setCodeError("");
+setSubmissionResult(null);
                 }}
                 disabled={runningCode}
                 style={{
@@ -979,7 +1044,26 @@ export default function CodingPractice({ api, token }) {
                     ? "🔴 Compilation Error"
                     : submissionResult.verdict}
                 </h4>
-
+{submissionResult.verdict ===
+  "Wrong Answer" && (
+  <div
+    style={{
+      marginBottom: "12px",
+      padding: "11px",
+      borderRadius: "7px",
+      background: "#fff8e6",
+      border: "1px solid #f0d58a",
+      color: "#7a5700",
+      fontSize: "13px",
+      lineHeight: "1.5"
+    }}
+  >
+    💡 <strong>Tip:</strong> Check whether your
+    code follows the Input Format given in the
+    problem statement. Also test different edge
+    cases.
+  </div>
+)}
                 {submissionResult.error && (
                   <div
                     style={{
@@ -1296,14 +1380,14 @@ export default function CodingPractice({ api, token }) {
           </h3>
 
           <p
-            style={{
-              margin: "5px 0 0",
-              color: "#999",
-              fontSize: "14px"
-            }}
-          >
-            {pagination.total} problems available
-          </p>
+  style={{
+    margin: "5px 0 0",
+    color: "#777",
+    fontSize: "13px"
+  }}
+>
+  Write your code according to the Input Format and run it online.
+</p>
         </div>
       </div>
 

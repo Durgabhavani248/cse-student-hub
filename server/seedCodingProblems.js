@@ -70,6 +70,27 @@ const CodingProblemSchema = new mongoose.Schema(
       }
     ],
 
+    // -----------------------------------------------------
+    // STARTER CODE
+    // -----------------------------------------------------
+
+    starterCode: {
+      Python: {
+        type: String,
+        default: ""
+      },
+
+      Cpp: {
+        type: String,
+        default: ""
+      },
+
+      Java: {
+        type: String,
+        default: ""
+      }
+    },
+
     supportedLanguages: {
       type: [String],
       default: [
@@ -94,6 +115,10 @@ const CodingProblemSchema = new mongoose.Schema(
       type: Number,
       default: 128
     },
+
+    // -----------------------------------------------------
+    // HIDDEN TEST CASES
+    // -----------------------------------------------------
 
     testCases: [
       {
@@ -146,6 +171,13 @@ if (!mongoUri) {
   process.exit(1);
 }
 
+// mongodb+srv DNS is currently failing in Node.js,
+// so use the already-resolved Atlas hosts directly.
+const directMongoUri = mongoUri.replace(
+  /^mongodb\+srv:\/\/([^@]+)@[^/]+\/([^?]+)(\?.*)?$/,
+  "mongodb://$1@ac-nnforld-shard-00-00.wvgiihe.mongodb.net:27017,ac-nnforld-shard-00-01.wvgiihe.mongodb.net:27017,ac-nnforld-shard-00-02.wvgiihe.mongodb.net:27017/$2?ssl=true&replicaSet=atlas-14gm3n-shard-0&authSource=admin&retryWrites=true&w=majority"
+);
+
 
 // ---------------------------------------------------------
 // SEED FUNCTION
@@ -157,7 +189,7 @@ const seedCodingProblems = async () => {
       "Connecting to MongoDB..."
     );
 
-    await mongoose.connect(mongoUri);
+  await mongoose.connect(directMongoUri);
 
     console.log(
       "✅ MongoDB Connected"
@@ -219,9 +251,11 @@ const seedCodingProblems = async () => {
     console.log(
       "========================================"
     );
+
     console.log(
       "CODING PROBLEM SEED COMPLETED"
     );
+
     console.log(
       "========================================"
     );

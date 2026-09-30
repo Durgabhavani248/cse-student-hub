@@ -30,6 +30,89 @@ export const codingProblems = [
       }
     ],
 
+    starterCode: {
+      Python: `# Input Format:
+# First line: N
+# Second line: N integers
+
+n = int(input())
+nums = list(map(int, input().split()))
+
+# Write your solution below
+
+maximum = nums[0]
+
+for num in nums:
+    if num > maximum:
+        maximum = num
+
+print(maximum)`,
+
+      Cpp: `#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    // Input Format:
+    // First line: N
+    // Second line: N integers
+
+    int n;
+    cin >> n;
+
+    vector<int> nums(n);
+
+    for (int i = 0; i < n; i++) {
+        cin >> nums[i];
+    }
+
+    // Write your solution below
+
+    int maximum = nums[0];
+
+    for (int num : nums) {
+        if (num > maximum) {
+            maximum = num;
+        }
+    }
+
+    cout << maximum;
+
+    return 0;
+}`,
+
+      Java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Input Format:
+        // First line: N
+        // Second line: N integers
+
+        Scanner sc = new Scanner(System.in);
+
+        int n = sc.nextInt();
+        int[] nums = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            nums[i] = sc.nextInt();
+        }
+
+        // Write your solution below
+
+        int maximum = nums[0];
+
+        for (int num : nums) {
+            if (num > maximum) {
+                maximum = num;
+            }
+        }
+
+        System.out.println(maximum);
+    }
+}`
+    },
+
     supportedLanguages: [
       "C",
       "C++",
@@ -85,6 +168,68 @@ export const codingProblems = [
           "The string remains the same when reversed."
       }
     ],
+
+    starterCode: {
+      Python: `# Input Format:
+# A single string
+
+s = input().strip()
+
+# Write your solution below
+
+if s == s[::-1]:
+    print("YES")
+else:
+    print("NO")`,
+
+      Cpp: `#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    // Input Format:
+    // A single string
+
+    string s;
+    cin >> s;
+
+    // Write your solution below
+
+    string reversed = s;
+    reverse(reversed.begin(), reversed.end());
+
+    if (s == reversed)
+        cout << "YES";
+    else
+        cout << "NO";
+
+    return 0;
+}`,
+
+      Java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Input Format:
+        // A single string
+
+        Scanner sc = new Scanner(System.in);
+
+        String s = sc.next();
+
+        // Write your solution below
+
+        String reversed =
+            new StringBuilder(s).reverse().toString();
+
+        if (s.equals(reversed))
+            System.out.print("YES");
+        else
+            System.out.print("NO");
+    }
+}`
+    },
 
     supportedLanguages: [
       "C",
@@ -142,6 +287,125 @@ export const codingProblems = [
       }
     ],
 
+    starterCode: {
+      Python: `# Input Format:
+# First line: N
+# Second line: N sorted integers
+# Third line: Target
+
+n = int(input())
+nums = list(map(int, input().split()))
+target = int(input())
+
+# Write your solution below
+
+left = 0
+right = n - 1
+answer = -1
+
+while left <= right:
+    mid = (left + right) // 2
+
+    if nums[mid] == target:
+        answer = mid
+        break
+    elif nums[mid] < target:
+        left = mid + 1
+    else:
+        right = mid - 1
+
+print(answer)`,
+
+      Cpp: `#include <iostream>
+#include <vector>
+using namespace std;
+
+int main() {
+    // Input Format:
+    // First line: N
+    // Second line: N sorted integers
+    // Third line: Target
+
+    int n;
+    cin >> n;
+
+    vector<int> nums(n);
+
+    for (int i = 0; i < n; i++) {
+        cin >> nums[i];
+    }
+
+    int target;
+    cin >> target;
+
+    // Write your solution below
+
+    int left = 0;
+    int right = n - 1;
+    int answer = -1;
+
+    while (left <= right) {
+        int mid = left + (right - left) / 2;
+
+        if (nums[mid] == target) {
+            answer = mid;
+            break;
+        } else if (nums[mid] < target) {
+            left = mid + 1;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    cout << answer;
+
+    return 0;
+}`,
+
+      Java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Input Format:
+        // First line: N
+        // Second line: N sorted integers
+        // Third line: Target
+
+        Scanner sc = new Scanner(System.in);
+
+        int n = sc.nextInt();
+        int[] nums = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            nums[i] = sc.nextInt();
+        }
+
+        int target = sc.nextInt();
+
+        // Write your solution below
+
+        int left = 0;
+        int right = n - 1;
+        int answer = -1;
+
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+
+            if (nums[mid] == target) {
+                answer = mid;
+                break;
+            } else if (nums[mid] < target) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
+            }
+        }
+
+        System.out.println(answer);
+    }
+}`
+    },
+
     supportedLanguages: [
       "C",
       "C++",
@@ -198,6 +462,57 @@ export const codingProblems = [
       }
     ],
 
+    starterCode: {
+      Python: `# Input Format:
+# A single string
+
+s = input().strip()
+
+# Write your solution below
+
+print(s[::-1])`,
+
+      Cpp: `#include <iostream>
+#include <string>
+#include <algorithm>
+using namespace std;
+
+int main() {
+    // Input Format:
+    // A single string
+
+    string s;
+    cin >> s;
+
+    // Write your solution below
+
+    reverse(s.begin(), s.end());
+
+    cout << s;
+
+    return 0;
+}`,
+
+      Java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Input Format:
+        // A single string
+
+        Scanner sc = new Scanner(System.in);
+
+        String s = sc.next();
+
+        // Write your solution below
+
+        System.out.println(
+            new StringBuilder(s).reverse().toString()
+        );
+    }
+}`
+    },
+
     supportedLanguages: [
       "C",
       "C++",
@@ -253,6 +568,73 @@ export const codingProblems = [
           "The sum is 1 + 2 + 3 + 4 + 5 = 15."
       }
     ],
+
+    starterCode: {
+      Python: `# Input Format:
+# First line: N
+# Second line: N integers
+
+n = int(input())
+nums = list(map(int, input().split()))
+
+# Write your solution below
+
+total = 0
+
+for num in nums:
+    total += num
+
+print(total)`,
+
+      Cpp: `#include <iostream>
+using namespace std;
+
+int main() {
+    // Input Format:
+    // First line: N
+    // Second line: N integers
+
+    int n;
+    cin >> n;
+
+    long long total = 0;
+
+    for (int i = 0; i < n; i++) {
+        int num;
+        cin >> num;
+        total += num;
+    }
+
+    // Write your solution below
+
+    cout << total;
+
+    return 0;
+}`,
+
+      Java: `import java.util.*;
+
+public class Main {
+    public static void main(String[] args) {
+        // Input Format:
+        // First line: N
+        // Second line: N integers
+
+        Scanner sc = new Scanner(System.in);
+
+        int n = sc.nextInt();
+        long total = 0;
+
+        for (int i = 0; i < n; i++) {
+            total += sc.nextInt();
+        }
+
+        // Write your solution below
+
+        System.out.println(total);
+    }
+}`
+    },
 
     supportedLanguages: [
       "C",
