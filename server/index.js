@@ -2098,11 +2098,12 @@ app.post(
           actualOutput ===
           expectedOutput;
 
-        testResults.push({
-          testCase: i + 1,
-          passed,
-          actualOutput
-        });
+     testResults.push({
+  testCase: i + 1,
+  passed,
+  actualOutput,
+  expectedOutput
+});
 
         // Wrong answer
         if (!passed) {

@@ -61,6 +61,8 @@ export default function DailyChallenge({ api = "" }) {
 
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
+  const [submitStage, setSubmitStage] = useState("idle");
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // --------------------------------------------------
   // LOAD TODAY'S CHALLENGE
@@ -97,21 +99,34 @@ export default function DailyChallenge({ api = "" }) {
       setProblem(data.problem || null);
       setAttempt(data.attempt || null);
 
-      if (data.attempt?.startedAt) {
-        setStarted(true);
+      const attemptStartValue =
+        data.attempt?.startedAt ||
+        data.attempt?.createdAt ||
+        null;
 
+      if (attemptStartValue) {
         const startTime = new Date(
-          data.attempt.startedAt
+          attemptStartValue
         ).getTime();
 
-        const now = Date.now();
+        if (Number.isFinite(startTime)) {
+          setStarted(!data.attempt?.completed);
 
-        setElapsedSeconds(
-          Math.max(
-            0,
-            Math.floor((now - startTime) / 1000)
-          )
-        );
+          if (data.attempt?.completed) {
+            setElapsedSeconds(
+              Math.floor(
+                Number(data.attempt?.completionTimeMs || 0) / 1000
+              )
+            );
+          } else {
+            setElapsedSeconds(
+              Math.max(
+                0,
+                Math.floor((Date.now() - startTime) / 1000)
+              )
+            );
+          }
+        }
       }
 
       if (data.attempt?.completed) {
@@ -146,29 +161,38 @@ export default function DailyChallenge({ api = "" }) {
       return undefined;
     }
 
-    const timer = setInterval(() => {
-      if (!attempt?.startedAt) {
+    const calculateElapsed = () => {
+      const startValue =
+        attempt?.startedAt ||
+        attempt?.createdAt;
+
+      if (!startValue) {
         return;
       }
 
-      const startTime = new Date(
-        attempt.startedAt
-      ).getTime();
+      const startTime = new Date(startValue).getTime();
 
-      const now = Date.now();
+      if (!Number.isFinite(startTime)) {
+        return;
+      }
 
       setElapsedSeconds(
         Math.max(
           0,
-          Math.floor((now - startTime) / 1000)
+          Math.floor((Date.now() - startTime) / 1000)
         )
       );
-    }, 1000);
+    };
+
+    calculateElapsed();
+
+    const timer = setInterval(calculateElapsed, 1000);
 
     return () => clearInterval(timer);
   }, [
     started,
     attempt?.startedAt,
+    attempt?.createdAt,
     attempt?.completed
   ]);
 
@@ -201,10 +225,20 @@ export default function DailyChallenge({ api = "" }) {
         );
       }
 
-      setAttempt(data.attempt);
+      const startedAttempt = {
+        ...(data.attempt || {}),
+        startedAt:
+          data.attempt?.startedAt ||
+          data.startedAt ||
+          new Date().toISOString()
+      };
+
+      setAttempt(startedAttempt);
       setStarted(true);
       setElapsedSeconds(0);
       setResult(null);
+      setSubmitStage("idle");
+      setShowConfetti(false);
 
       const starter =
         problem?.starterCode?.[selectedLanguage] ||
@@ -278,6 +312,12 @@ export default function DailyChallenge({ api = "" }) {
     setSubmitting(true);
     setError("");
     setResult(null);
+    setSubmitStage("submitting");
+    setShowConfetti(false);
+
+    const executionStageTimer = setTimeout(() => {
+      setSubmitStage("executing");
+    }, 450);
 
     try {
       const response = await fetch(
@@ -307,19 +347,29 @@ export default function DailyChallenge({ api = "" }) {
       setResult(data);
 
       if (data.verdict === "Accepted") {
+        setSubmitStage("accepted");
+        setShowConfetti(true);
         setStarted(false);
 
         setAttempt((previous) => ({
           ...(previous || {}),
           completed: true,
           verdict: "Accepted",
-          submittedAt: new Date().toISOString(),
+          submittedAt:
+            data.submittedAt ||
+            new Date().toISOString(),
           completionTimeMs:
             data.completionTimeMs ||
             previous?.completionTimeMs ||
             elapsedSeconds * 1000
         }));
+
+        window.setTimeout(() => {
+          setShowConfetti(false);
+        }, 4500);
       } else {
+        setSubmitStage("failed");
+
         setAttempt((previous) => ({
           ...(previous || {}),
           verdict: data.verdict
@@ -331,11 +381,13 @@ export default function DailyChallenge({ api = "" }) {
         err
       );
 
+      setSubmitStage("failed");
       setError(
         err.message ||
           "Submission failed."
       );
     } finally {
+      clearTimeout(executionStageTimer);
       setSubmitting(false);
     }
   }
@@ -412,6 +464,41 @@ export default function DailyChallenge({ api = "" }) {
       style={styles.page}
       onContextMenu={blockContextMenu}
     >
+      <style>{`
+        @keyframes dailyConfettiFall {
+          0% {
+            opacity: 1;
+            transform: translateY(-20px) rotate(0deg);
+          }
+          100% {
+            opacity: 0;
+            transform: translateY(105vh) rotate(720deg);
+          }
+        }
+
+        @keyframes dailyAcceptedPulse {
+          0% { transform: scale(0.96); }
+          60% { transform: scale(1.02); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+
+      {showConfetti && (
+        <div style={styles.confettiLayer} aria-hidden="true">
+          {Array.from({ length: 28 }).map((_, index) => (
+            <span
+              key={index}
+              style={{
+                ...styles.confetti,
+                left: `${(index * 37) % 100}%`,
+                animationDelay: `${(index % 7) * 0.08}s`,
+                transform: `rotate(${index * 17}deg)`
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {/* HEADER */}
 
       <div style={styles.header}>
@@ -740,6 +827,49 @@ export default function DailyChallenge({ api = "" }) {
             </button>
           )}
 
+          {submitStage !== "idle" && (
+            <div
+              style={{
+                ...styles.submitStatus,
+                ...(submitStage === "accepted"
+                  ? styles.submitStatusAccepted
+                  : submitStage === "failed"
+                  ? styles.submitStatusFailed
+                  : styles.submitStatusRunning)
+              }}
+            >
+              <span style={styles.submitStatusIcon}>
+                {submitStage === "submitting"
+                  ? "📤"
+                  : submitStage === "executing"
+                  ? "⚙️"
+                  : submitStage === "accepted"
+                  ? "✓"
+                  : "!"}
+              </span>
+              <div>
+                <strong>
+                  {submitStage === "submitting"
+                    ? "Submission Queued"
+                    : submitStage === "executing"
+                    ? "Executing Test Cases..."
+                    : submitStage === "accepted"
+                    ? "Accepted!"
+                    : "Submission Needs Fixes"}
+                </strong>
+                <span>
+                  {submitStage === "submitting"
+                    ? "Sending your solution to the judge."
+                    : submitStage === "executing"
+                    ? "Running your code against hidden test cases."
+                    : submitStage === "accepted"
+                    ? "Great job! Your Daily Challenge is complete."
+                    : "Check the failed test details below."}
+                </span>
+              </div>
+            </div>
+          )}
+
           {completed && (
             <div style={styles.acceptedBox}>
               <div style={styles.acceptedIcon}>
@@ -793,6 +923,15 @@ export default function DailyChallenge({ api = "" }) {
                   : `❌ ${result.verdict}`}
               </div>
 
+              {result.error && (
+                <div style={styles.topLevelError}>
+                  <strong>Execution Error</strong>
+                  <pre style={styles.outputPre}>
+                    {result.error}
+                  </pre>
+                </div>
+              )}
+
               {result.xpEarned !==
                 undefined && (
                 <p>
@@ -832,13 +971,90 @@ export default function DailyChallenge({ api = "" }) {
                               : styles.testFailed
                           }
                         >
-                          Test Case{" "}
-                          {test.testCase ||
-                            index + 1}{" "}
-                          —{" "}
-                          {test.passed
-                            ? "Passed"
-                            : "Failed"}
+                          <div style={styles.testHeader}>
+                            <strong>
+                              Test Case{" "}
+                              {test.testCase ||
+                                index + 1}
+                            </strong>
+                            <span>
+                              {test.passed
+                                ? "✓ Passed"
+                                : "✕ Failed"}
+                            </span>
+                          </div>
+
+                          {!test.passed && (
+                            <div style={styles.testDetails}>
+                              {test.expectedOutput !==
+                                undefined && (
+                                <div>
+                                  <small>
+                                    Expected Output
+                                  </small>
+                                  <pre
+                                    style={
+                                      styles.outputPre
+                                    }
+                                  >
+                                    {normalizeOutput(
+                                      test.expectedOutput
+                                    ) || "(empty)"}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {test.actualOutput !==
+                                undefined && (
+                                <div>
+                                  <small>
+                                    Your Output
+                                  </small>
+                                  <pre
+                                    style={
+                                      styles.outputPre
+                                    }
+                                  >
+                                    {normalizeOutput(
+                                      test.actualOutput
+                                    ) || "(empty)"}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {test.error && (
+                                <div>
+                                  <small>
+                                    Error
+                                  </small>
+                                  <pre
+                                    style={{
+                                      ...styles.outputPre,
+                                      color: RED
+                                    }}
+                                  >
+                                    {test.error}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {!test.error &&
+                                test.expectedOutput !==
+                                  undefined && (
+                                  <div
+                                    style={
+                                      styles.mismatchHint
+                                    }
+                                  >
+                                    ⚠️ Output mismatch.
+                                    Check spelling,
+                                    capitalization,
+                                    spacing, and the
+                                    required output format.
+                                  </div>
+                                )}
+                            </div>
+                          )}
                         </div>
                       )
                     )}
@@ -1232,6 +1448,112 @@ const styles = {
     justifyContent: "center",
     fontWeight: "900",
     fontSize: "20px"
+  },
+
+  submitStatus: {
+    marginTop: "12px",
+    padding: "13px 14px",
+    borderRadius: "11px",
+    display: "flex",
+    alignItems: "center",
+    gap: "11px",
+    border: "1px solid"
+  },
+
+  submitStatusRunning: {
+    background: "#eff6ff",
+    borderColor: "#bfdbfe",
+    color: "#1d4ed8"
+  },
+
+  submitStatusAccepted: {
+    background: "#f0fdf4",
+    borderColor: "#86efac",
+    color: "#166534",
+    animation: "dailyAcceptedPulse 0.7s ease"
+  },
+
+  submitStatusFailed: {
+    background: "#fff7ed",
+    borderColor: "#fed7aa",
+    color: "#9a3412"
+  },
+
+  submitStatusIcon: {
+    width: "34px",
+    height: "34px",
+    borderRadius: "50%",
+    background: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "18px",
+    flexShrink: 0
+  },
+
+  testHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "10px"
+  },
+
+  testDetails: {
+    display: "grid",
+    gap: "10px",
+    marginTop: "11px",
+    paddingTop: "10px",
+    borderTop: "1px solid rgba(153,27,27,0.16)"
+  },
+
+  outputPre: {
+    margin: "5px 0 0",
+    padding: "9px",
+    background: "#fff",
+    border: "1px solid #fecaca",
+    borderRadius: "7px",
+    whiteSpace: "pre-wrap",
+    overflowX: "auto",
+    fontFamily: "Consolas, Monaco, monospace",
+    fontSize: "12px",
+    color: DARK
+  },
+
+  mismatchHint: {
+    background: "#fff7ed",
+    border: "1px solid #fed7aa",
+    color: "#9a3412",
+    padding: "9px",
+    borderRadius: "7px",
+    fontSize: "12px",
+    lineHeight: 1.5
+  },
+
+  confettiLayer: {
+    position: "fixed",
+    inset: 0,
+    pointerEvents: "none",
+    overflow: "hidden",
+    zIndex: 9999
+  },
+
+  confetti: {
+    position: "absolute",
+    top: "-14px",
+    width: "9px",
+    height: "15px",
+    borderRadius: "2px",
+    background: ORANGE,
+    animation: "dailyConfettiFall 1.8s ease-out forwards"
+  },
+
+  topLevelError: {
+    marginTop: "10px",
+    padding: "10px",
+    background: "#fff",
+    border: "1px solid #fecaca",
+    borderRadius: "8px",
+    color: "#991b1b"
   },
 
   resultBox: {
