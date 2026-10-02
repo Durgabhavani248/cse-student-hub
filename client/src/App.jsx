@@ -83,6 +83,8 @@ const [facultyNeedsPasswordChange, setFacultyNeedsPasswordChange] =
 });
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [notices, setNotices] = useState([]);
+  const [studentTimetable, setStudentTimetable] = useState(null);
+const [currentTime, setCurrentTime] = useState(new Date());
 const canUploadContent =
   isAdmin ||
   facultyInfo?.role === "faculty" ||
@@ -145,6 +147,28 @@ const canUploadContent =
       console.error("Error loading notices:", err);
     });
 }, []);
+useEffect(() => {
+  if (!studentLoggedIn || !studentData?.section) return;
+
+  const token = localStorage.getItem("studentToken");
+
+  fetch(`${API}/api/timetable/${studentData.section}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then((res) => {
+      if (!res.ok) throw new Error("Failed to load timetable");
+      return res.json();
+    })
+    .then((data) => {
+      setStudentTimetable(data);
+    })
+    .catch((err) => {
+      console.error("Student timetable error:", err);
+      setStudentTimetable(null);
+    });
+}, [studentLoggedIn, studentData?.section]);
 
 const handleDeleteNotice = async (noticeId) => {
   const confirmDelete = window.confirm(
@@ -293,6 +317,83 @@ if (
     />
   );
 }
+const getTodayKey = () => {
+  const dayMap = {
+    0: "SUN",
+    1: "MON",
+    2: "TUE",
+    3: "WED",
+    4: "THU",
+    5: "FRI",
+    6: "SAT"
+  };
+
+  return dayMap[new Date().getDay()];
+};
+
+const getClassStatus = () => {
+  if (!studentTimetable) {
+    return { current: null, next: null };
+  }
+
+  const todayKey = getTodayKey();
+
+  if (todayKey === "SUN") {
+    return { current: null, next: null };
+  }
+
+  const schedule = studentTimetable.schedule?.[todayKey] || [];
+  const timings = studentTimetable.timings || [];
+
+  const now =
+    currentTime.getHours() * 60 +
+    currentTime.getMinutes();
+
+  const classes = schedule
+    .map((subject, index) => {
+      const timing = timings[index];
+
+      if (!timing || timing.type !== "class" || !subject) {
+        return null;
+      }
+
+      const [startH, startM] = timing.start.split(":").map(Number);
+      const [endH, endM] = timing.end.split(":").map(Number);
+
+      return {
+        subject,
+        start: timing.start,
+        end: timing.end,
+        startMinutes: startH * 60 + startM,
+        endMinutes: endH * 60 + endM
+      };
+    })
+    .filter(Boolean);
+
+  const current = classes.find(
+    (item) =>
+      now >= item.startMinutes &&
+      now < item.endMinutes
+  );
+
+  const next = classes.find(
+    (item) => item.startMinutes > now
+  );
+
+  return { current, next };
+};
+
+const {
+  current: currentClass,
+  next: nextClass
+} = getClassStatus();
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentTime(new Date());
+  }, 60000);
+
+  return () => clearInterval(interval);
+}, []);
  const navBtnClass = (page) =>
   `nav-btn ${activePage === page ? "active" : ""}`;
 
@@ -544,6 +645,81 @@ if (
 )}
 {activePage === "notices" && (
   <div style={{ marginTop: "24px" }}>
+
+    {studentLoggedIn && (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+          gap: "16px",
+          marginBottom: "24px"
+        }}
+      >
+
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #eee",
+            borderLeft: "5px solid #4CAF50",
+            borderRadius: "12px",
+            padding: "18px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+          }}
+        >
+          <h3 style={{ margin: "0 0 10px", color: "#4CAF50" }}>
+            🟢 Present Class
+          </h3>
+
+          {currentClass ? (
+            <>
+              <h2 style={{ margin: "0 0 6px", color: "#222" }}>
+                {currentClass.subject}
+              </h2>
+
+              <p style={{ margin: 0, color: "#666" }}>
+                {currentClass.start} – {currentClass.end}
+              </p>
+            </>
+          ) : (
+            <p style={{ margin: 0, color: "#777" }}>
+              No class currently
+            </p>
+          )}
+        </div>
+
+        <div
+          style={{
+            background: "#fff",
+            border: "1px solid #eee",
+            borderLeft: "5px solid #2196F3",
+            borderRadius: "12px",
+            padding: "18px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+          }}
+        >
+          <h3 style={{ margin: "0 0 10px", color: "#2196F3" }}>
+            🔵 Next Class
+          </h3>
+
+          {nextClass ? (
+            <>
+              <h2 style={{ margin: "0 0 6px", color: "#222" }}>
+                {nextClass.subject}
+              </h2>
+
+              <p style={{ margin: 0, color: "#666" }}>
+                {nextClass.start} – {nextClass.end}
+              </p>
+            </>
+          ) : (
+            <p style={{ margin: 0, color: "#777" }}>
+              No more classes today
+            </p>
+          )}
+        </div>
+
+      </div>
+    )}
 
     {/* HOD / ADMIN - ADD NOTICE */}
     {(isAdmin || facultyInfo?.role === "hod") && (

@@ -48,7 +48,40 @@ function Timetable({ isAdmin, studentSection, facultyInfo, api }) {
 
   const [editing, setEditing] = useState(false);
 
-  const [activeDay, setActiveDay] = useState("Monday");
+  const [activeDay, setActiveDay] = useState(() => {
+  const today = new Date().getDay();
+
+  const dayMap = {
+    1: "Monday",
+    2: "Tuesday",
+    3: "Wednesday",
+    4: "Thursday",
+    5: "Friday",
+    6: "Saturday",
+  };
+
+  return dayMap[today] || "Monday";
+});
+useEffect(() => {
+  const updateToday = () => {
+    const today = new Date().getDay();
+
+    const dayMap = {
+      1: "Monday",
+      2: "Tuesday",
+      3: "Wednesday",
+      4: "Thursday",
+      5: "Friday",
+      6: "Saturday",
+    };
+
+    setActiveDay(dayMap[today] || "Monday");
+  };
+
+  const interval = setInterval(updateToday, 60000);
+
+  return () => clearInterval(interval);
+}, []);
 
   const [loading, setLoading] = useState(false);
 

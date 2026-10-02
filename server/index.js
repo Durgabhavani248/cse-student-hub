@@ -5138,7 +5138,13 @@ app.get("/api/notes", verifyAnyToken, async (req, res) => {
     const u = req.user;
     let filter = {};
     if (u.role === "student") filter = { branch: u.branch, section: u.section };
-    else if (u.role === "faculty") filter = { branch: u.branch, section: { $in: u.assignedSections || [] } };
+    else if (u.role === "faculty") {
+  filter = {
+    branch: u.branch,
+    section: { $in: u.assignedSections || [] },
+    uploadedBy: u.facultyId
+  };
+}
     else if (u.role === "hod") filter = { branch: u.branch };
 
     const notes = await Note.find(filter).sort({ createdAt: -1 });
@@ -5186,8 +5192,12 @@ app.delete("/api/notes/:id", uploaderMiddleware, async (req, res) => {
     const note = await Note.findById(req.params.id);
     if (!note) return res.status(404).json({ message: "Note not found" });
     if (!canAccess(req.user, note.branch, note.section)) {
-      return res.status(403).json({ message: "Not authorized to delete this note" });
-    }
+  return res.status(403).json({ message: "Not authorized to delete this note" });
+}
+
+if (req.user.role === "faculty" && note.uploadedBy !== req.user.facultyId) {
+  return res.status(403).json({ message: "You can only delete your own notes" });
+}
 
     await Note.findByIdAndDelete(req.params.id);
     res.json({ message: "Note deleted successfully" });
@@ -5208,7 +5218,13 @@ app.get("/api/assignments", verifyAnyToken, async (req, res) => {
     const u = req.user;
     let filter = {};
     if (u.role === "student") filter = { branch: u.branch, section: u.section };
-    else if (u.role === "faculty") filter = { branch: u.branch, section: { $in: u.assignedSections || [] } };
+    else if (u.role === "faculty") {
+  filter = {
+    branch: u.branch,
+    section: { $in: u.assignedSections || [] },
+    uploadedBy: u.facultyId
+  };
+}
     else if (u.role === "hod") filter = { branch: u.branch };
 
     const assignments = await Assignment.find(filter).sort({ createdAt: -1 });
@@ -5257,9 +5273,13 @@ app.delete("/api/assignments/:id", uploaderMiddleware, async (req, res) => {
   try {
     const assignment = await Assignment.findById(req.params.id);
     if (!assignment) return res.status(404).json({ message: "Assignment not found" });
-    if (!canAccess(req.user, assignment.branch, assignment.section)) {
-      return res.status(403).json({ message: "Not authorized to delete this assignment" });
-    }
+ if (!canAccess(req.user, assignment.branch, assignment.section)) {
+  return res.status(403).json({ message: "Not authorized to delete this assignment" });
+}
+
+if (req.user.role === "faculty" && assignment.uploadedBy !== req.user.facultyId) {
+  return res.status(403).json({ message: "You can only delete your own assignments" });
+}
     await Assignment.deleteOne({ _id: req.params.id });
     res.json({ message: "Assignment deleted" });
   } catch (err) {
