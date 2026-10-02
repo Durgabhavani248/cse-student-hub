@@ -85,6 +85,13 @@ const [facultyNeedsPasswordChange, setFacultyNeedsPasswordChange] =
   const [notices, setNotices] = useState([]);
   const [studentTimetable, setStudentTimetable] = useState(null);
 const [currentTime, setCurrentTime] = useState(new Date());
+useEffect(() => {
+  const interval = setInterval(() => {
+    setCurrentTime(new Date());
+  }, 60000);
+
+  return () => clearInterval(interval);
+}, []);
 const canUploadContent =
   isAdmin ||
   facultyInfo?.role === "faculty" ||
@@ -387,13 +394,6 @@ const {
   current: currentClass,
   next: nextClass
 } = getClassStatus();
-useEffect(() => {
-  const interval = setInterval(() => {
-    setCurrentTime(new Date());
-  }, 60000);
-
-  return () => clearInterval(interval);
-}, []);
  const navBtnClass = (page) =>
   `nav-btn ${activePage === page ? "active" : ""}`;
 
