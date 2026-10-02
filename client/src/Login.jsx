@@ -6,7 +6,7 @@ function Login({ onLogin, onBack }) {
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    fetch("https://cse-student-hub.onrender.com/api/login", {
+    fetch("https://13-54-196-18.sslip.io/api/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })
