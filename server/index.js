@@ -3091,23 +3091,22 @@ app.get(
       ].sort();
 
       let allowedBranches = branches;
+// HOD / Faculty / Student → own branch only
+if (
+  role === "hod" ||
+  role === "faculty" ||
+  role === "student"
+) {
+  if (!req.user.branch) {
+    return res.status(400).json({
+      message: "User branch not found"
+    });
+  }
 
-      // HOD / Faculty / Student → own branch only
-      if (
-        role === "hod" ||
-        role === "faculty" ||
-        role === "student"
-      ) {
-        if (!req.user.branch) {
-          return res.status(400).json({
-            message: "User branch not found"
-          });
-        }
-
-        allowedBranches = branches.filter(
-          branch => String(branch) === String(req.user.branch)
-        );
-      }
+  allowedBranches = branches.filter(
+    branch => String(branch) === String(req.user.branch)
+  );
+}
 
       const sectionsByBranch = {};
 
@@ -3135,18 +3134,7 @@ app.get(
             ].filter(Boolean)
           )
         ].sort();
-
-        // Faculty → assigned sections only
-        if (role === "faculty") {
-          const assignedSections =
-            Array.isArray(req.user.assignedSections)
-              ? req.user.assignedSections
-              : [];
-
-          sections = sections.filter(section =>
-            assignedSections.includes(section)
-          );
-        }
+// Faculty can conduct exams for any section
 
         // Student / CR → own section only
         if (role === "student") {
@@ -3468,32 +3456,7 @@ app.post(
       // Faculty assigned section check
       // -------------------------
 
-      if (req.user.role === "faculty") {
-        const assignedSections =
-          new Set(
-            (
-              req.user.assignedSections ||
-              []
-            ).map(section =>
-              String(section).trim()
-            )
-          );
-
-        const unauthorized =
-          normalizedSections.find(
-            item =>
-              !assignedSections.has(
-                item.section
-              )
-          );
-
-        if (unauthorized) {
-          return res.status(403).json({
-            message:
-              `Section ${unauthorized.section} is not assigned to you`
-          });
-        }
-      }
+      // Faculty can conduct exams for any section
 
       // -------------------------
       // Read Questions PDF
@@ -4951,14 +4914,7 @@ app.get(
       }
 
       // Faculty can export only exams of their branch
-      if (
-        req.user.role === "faculty" &&
-        req.user.branch !== exam.branch
-      ) {
-        return res.status(403).json({
-          message: "Faculty can export only exams of their own branch"
-        });
-      }
+     // Faculty can create exams for any branch and any section
 
       // Faculty can export only exams created by them
       if (req.user.role === "faculty") {

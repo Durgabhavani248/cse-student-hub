@@ -1188,7 +1188,7 @@ const [availableSections, setAvailableSections] = useState([]);
             <select
               style={inputStyle}
               value={branch}
-              disabled={role === "hod" || role === "faculty"}
+              disabled={false}
               onChange={(e) => {
                 const value = e.target.value;
                 setBranch(value);
