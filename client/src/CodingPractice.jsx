@@ -12,24 +12,25 @@ export default function CodingPractice({ api, token }) {
   const [codeOutput, setCodeOutput] = useState("");
   const [codeError, setCodeError] = useState("");
   const [runningCode, setRunningCode] = useState(false);
-
-  const starterCode = {
-    Python: `# Write your Python code here
+const starterCode = {
+  Python: `# Write your Python code here
 
 print("Hello, World!")`,
-    "C++": `#include <iostream>
+
+  Cpp: `#include <iostream>
 using namespace std;
 
 int main() {
     cout << "Hello, World!";
     return 0;
 }`,
-    Java: `public class Main {
+
+  Java: `public class Main {
     public static void main(String[] args) {
         System.out.println("Hello, World!");
     }
 }`
-  };
+};
 
   const handleLanguageChange = (language) => {
     setSelectedLanguage(language);
@@ -189,7 +190,7 @@ int main() {
             }}
           >
             <option value="Python">Python</option>
-            <option value="C++">C++</option>
+            <option value="Cpp">C++</option>
             <option value="Java">Java</option>
           </select>
         </div>
