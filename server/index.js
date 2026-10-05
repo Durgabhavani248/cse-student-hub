@@ -1426,7 +1426,7 @@ async function uploadExamPdfToCloudinary(filePath, publicId) {
   if (!filePath) return "";
 
   const result = await cloudinary.uploader.upload(filePath, {
-    resource_type: "raw",
+    resource_type: "image",
     public_id: publicId
   });
 
