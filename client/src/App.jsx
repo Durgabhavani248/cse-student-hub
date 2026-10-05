@@ -789,15 +789,48 @@ const {
                 ? new Date(notice.createdAt).toLocaleDateString()
                 : ""}
             </small>
-                        {/* HOD / ADMIN ACTIONS */}
-{(isAdmin || facultyInfo?.role === "hod") && (
-  <div style={{ marginTop: "12px" }}>
 
-    {/* DELETE BUTTON */}
+{/* NOTICE ACTIONS */}
+
+<div
+  style={{
+    marginTop: "12px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px"
+  }}
+>
+
+  {/* VIEW PDF - ALL USERS */}
+  {notice.pdfUrl && (
+    <button
+      onClick={() =>
+        window.open(
+          notice.pdfUrl,
+          "_blank",
+          "noopener,noreferrer"
+        )
+      }
+      style={{
+        width: "100%",
+        padding: "9px 12px",
+        border: "none",
+        borderRadius: "7px",
+        background: "#F15A29",
+        color: "#fff",
+        cursor: "pointer",
+        fontWeight: "600"
+      }}
+    >
+      📄 View PDF
+    </button>
+  )}
+
+  {/* DELETE - HOD / ADMIN ONLY */}
+  {(isAdmin || facultyInfo?.role === "hod") && (
     <button
       onClick={() => handleDeleteNotice(notice._id)}
       style={{
-        display: "block",
         width: "100%",
         padding: "9px 12px",
         border: "none",
@@ -810,9 +843,9 @@ const {
     >
       🗑️ Delete
     </button>
+  )}
 
-  </div>
-)}
+</div>
           </div>
         ))}
       </div>

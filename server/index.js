@@ -168,6 +168,8 @@ const NoticeSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: { type: String, required: true },
   branch: { type: String, default: null }, // null = visible to everyone; set = that branch only
+
+pdfUrl: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -5046,28 +5048,97 @@ app.get("/api/notices", optionalAuth, async (req, res) => {
   }
 });
 
-app.post("/api/notices", hodOrAdminMiddleware, async (req, res) => {
-  try {
-    const { title, description } = req.body;
+app.post(
+  "/api/notices",
+  hodOrAdminMiddleware,
+  upload.single("pdf"),
+  async (req, res) => {
+    try {
+      const { title, description } = req.body;
 
-    if (!title || !description) {
-      return res.status(400).json({ message: "Title and description required" });
+      if (!title || !description) {
+        return res.status(400).json({
+          message: "Title and description required"
+        });
+      }
+
+      const branch =
+        req.user.role === "hod"
+          ? req.user.branch
+          : null;
+
+      let pdfUrl = null;
+
+      // PDF upload is optional
+      if (req.file) {
+        if (req.file.mimetype !== "application/pdf") {
+          fs.unlinkSync(req.file.path);
+
+          return res.status(400).json({
+            message: "Only PDF files are allowed"
+          });
+        }
+
+        if (req.file.size > 10 * 1024 * 1024) {
+          fs.unlinkSync(req.file.path);
+
+          return res.status(400).json({
+            message: "PDF size must be below 10 MB"
+          });
+        }
+
+        const result =
+          await cloudinary.uploader.upload(
+            req.file.path,
+            {
+              resource_type: "raw",
+              folder: "notices",
+              public_id:
+                `notice-${Date.now()}-${path
+                  .basename(
+                    req.file.originalname,
+                    path.extname(req.file.originalname)
+                  )
+                  .replace(/[^a-zA-Z0-9-_]/g, "_")}`
+            }
+          );
+
+        pdfUrl = result.secure_url;
+
+        // Delete temporary local file
+        fs.unlinkSync(req.file.path);
+      }
+
+      const notice = new Notice({
+        title,
+        description,
+        branch,
+        pdfUrl
+      });
+
+      await notice.save();
+
+      notifyUsers(
+        branch ? { branch } : {},
+        `📢 ${title}`,
+        description
+      );
+
+      res.json(notice);
+
+    } catch (err) {
+      console.error("Post notice error:", err);
+
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
+        message: err.message
+      });
     }
-
-    const branch = req.user.role === "hod" ? req.user.branch : null;
-
-    const notice = new Notice({ title, description, branch });
-    await notice.save();
-
-    notifyUsers(branch ? { branch } : {}, `📢 ${title}`, description);
-
-    res.json(notice);
-  } catch (err) {
-    console.error("Post notice error:", err);
-    res.status(500).json({ message: err.message });
   }
-});
-
+);
 app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
   try {
     const notice = await Notice.findById(req.params.id);
