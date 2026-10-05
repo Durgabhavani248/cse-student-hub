@@ -5051,7 +5051,6 @@ app.get("/api/notices", optionalAuth, async (req, res) => {
 app.post(
   "/api/notices",
   hodOrAdminMiddleware,
-  upload.single("pdf"),
   async (req, res) => {
     try {
       const { title, description } = req.body;
