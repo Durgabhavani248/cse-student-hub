@@ -100,7 +100,7 @@ const [pdf, setPdf] = useState(null);
             color: "#444"
           }}
         >
-          📄 Attach PDF (Optional)
+          📎 Attach File (Optional)
         </label>
 
         <input
