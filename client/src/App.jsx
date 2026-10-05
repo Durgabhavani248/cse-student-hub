@@ -804,36 +804,15 @@ const {
   {/* VIEW PDF - ALL USERS */}
  {notice.pdfUrl && (
   <button
-    onClick={() => {
-      const fileType = notice.fileType || "";
-      const fileUrl = notice.pdfUrl;
-
-      const browserOpenTypes = [
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-        "text/plain",
-        "text/csv"
-      ];
-
-      if (browserOpenTypes.includes(fileType)) {
-        window.open(
-          fileUrl,
-          "_blank",
-          "noopener,noreferrer"
-        );
-      } else {
-        const viewerUrl =
-  `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`;
-
-        window.open(
-          viewerUrl,
-          "_blank",
-          "noopener,noreferrer"
-        );
-      }
-    }}
+   onClick={() => {
+  if (notice.pdfUrl) {
+    window.open(
+      notice.pdfUrl,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  }
+}}
     style={{
       width: "100%",
       padding: "9px 12px",
