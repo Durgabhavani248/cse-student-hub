@@ -13,6 +13,80 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import pdfParse from "pdf-parse";
+import ActivityLog from "./activitylog.js";
+async function createActivity({
+  req,
+  action,
+  module,
+  description,
+  resourceId = null,
+  resourceName = null,
+  branch = null,
+  section = null,
+  metadata = {}
+}) {
+  try {
+    if (!req?.user) return;
+
+    let actorId = "unknown";
+    let actorName = "Unknown User";
+
+    const role = req.user.role;
+
+    if (role === "admin") {
+      actorId = req.user.username || "admin";
+      actorName = req.user.username || "Admin";
+    } else if (role === "student") {
+      actorId = req.user.rollNo || "unknown";
+
+      const student = await User.findOne({
+        rollNo: req.user.rollNo
+      }).select("name");
+
+      actorName = student?.name || actorId;
+    } else if (role === "faculty" || role === "hod") {
+      actorId =
+        req.user.facultyId ||
+        req.user.employeeId ||
+        "unknown";
+
+      const faculty = await Faculty.findOne({
+        facultyId: actorId
+      }).select("name");
+
+      actorName = faculty?.name || actorId;
+    }
+
+    await ActivityLog.create({
+      actorId,
+      actorName,
+      role,
+      action,
+      module,
+      description,
+      resourceId: resourceId
+        ? String(resourceId)
+        : null,
+      resourceName,
+      branch:
+        branch ||
+        req.user.branch ||
+        null,
+      section:
+        section ||
+        req.user.section ||
+        null,
+      metadata
+    });
+
+  } catch (error) {
+    // Activity logging must NEVER break the main feature
+    console.error(
+      "Activity log error:",
+      error.message
+    );
+  }
+}
 
 if (!fs.existsSync("uploads")) {
   fs.mkdirSync("uploads");
@@ -3614,7 +3688,22 @@ app.post(
           cloudinaryError
         );
       }
-
+      await createActivity({
+        req,
+        action: "CREATE_EXAM",
+        module: "Tests",
+        description: `${req.user.role} created test: ${String(title).trim()}`,
+        resourceId: exam._id,
+        resourceName: String(title).trim(),
+        branch: String(branch).trim(),
+        metadata: {
+          subject: String(subject).trim(),
+          status: "draft",
+          durationMinutes: Number(durationMinutes),
+          totalMarks,
+          sections: normalizedSections.map((s) => s.section)
+        }
+      });
       return res.status(201).json({
         message:
           "Exam created successfully as Draft",
@@ -5249,6 +5338,19 @@ app.post(
       });
 
       await notice.save();
+      await createActivity({
+  req,
+  action: "CREATE_NOTICE",
+  module: "Notices",
+  description: `${req.user.role} created notice: ${title}`,
+  resourceId: notice._id,
+  resourceName: title,
+  branch,
+  metadata: {
+    hasAttachment: Boolean(fileUrl),
+    fileName: fileName || null
+  }
+});
 
       notifyUsers(
         branch ? { branch } : {},
@@ -5307,7 +5409,68 @@ app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
+// ============== ACTIVITY LOGS ==============
 
+app.get(
+  "/api/activity-logs",
+  hodOrAdminMiddleware,
+  async (req, res) => {
+    try {
+      const page = Math.max(
+        parseInt(req.query.page) || 1,
+        1
+      );
+
+      const limit = Math.min(
+        Math.max(
+          parseInt(req.query.limit) || 50,
+          1
+        ),
+        100
+      );
+
+      const skip = (page - 1) * limit;
+
+      // Admin can see everything.
+      // HOD can see only their own branch.
+      const filter =
+        req.user.role === "admin"
+          ? {}
+          : {
+              branch: req.user.branch
+            };
+
+      const [logs, total] = await Promise.all([
+        ActivityLog.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+
+        ActivityLog.countDocuments(filter)
+      ]);
+
+      res.json({
+        logs,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(
+          total / limit
+        )
+      });
+    } catch (err) {
+      console.error(
+        "Get activity logs error:",
+        err
+      );
+
+      res.status(500).json({
+        message: err.message
+      });
+    }
+  }
+);
 // ============== NOTES ==============
 
 app.get("/api/notes", verifyAnyToken, async (req, res) => {
@@ -5354,6 +5517,19 @@ app.post("/api/notes", uploaderMiddleware, async (req, res) => {
       fileUrl,
       uploadedBy: req.user.facultyId || req.user.rollNo
     });
+    await createActivity({
+  req,
+  action: "UPLOAD_NOTE",
+  module: "Notes",
+  description: `${req.user.isCR ? "CR" : req.user.role} uploaded note: ${title}`,
+  resourceId: note._id,
+  resourceName: title,
+  branch: targetBranch,
+  section,
+  metadata: {
+    subject
+  }
+});
 
     notifyUsers({ branch: targetBranch, section }, `📚 New Note: ${subject}`, title);
 
@@ -5436,6 +5612,20 @@ app.post("/api/assignments", uploaderMiddleware, async (req, res) => {
     });
 
     await assignment.save();
+    await createActivity({
+  req,
+  action: "UPLOAD_ASSIGNMENT",
+  module: "Assignments",
+  description: `${req.user.isCR ? "CR" : req.user.role} uploaded assignment: ${title}`,
+  resourceId: assignment._id,
+  resourceName: title,
+  branch: targetBranch,
+  section,
+  metadata: {
+    subject,
+    dueDate: assignment.dueDate || null
+  }
+});
 
     notifyUsers({ branch: targetBranch, section }, `📝 New Assignment: ${subject}`, title);
 
@@ -5494,6 +5684,18 @@ app.post("/api/papers", uploaderMiddleware, async (req, res) => {
 
     const paper = new Paper({ branch: targetBranch, subject, title, fileUrl });
     await paper.save();
+    await createActivity({
+  req,
+  action: "UPLOAD_PAPER",
+  module: "Papers",
+  description: `${req.user.isCR ? "CR" : req.user.role} uploaded question paper: ${title}`,
+  resourceId: paper._id,
+  resourceName: title,
+  branch: targetBranch,
+  metadata: {
+    subject
+  }
+});
 
     notifyUsers({ branch: targetBranch }, `📄 New Question Paper: ${subject}`, title);
 
@@ -5547,6 +5749,18 @@ app.post("/api/materials", uploaderMiddleware, async (req, res) => {
     }
 
     const material = await Material.create({ branch: targetBranch, subject, title, fileUrl });
+    await createActivity({
+  req,
+  action: "UPLOAD_MATERIAL",
+  module: "Materials",
+  description: `${req.user.isCR ? "CR" : req.user.role} uploaded material: ${title}`,
+  resourceId: material._id,
+  resourceName: title,
+  branch: targetBranch,
+  metadata: {
+    subject
+  }
+});
 
     notifyUsers({ branch: targetBranch }, `📖 New Study Material: ${subject}`, title);
 
@@ -5817,7 +6031,22 @@ app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
     }
 
     if (ops.length > 0) await Attendance.bulkWrite(ops);
-
+if (ops.length > 0) {
+  await createActivity({
+    req,
+    action: "MARK_ATTENDANCE",
+    module: "Attendance",
+    description:
+      `${req.user.role} marked attendance for ${ops.length} students - ${subject}, ${branch}-${section}`,
+    branch,
+    section,
+    metadata: {
+      subject,
+      date,
+      studentCount: ops.length
+    }
+  });
+}
     res.json({ message: `Attendance marked for ${ops.length} students` });
   } catch (err) {
     console.error("Mark attendance error:", err);

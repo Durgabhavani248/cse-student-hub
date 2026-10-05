@@ -600,6 +600,14 @@ const {
         )}
         
       </button>
+      {(isAdmin || facultyInfo?.role === "hod") && (
+  <button
+    className={navBtnClass("activity-center")}
+    onClick={() => setActivePage("activity-center")}
+  >
+    📋 Activity Center
+  </button>
+)}
 {isAdmin && (
   <button
     className={navBtnClass("admin")}
@@ -980,6 +988,10 @@ const {
     studentInfo={studentData}
     onUnreadCountChange={setUnreadNotifications}
   />
+)}
+{(activePage === "activity-center") &&
+  (isAdmin || facultyInfo?.role === "hod") && (
+    <ActivityCenter api={API} />
 )}
 
     </main>
