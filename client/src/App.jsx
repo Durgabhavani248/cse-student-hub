@@ -21,6 +21,7 @@ import Chatbot from "./Chatbot";
 import Search from "./Search";
 import Profile from "./Profile";
 import Notifications from "./Notifications";
+import ActivityCenter from "./ActivityCenter";
 import ManageCR from "./ManageCR";
 import LMS from "./LMS";
 import LoginPage from "./LoginPage";
