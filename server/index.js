@@ -5068,44 +5068,43 @@ app.post(
 
       let pdfUrl = null;
 
-      // PDF upload is optional
-      if (req.file) {
-        if (req.file.mimetype !== "application/pdf") {
-          fs.unlinkSync(req.file.path);
+      const pdfFile = req.files?.pdf;
 
+      // PDF is optional
+      if (pdfFile) {
+        if (pdfFile.mimetype !== "application/pdf") {
           return res.status(400).json({
             message: "Only PDF files are allowed"
           });
         }
 
-        if (req.file.size > 10 * 1024 * 1024) {
-          fs.unlinkSync(req.file.path);
-
+        if (pdfFile.size > 10 * 1024 * 1024) {
           return res.status(400).json({
             message: "PDF size must be below 10 MB"
           });
         }
 
-        const result =
-          await cloudinary.uploader.upload(
-            req.file.path,
+        pdfUrl = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
             {
               resource_type: "raw",
               folder: "notices",
               public_id:
-                `notice-${Date.now()}-${path
-                  .basename(
-                    req.file.originalname,
-                    path.extname(req.file.originalname)
-                  )
+                `notice-${Date.now()}-${pdfFile.name
+                  .replace(/\.pdf$/i, "")
                   .replace(/[^a-zA-Z0-9-_]/g, "_")}`
+            },
+            (error, result) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(result.secure_url);
+              }
             }
           );
 
-        pdfUrl = result.secure_url;
-
-        // Delete temporary local file
-        fs.unlinkSync(req.file.path);
+          stream.end(pdfFile.data);
+        });
       }
 
       const notice = new Notice({
@@ -5127,10 +5126,6 @@ app.post(
 
     } catch (err) {
       console.error("Post notice error:", err);
-
-      if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
 
       res.status(500).json({
         message: err.message
