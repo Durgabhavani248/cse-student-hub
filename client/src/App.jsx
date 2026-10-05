@@ -825,7 +825,7 @@ const {
         );
       } else {
         const viewerUrl =
-          `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(fileUrl)}`;
+  `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(fileUrl)}`;
 
         window.open(
           viewerUrl,
