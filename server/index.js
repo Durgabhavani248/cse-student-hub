@@ -170,6 +170,10 @@ const NoticeSchema = new mongoose.Schema({
   branch: { type: String, default: null }, // null = visible to everyone; set = that branch only
 
 pdfUrl: { type: String, default: null },
+
+fileType: { type: String, default: null },
+
+fileName: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -5072,11 +5076,31 @@ app.post(
 
       // PDF is optional
       if (pdfFile) {
-        if (pdfFile.mimetype !== "application/pdf") {
-          return res.status(400).json({
-            message: "Only PDF files are allowed"
-          });
-        }
+        const allowedTypes = [
+  "application/pdf",
+
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+  "text/plain",
+  "text/csv",
+
+  "image/jpeg",
+  "image/png",
+  "image/webp"
+];
+
+if (!allowedTypes.includes(pdfFile.mimetype)) {
+  return res.status(400).json({
+    message: "This file type is not supported."
+  });
+}
 
         if (pdfFile.size > 10 * 1024 * 1024) {
           return res.status(400).json({
@@ -5087,7 +5111,7 @@ app.post(
         pdfUrl = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
-              resource_type: "image",
+              resource_type: "auto",
               folder: "notices",
               public_id:
                 `notice-${Date.now()}-${pdfFile.name
@@ -5107,12 +5131,14 @@ app.post(
         });
       }
 
-      const notice = new Notice({
-        title,
-        description,
-        branch,
-        pdfUrl
-      });
+     const notice = new Notice({
+  title,
+  description,
+  branch,
+  pdfUrl,
+  fileType: pdfFile?.mimetype || null,
+  fileName: pdfFile?.name || null
+});
 
       await notice.save();
 

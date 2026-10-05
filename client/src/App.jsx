@@ -802,29 +802,52 @@ const {
 >
 
   {/* VIEW PDF - ALL USERS */}
-  {notice.pdfUrl && (
-    <button
-      onClick={() =>
+ {notice.pdfUrl && (
+  <button
+    onClick={() => {
+      const fileType = notice.fileType || "";
+      const fileUrl = notice.pdfUrl;
+
+      const browserOpenTypes = [
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "text/plain",
+        "text/csv"
+      ];
+
+      if (browserOpenTypes.includes(fileType)) {
         window.open(
-          notice.pdfUrl,
+          fileUrl,
           "_blank",
           "noopener,noreferrer"
-        )
+        );
+      } else {
+        const viewerUrl =
+          `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(fileUrl)}`;
+
+        window.open(
+          viewerUrl,
+          "_blank",
+          "noopener,noreferrer"
+        );
       }
-      style={{
-        width: "100%",
-        padding: "9px 12px",
-        border: "none",
-        borderRadius: "7px",
-        background: "#F15A29",
-        color: "#fff",
-        cursor: "pointer",
-        fontWeight: "600"
-      }}
-    >
-      📄 View PDF
-    </button>
-  )}
+    }}
+    style={{
+      width: "100%",
+      padding: "9px 12px",
+      border: "none",
+      borderRadius: "7px",
+      background: "#F15A29",
+      color: "#fff",
+      cursor: "pointer",
+      fontWeight: "600"
+    }}
+  >
+    📄 View File
+  </button>
+)}
 
   {/* DELETE - HOD / ADMIN ONLY */}
   {(isAdmin || facultyInfo?.role === "hod") && (

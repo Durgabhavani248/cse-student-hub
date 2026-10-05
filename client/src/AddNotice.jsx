@@ -106,7 +106,7 @@ const [pdf, setPdf] = useState(null);
         <input
           id="notice-pdf"
           type="file"
-          accept="application/pdf"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.csv,.jpg,.jpeg,.png,.webp"
           onChange={(e) => {
             const file = e.target.files?.[0];
 
@@ -115,12 +115,27 @@ const [pdf, setPdf] = useState(null);
               return;
             }
 
-            if (file.type !== "application/pdf") {
-              alert("Please select a PDF file only.");
-              e.target.value = "";
-              setPdf(null);
-              return;
-            }
+            const allowedTypes = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/plain",
+  "text/csv",
+  "image/jpeg",
+  "image/png",
+  "image/webp"
+];
+
+if (!allowedTypes.includes(file.type)) {
+  alert("This file type is not supported.");
+  e.target.value = "";
+  setPdf(null);
+  return;
+}
 
             if (file.size > 10 * 1024 * 1024) {
               alert("PDF size must be below 10 MB.");
