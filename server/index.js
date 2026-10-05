@@ -5087,7 +5087,7 @@ app.post(
         pdfUrl = await new Promise((resolve, reject) => {
           const stream = cloudinary.uploader.upload_stream(
             {
-              resource_type: "raw",
+              resource_type: "image",
               folder: "notices",
               public_id:
                 `notice-${Date.now()}-${pdfFile.name
