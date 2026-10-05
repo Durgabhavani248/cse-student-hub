@@ -5056,6 +5056,8 @@ app.post(
   "/api/notices",
   hodOrAdminMiddleware,
   async (req, res) => {
+    let tempDir = null;
+
     try {
       const { title, description } = req.body;
 
@@ -5070,75 +5072,181 @@ app.post(
           ? req.user.branch
           : null;
 
-      let pdfUrl = null;
+      let fileUrl = null;
+      let fileType = null;
+      let fileName = null;
 
-      const pdfFile = req.files?.pdf;
+      const attachment = req.files?.pdf;
 
-      // PDF is optional
-      if (pdfFile) {
-        const allowedTypes = [
-  "application/pdf",
+      if (attachment) {
+        const fs = await import("node:fs/promises");
+        const path = await import("node:path");
+        const os = await import("node:os");
+        const { execFile } = await import("node:child_process");
+        const { promisify } = await import("node:util");
 
-  "application/msword",
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        const execFileAsync = promisify(execFile);
 
-  "application/vnd.ms-powerpoint",
-  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        const allowedExtensions = [
+          ".pdf",
+          ".doc",
+          ".docx",
+          ".ppt",
+          ".pptx",
+          ".xls",
+          ".xlsx",
+          ".txt",
+          ".csv",
+          ".jpg",
+          ".jpeg",
+          ".png",
+          ".webp"
+        ];
 
-  "application/vnd.ms-excel",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        const originalName =
+          attachment.name || "notice-file";
 
-  "text/plain",
-  "text/csv",
+        const extension =
+          path.extname(originalName).toLowerCase();
 
-  "image/jpeg",
-  "image/png",
-  "image/webp"
-];
-
-if (!allowedTypes.includes(pdfFile.mimetype)) {
-  return res.status(400).json({
-    message: "This file type is not supported."
-  });
-}
-
-        if (pdfFile.size > 10 * 1024 * 1024) {
+        if (!allowedExtensions.includes(extension)) {
           return res.status(400).json({
-            message: "PDF size must be below 10 MB"
+            message: "This file type is not supported."
           });
         }
 
-        pdfUrl = await new Promise((resolve, reject) => {
-          const stream = cloudinary.uploader.upload_stream(
+        if (attachment.size > 10 * 1024 * 1024) {
+          return res.status(400).json({
+            message: "File size must be below 10 MB."
+          });
+        }
+
+        fileType = attachment.mimetype || null;
+        fileName = originalName;
+
+        const baseName = path
+          .basename(originalName, extension)
+          .replace(/[^a-zA-Z0-9-_]/g, "_");
+
+        const officeExtensions = [
+          ".doc",
+          ".docx",
+          ".ppt",
+          ".pptx",
+          ".xls",
+          ".xlsx",
+          ".txt",
+          ".csv"
+        ];
+
+        tempDir = await fs.mkdtemp(
+          path.join(os.tmpdir(), "notice-")
+        );
+
+        const inputPath = path.join(
+          tempDir,
+          `${baseName}-${Date.now()}${extension}`
+        );
+
+        await fs.writeFile(
+          inputPath,
+          attachment.data
+        );
+
+        let uploadBuffer = attachment.data;
+        let finalFormat = extension.slice(1);
+
+        if (officeExtensions.includes(extension)) {
+          console.log(
+            `📄 Converting ${originalName} to PDF...`
+          );
+
+          const loProfile = path.join(
+            tempDir,
+            "lo-profile"
+          );
+
+          await fs.mkdir(loProfile, {
+            recursive: true
+          });
+
+          await execFileAsync(
+            "libreoffice",
+            [
+              `-env:UserInstallation=file://${loProfile}`,
+              "--headless",
+              "--convert-to",
+              "pdf",
+              "--outdir",
+              tempDir,
+              inputPath
+            ],
             {
-              resource_type: "auto",
-              folder: "notices",
-              public_id:
-                `notice-${Date.now()}-${pdfFile.name
-                  .replace(/\.pdf$/i, "")
-                  .replace(/[^a-zA-Z0-9-_]/g, "_")}`
-            },
-            (error, result) => {
-              if (error) {
-                reject(error);
-              } else {
-                resolve(result.secure_url);
-              }
+              timeout: 120000
             }
           );
 
-          stream.end(pdfFile.data);
-        });
+          const convertedPath = path.join(
+            tempDir,
+            `${path.basename(inputPath, extension)}.pdf`
+          );
+
+          uploadBuffer = await fs.readFile(
+            convertedPath
+          );
+
+          finalFormat = "pdf";
+
+          console.log(
+            `✅ Converted ${originalName} to PDF`
+          );
+        }
+
+        fileUrl = await new Promise(
+          (resolve, reject) => {
+            const uploadStream =
+              cloudinary.uploader.upload_stream(
+                {
+                  resource_type: "image",
+                  type: "upload",
+                  folder: "notices",
+                  public_id:
+                    `notice-${Date.now()}-${baseName}`,
+                  format: finalFormat,
+                  timeout: 120000
+                },
+                (error, result) => {
+                  if (error) {
+                    console.error(
+                      "❌ Notice Cloudinary upload error:",
+                      error
+                    );
+                    reject(error);
+                  } else {
+                    console.log(
+                      "✅ Notice uploaded:",
+                      result.secure_url
+                    );
+                    resolve(
+                      result.secure_url
+                    );
+                  }
+                }
+              );
+
+            uploadStream.end(uploadBuffer);
+          }
+        );
       }
 
-     const notice = new Notice({
-  title,
-  description,
-  branch,
-  pdfUrl,
-  fileType: pdfFile?.mimetype || null,
-  fileName: pdfFile?.name || null
-});
+      const notice = new Notice({
+        title,
+        description,
+        branch,
+        pdfUrl: fileUrl,
+        fileType,
+        fileName
+      });
 
       await notice.save();
 
@@ -5151,14 +5259,36 @@ if (!allowedTypes.includes(pdfFile.mimetype)) {
       res.json(notice);
 
     } catch (err) {
-      console.error("Post notice error:", err);
+      console.error(
+        "❌ Post notice error:",
+        err
+      );
 
       res.status(500).json({
         message: err.message
       });
+
+    } finally {
+      if (tempDir) {
+        try {
+          const fs =
+            await import("node:fs/promises");
+
+          await fs.rm(tempDir, {
+            recursive: true,
+            force: true
+          });
+        } catch (cleanupError) {
+          console.error(
+            "Temp cleanup error:",
+            cleanupError
+          );
+        }
+      }
     }
   }
 );
+
 app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
   try {
     const notice = await Notice.findById(req.params.id);
