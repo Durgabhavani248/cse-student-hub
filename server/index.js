@@ -5171,7 +5171,7 @@ app.post(
           });
 
           await execFileAsync(
-            "libreoffice",
+            "/usr/bin/libreoffice",
             [
               `-env:UserInstallation=file://${loProfile}`,
               "--headless",
