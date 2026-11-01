@@ -16,7 +16,9 @@ import Timetable from "./Timetable";
 import Attendance from "./Attendance";
 import MyAttendance from "./MyAttendance";
 import HodAttendanceReport from "./HodAttendanceReport";
+import LiveAttendanceReport from "./LiveAttendanceReport";
 import AttendanceExport from "./AttendanceExport";  // ✅ NEW IMPORT
+import OldAttendanceUpload from "./OldAttendanceUpload";
 import Chatbot from "./Chatbot";
 import Search from "./Search";
 import Profile from "./Profile";
@@ -28,7 +30,9 @@ import LoginPage from "./LoginPage";
 import "./App.css";
 
 
-const API = import.meta.env.VITE_API_URL || "https://13-54-196-18.sslip.io";
+const API = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+  ? "http://localhost:3001"
+  : (import.meta.env.VITE_API_URL || "https://13-54-196-18.sslip.io");
 
 function App() {
   const adminToken = localStorage.getItem("token");
@@ -521,6 +525,24 @@ const {
           📤 Export
         </button>
       )}
+      
+{(isAdmin || facultyInfo?.role === "hod") && (
+  <button
+    className={navBtnClass("old-attendance-upload")}
+    onClick={() => setActivePage("old-attendance-upload")}
+  >
+    📥 Old Attendance
+  </button>
+)}
+{(isAdmin || facultyInfo?.role === "hod") && (
+  <button
+    className={navBtnClass("live-attendance")}
+    onClick={() => setActivePage("live-attendance")}
+  >
+    Live Attendance
+  </button>
+)}
+
 
 
    {(isAdmin || facultyInfo?.role === "hod") && (
@@ -935,6 +957,14 @@ const {
             facultyInfo={facultyInfo}
           />
         )}
+      {activePage === "live-attendance" &&
+        (isAdmin || facultyInfo?.role === "hod") && (
+          <LiveAttendanceReport
+            api={API}
+            isAdmin={isAdmin}
+            facultyInfo={facultyInfo}
+          />
+        )}
 
       {activePage === "attendance-export" &&
         (facultyInfo?.role === "hod" || isAdmin) && (
@@ -944,6 +974,18 @@ const {
             facultyInfo={facultyInfo}
           />
         )}
+        
+
+      {activePage === "old-attendance-upload" &&
+        (isAdmin || facultyInfo?.role === "hod") && (
+          <OldAttendanceUpload
+            api={API}
+            isAdmin={isAdmin}
+            facultyInfo={facultyInfo}
+          />
+        )}
+
+
 
      {activePage === "manage-cr" &&
   (isAdmin || facultyInfo?.role === "hod") && (

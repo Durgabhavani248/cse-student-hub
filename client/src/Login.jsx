@@ -4,9 +4,12 @@ function Login({ onLogin, onBack }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const API = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "http://localhost:3001"
+    : "https://13-54-196-18.sslip.io";
 
   const handleLogin = () => {
-    fetch("https://13-54-196-18.sslip.io/api/login", {
+    fetch(`${API}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password })

@@ -6,6 +6,15 @@ function Attendance({ api, facultyInfo }) {
 
   const [section, setSection] = useState(sectionOptions[0] || "");
   const [subject, setSubject] = useState("");
+  const [periodId, setPeriodId] = useState("1");
+  const [periodOptions, setPeriodOptions] = useState(
+    Array.from({ length: 10 }, (_, i) => ({
+      id: String(i + 1),
+      label: `Period ${i + 1}`,
+      subject: "",
+      type: "class"
+    }))
+  );
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
 
   const [students, setStudents] = useState([]);
@@ -15,6 +24,70 @@ function Attendance({ api, facultyInfo }) {
   const [existingRecords, setExistingRecords] = useState([]);
 
   const token = localStorage.getItem("facultyToken");
+// Load timetable periods for the selected date and section.
+  useEffect(() => {
+    if (!section || !facultyInfo?.branch) return;
+
+    let active = true;
+
+    const fallbackPeriods = Array.from({ length: 10 }, (_, i) => ({
+      id: String(i + 1),
+      label: `Period ${i + 1}`,
+      subject: "",
+      type: "class"
+    }));
+
+    const loadPeriods = async () => {
+      try {
+        const res = await fetch(
+          `${api}/api/timetable/${encodeURIComponent(facultyInfo.branch)}/${encodeURIComponent(section)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (!res.ok) throw new Error("Timetable unavailable");
+
+        const timetable = await res.json();
+        const dayKey = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][
+          new Date(`${date}T00:00:00`).getDay()
+        ];
+
+        const subjects = timetable.schedule?.[dayKey] || [];
+        const timings = timetable.timings || [];
+        const count = Math.max(subjects.length, timings.length);
+
+        const options = Array.from({ length: count }, (_, i) => {
+          const timing = timings[i] || {};
+          return {
+            id: String(i + 1),
+            label: timing.label || `Period ${i + 1}`,
+            subject: String(subjects[i] || "").trim(),
+            type: String(timing.type || "class").toLowerCase()
+          };
+        }).filter(p =>
+          p.subject &&
+          p.type !== "break" &&
+          p.type !== "lunch"
+        );
+
+        const next = options.length ? options : fallbackPeriods;
+
+        if (active) {
+          setPeriodOptions(next);
+          setPeriodId(current =>
+            next.some(p => p.id === current) ? current : next[0].id
+          );
+        }
+      } catch {
+        if (active) setPeriodOptions(fallbackPeriods);
+      }
+    };
+
+    loadPeriods();
+
+    return () => {
+      active = false;
+    };
+  }, [section, date, api, facultyInfo?.branch, token]);
 
   const loadStudents = () => {
     if (!section) { alert("Section enter cheyyi!"); return; }
@@ -61,7 +134,7 @@ function Attendance({ api, facultyInfo }) {
 
   const loadExisting = () => {
     if (!section || !subject || !date) return;
-    fetch(`${api}/api/attendance/section/${facultyInfo.branch}/${section}?subject=${encodeURIComponent(subject)}&date=${date}`, {
+    fetch(`${api}/api/attendance/section/${facultyInfo.branch}/${section}?subject=${encodeURIComponent(subject)}&date=${date}&periodId=${encodeURIComponent(periodId)}`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -81,7 +154,7 @@ function Attendance({ api, facultyInfo }) {
   useEffect(() => {
     if (students.length > 0) loadExisting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, date]);
+  }, [subject, date, periodId]);
 
   const toggle = (rollNo) => {
     setAttendance(prev => ({
@@ -106,7 +179,7 @@ function Attendance({ api, facultyInfo }) {
     fetch(`${api}/api/attendance/mark`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ branch: facultyInfo.branch, section, subject, date, records })
+      body: JSON.stringify({ branch: facultyInfo.branch, section, subject, date, periodId, records })
     })
       .then(res => res.json())
       .then(data => {
@@ -143,6 +216,25 @@ function Attendance({ api, facultyInfo }) {
           )}
         </div>
 
+        <div>
+          <label style={{ display: "block", fontSize: "11px", color: "#999", fontWeight: "700", marginBottom: "4px" }}>HOUR / PERIOD</label>
+          <select
+            value={periodId}
+            onChange={e => {
+              const value = e.target.value;
+              setPeriodId(value);
+              const selected = periodOptions.find(p => p.id === value);
+              if (selected?.subject) setSubject(selected.subject);
+            }}
+            style={inputStyle}
+          >
+            {periodOptions.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.label}{p.subject ? ` — ${p.subject}` : ""}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label style={{ display: "block", fontSize: "11px", color: "#999", fontWeight: "700", marginBottom: "4px" }}>SUBJECT</label>
           <input placeholder="e.g. DBMS" value={subject} onChange={e => setSubject(e.target.value)} style={inputStyle} />

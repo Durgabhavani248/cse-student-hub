@@ -40,6 +40,12 @@ function MyAttendance({ api }) {
           <div style={{ fontSize: "32px", fontWeight: "700", color: "#1a1a1a" }}>{data.summary.present}</div>
           <div style={{ color: "#999", fontSize: "12px", marginTop: "4px" }}>Classes Attended</div>
         </div>
+<div style={{ background: "#fff", border: "1px solid #f5c5bd", borderRadius: "16px", padding: "24px 32px", textAlign: "center", minWidth: "140px" }}>
+  <div style={{ fontSize: "32px", fontWeight: "700", color: "#F15A29" }}>
+    {data.summary.absent ?? Math.max(0, data.summary.totalClasses - data.summary.present)}
+  </div>
+  <div style={{ color: "#999", fontSize: "12px", marginTop: "4px" }}>Classes Absent</div>
+</div>
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "24px 32px", textAlign: "center", minWidth: "140px" }}>
           <div style={{ fontSize: "32px", fontWeight: "700", color: "#1a1a1a" }}>{data.summary.totalClasses}</div>
           <div style={{ color: "#999", fontSize: "12px", marginTop: "4px" }}>Total Classes</div>

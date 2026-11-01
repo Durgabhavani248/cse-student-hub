@@ -232,6 +232,7 @@ const AttendanceSchema = new mongoose.Schema({
   branch: { type: String, required: true },
   section: { type: String, required: true },
   subject: { type: String, required: true },
+  periodId: { type: String, default: "historical" },
   date: { type: String, required: true }, // "YYYY-MM-DD"
   status: { type: String, enum: ["present", "absent"], required: true },
   markedBy: { type: String, required: true }, // facultyId
@@ -5979,7 +5980,6 @@ app.post("/api/admin/set-cr", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
-// ============== ATTENDANCE ==============
 
 // Faculty/HOD marks attendance for a whole section, one subject, one date.
 // body: { branch, section, subject, date, records: [{ rollNo, status }] }
@@ -5989,7 +5989,7 @@ app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
       return res.status(403).json({ message: "Only faculty can mark attendance (not HOD)" });
     }
 
-    const { branch, section, subject, date, records } = req.body;
+    const { branch, section, subject, date, periodId = "legacy", records } = req.body;
 
     if (!branch || !section || !subject || !date || !Array.isArray(records) || records.length === 0) {
       return res.status(400).json({ message: "branch, section, subject, date and records[] are required" });
@@ -6000,65 +6000,81 @@ app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
     }
 
     const ops = [];
+    let skippedOldRecords = 0;
+
     for (const r of records) {
-      if (
-  !r.rollNo ||
-  !["present", "absent"].includes(r.status)
-) {
-  continue;
-}
-      const student = await User.findOne({
-  rollNo: r.rollNo,
-  branch,
-  section
-});
+      if (!r.rollNo || !["present", "absent"].includes(r.status)) {
+        continue;
+      }
+
+      const rollNo = String(r.rollNo).trim();
+      const student = await User.findOne({ rollNo, branch, section });
+
+      const filter = { rollNo, branch, section, subject, date, periodId: String(periodId) };
+
+      // Imported historical attendance must never be overwritten by faculty marking.
+      const oldRecord = await Attendance.findOne({
+        ...filter,
+        markedBy: "old-attendance-import"
+      });
+
+      if (oldRecord) {
+        skippedOldRecords++;
+        continue;
+      }
+
       ops.push({
         updateOne: {
-          filter: { rollNo: r.rollNo, subject, date },
+          filter,
           update: {
-            rollNo: r.rollNo,
-            studentName: student?.name || "",
-            branch,
-            section,
-            subject,
-            date,
-            status: r.status,
-            markedBy: req.user.facultyId
+            $set: {
+              rollNo,
+              studentName: student?.name || "",
+              branch,
+              section,
+              subject,
+              date,
+              status: r.status,
+              markedBy: req.user.facultyId
+            }
           },
           upsert: true
         }
       });
     }
 
-    if (ops.length > 0) await Attendance.bulkWrite(ops);
-if (ops.length > 0) {
-  await createActivity({
-    req,
-    action: "MARK_ATTENDANCE",
-    module: "Attendance",
-    description:
-      `${req.user.role} marked attendance for ${ops.length} students - ${subject}, ${branch}-${section}`,
-    branch,
-    section,
-    metadata: {
-      subject,
-      date,
-      studentCount: ops.length
+    if (ops.length > 0) {
+      await Attendance.bulkWrite(ops);
+
+      await createActivity({
+        req,
+        action: "MARK_ATTENDANCE",
+        module: "Attendance",
+        description: `${req.user.role} marked attendance for ${ops.length} students - ${subject}, ${branch}-${section}`,
+        branch,
+        section,
+        metadata: {
+          subject,
+          date,
+          studentCount: ops.length
+        }
+      });
     }
-  });
-}
-    res.json({ message: `Attendance marked for ${ops.length} students` });
+
+    res.json({
+      message: `Attendance marked for ${ops.length} students`,
+      skippedOldRecords
+    });
   } catch (err) {
     console.error("Mark attendance error:", err);
     res.status(500).json({ message: err.message });
   }
 });
-
 // Faculty/HOD viewing a section's attendance for a date+subject
 app.get("/api/attendance/section/:branch/:section", facultyMiddleware, async (req, res) => {
   try {
     const { branch, section } = req.params;
-    const { subject, date } = req.query;
+    const { subject, date, periodId } = req.query;
 
     if (!canAccess(req.user, branch, section)) {
       return res.status(403).json({ message: "You are not assigned to this section" });
@@ -6067,6 +6083,7 @@ app.get("/api/attendance/section/:branch/:section", facultyMiddleware, async (re
     const filter = { branch, section };
     if (subject) filter.subject = subject;
     if (date) filter.date = date;
+    if (periodId) filter.periodId = String(periodId);
 
     const records = await Attendance.find(filter).sort({ date: -1 });
     res.json(records);
@@ -6079,15 +6096,31 @@ app.get("/api/attendance/section/:branch/:section", facultyMiddleware, async (re
 // Student viewing their own attendance
 app.get("/api/attendance/my", studentMiddleware, async (req, res) => {
   try {
-    const records = await Attendance.find({ rollNo: req.user.rollNo }).sort({ date: -1 });
+    const records = await Attendance.find({ rollNo: req.user.rollNo })
+      .sort({ date: -1, createdAt: -1 });
 
-    const totalClasses = records.length;
-    const present = records.filter(r => r.status === "present").length;
-    const percentage = totalClasses > 0 ? ((present / totalClasses) * 100).toFixed(1) : "0.0";
+    // Count only one attendance entry per subject per date.
+    const uniqueRecords = new Map();
+    for (const r of records) {
+      const key = `${r.rollNo}|${r.subject}|${r.date}|${r.periodId || "historical"}`;
+      if (!uniqueRecords.has(key)) {
+        uniqueRecords.set(key, r);
+      }
+    }
+    const countedRecords = Array.from(uniqueRecords.values());
+
+    const totalClasses = countedRecords.length;
+    const present = countedRecords.filter(r => r.status === "present").length;
+    const absent = countedRecords.filter(r => r.status === "absent").length;
+    const percentage = totalClasses > 0
+      ? ((present / totalClasses) * 100).toFixed(1)
+      : "0.0";
 
     const bySubject = {};
-    for (const r of records) {
-      if (!bySubject[r.subject]) bySubject[r.subject] = { total: 0, present: 0 };
+    for (const r of countedRecords) {
+      if (!bySubject[r.subject]) {
+        bySubject[r.subject] = { total: 0, present: 0 };
+      }
       bySubject[r.subject].total++;
       if (r.status === "present") bySubject[r.subject].present++;
     }
@@ -6098,13 +6131,388 @@ app.get("/api/attendance/my", studentMiddleware, async (req, res) => {
       percentage: ((s.present / s.total) * 100).toFixed(1)
     }));
 
-    res.json({ records, summary: { totalClasses, present, percentage }, subjectSummary });
+    res.json({ records, summary: { totalClasses, present, absent, percentage }, subjectSummary });
   } catch (err) {
     console.error("Get my attendance error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
+
+
+app.post("/api/attendance/import-old", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    if (!req.files || !req.files.file) {
+      return res.status(400).json({ message: "Please select an Excel file." });
+    }
+
+    const workbook = XLSX.read(req.files.file.data, {
+      type: "buffer",
+      cellDates: true
+    });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows.length) {
+      return res.status(400).json({ message: "Excel sheet is empty." });
+    }
+
+    const normalizeHeader = value =>
+      String(value).toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const normalizeDate = value => {
+      if (value instanceof Date && !isNaN(value)) {
+        return [
+          value.getFullYear(),
+          String(value.getMonth() + 1).padStart(2, "0"),
+          String(value.getDate()).padStart(2, "0")
+        ].join("-");
+      }
+
+      const raw = String(value ?? "").trim();
+
+      let match = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (match) {
+        return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+      }
+
+      match = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+      if (match) {
+        return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+      }
+
+      return "";
+    };
+
+    const getValue = (row, key) => {
+      const found = Object.keys(row).find(
+        header => normalizeHeader(header) === key
+      );
+      return found === undefined ? "" : row[found];
+    };
+
+    const branchDefault = String(req.body.branch || req.user.branch || "").trim();
+    const operations = new Map();
+    const errors = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rollNo = String(getValue(row, "rollno")).trim();
+      const studentName = String(getValue(row, "studentname")).trim();
+      const branch = String(getValue(row, "branch") || branchDefault).trim();
+      const section = String(getValue(row, "section")).replace(/[^0-9]/g, "");
+      const subject = String(getValue(row, "subject")).trim().toUpperCase();
+      const date = normalizeDate(getValue(row, "date"));
+      const status = String(getValue(row, "status")).trim().toLowerCase();
+    const rawPeriod = String(
+      getValue(row, "period") || getValue(row, "hour") || ""
+    ).trim();
+    const periodMatch = rawPeriod.match(/\d+/);
+    const periodId = periodMatch
+      ? String(Number(periodMatch[0]))
+      : "historical";
+
+      if (
+        !rollNo || !branch || !section || !subject || !date ||
+        !["present", "absent"].includes(status)
+      ) {
+        errors.push(`Row ${i + 2}: missing or invalid required value.`);
+        continue;
+      }
+
+      if (!canAccess(req.user, branch, section)) {
+        return res.status(403).json({
+          message: `You are not authorized to import branch ${branch}, section ${section}.`
+        });
+      }
+
+      // One entry per student + subject + date in this Excel file.
+      const key = `${branch}|${section}|${rollNo}|${subject}|${date}|${periodId}`;
+      operations.set(key, {
+        rollNo,
+        studentName,
+        branch,
+        section,
+        subject,
+        date,
+        status
+      });
+    }
+
+    if (errors.length) {
+      return res.status(400).json({
+        message: "Some Excel rows are invalid. Correct them and upload again.",
+        errors: errors.slice(0, 20),
+        totalInvalidRows: errors.length
+      });
+    }
+
+    if (!operations.size) {
+      return res.status(400).json({ message: "No valid attendance rows found." });
+    }
+
+    const markedBy = "old-attendance-import";
+
+    const ops = Array.from(operations.values()).map(r => ({
+      updateOne: {
+        filter: {
+          rollNo: r.rollNo,
+          branch: r.branch,
+          section: r.section,
+          subject: r.subject,
+          date: r.date,
+          periodId: r.periodId
+        },
+        update: {
+          $setOnInsert: {
+            rollNo: r.rollNo,
+            studentName: r.studentName,
+            branch: r.branch,
+            section: r.section,
+            subject: r.subject,
+            date: r.date,
+            periodId: r.periodId,
+            status: r.status,
+            markedBy
+          }
+        },
+        upsert: true
+      }
+    }));
+
+    const result = await Attendance.bulkWrite(ops, { ordered: true });
+
+    res.json({
+      message: "Old attendance imported successfully.",
+      rowsProcessed: operations.size,
+      inserted: result.upsertedCount,
+      updated: result.modifiedCount,
+    skippedExisting: result.matchedCount || 0,
+      note: "Same student, subject and date are stored as one attendance entry."
+    });
+  } catch (err) {
+    console.error("Old attendance import error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
+// ============== HOD/ADMIN LIVE ATTENDANCE ==============
+
+app.get("/api/attendance/live-branches", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const allBranches = await Timetable.distinct("branch");
+    const branches = allBranches
+      .filter(branch => canAccess(req.user, branch))
+      .sort();
+    res.json(branches);
+  } catch (err) {
+    console.error("Live attendance branches error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/live-sections/:branch", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const { branch } = req.params;
+
+    if (!canAccess(req.user, branch)) {
+      return res.status(403).json({ message: "Not authorized for this branch" });
+    }
+
+    const sections = await Timetable.distinct("section", { branch });
+    res.json(sections.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true })));
+  } catch (err) {
+    console.error("Live attendance sections error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+app.get("/api/attendance/live-report/:branch/:section/:date", hodOrAdminMiddleware, async (req, res) => {
+  try {
+    const { branch, section, date } = req.params;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: "Invalid date. Use YYYY-MM-DD." });
+    }
+
+    if (!canAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "Not authorized for this section" });
+    }
+
+    const timetable = await Timetable.findOne({ branch, section }).lean();
+
+    if (!timetable) {
+      return res.status(404).json({ message: "Timetable not found for this section." });
+    }
+
+    const roster = await User.find({ branch, section })
+      .select("rollNo name")
+      .sort({ rollNo: 1 })
+      .lean();
+
+    const dayNames = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+    const dayKey = dayNames[new Date(`${date}T12:00:00Z`).getUTCDay()];
+    const daySchedule = timetable.schedule?.[dayKey] || [];
+    const timings = timetable.timings || [];
+
+    const attendanceRecords = await Attendance.find({
+      branch,
+      section,
+      date
+    }).sort({ createdAt: -1 }).lean();
+
+    const now = new Date();
+
+    const dateParts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(now);
+
+    const dateValues = Object.fromEntries(dateParts.map(p => [p.type, p.value]));
+    const today = `${dateValues.year}-${dateValues.month}-${dateValues.day}`;
+
+    const timeParts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23"
+    }).formatToParts(now);
+
+    const timeValues = Object.fromEntries(timeParts.map(p => [p.type, p.value]));
+    const nowMinutes = Number(timeValues.hour) * 60 + Number(timeValues.minute);
+
+    const parseTime = value => {
+      const raw = String(value || "").trim().toUpperCase();
+
+      if (/^\d+(\.\d+)?$/.test(raw)) {
+        const numeric = Number(raw);
+        if (numeric >= 0 && numeric < 1) return Math.round(numeric * 1440);
+      }
+
+      const match = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/);
+      if (!match) return null;
+
+      let hour = Number(match[1]);
+      const minute = Number(match[2]);
+
+      if (minute > 59 || hour > 23) return null;
+
+      if (match[3]) {
+        if (hour < 1 || hour > 12) return null;
+        if (match[3] === "AM" && hour === 12) hour = 0;
+        if (match[3] === "PM" && hour !== 12) hour += 12;
+      }
+
+      return hour * 60 + minute;
+    };
+
+    const ordinal = n => {
+      const mod100 = n % 100;
+      if (mod100 >= 11 && mod100 <= 13) return `${n}th`;
+      const mod10 = n % 10;
+      return `${n}${mod10 === 1 ? "st" : mod10 === 2 ? "nd" : mod10 === 3 ? "rd" : "th"}`;
+    };
+
+    const periods = daySchedule
+      .map((subjectValue, index) => {
+        const subject = String(subjectValue || "").trim();
+        const timing = timings[index] || {};
+        const type = String(timing.type || "class").toLowerCase();
+
+        if (!subject || type === "break" || type === "lunch") return null;
+
+        const periodId = String(index + 1);
+        const startMinutes = parseTime(timing.start);
+        const endMinutes = parseTime(timing.end);
+
+        const matchingRecords = attendanceRecords.filter(
+          r => String(r.periodId || "historical") === periodId
+        );
+
+        const latestByRollNo = new Map();
+        matchingRecords.forEach(r => {
+          if (!latestByRollNo.has(String(r.rollNo))) {
+            latestByRollNo.set(String(r.rollNo), r);
+          }
+        });
+
+        const presentStudents = roster
+          .filter(s => latestByRollNo.get(String(s.rollNo))?.status === "present")
+          .map(s => ({ rollNo: s.rollNo, name: s.name }));
+
+        const absentStudents = roster
+          .filter(s => latestByRollNo.get(String(s.rollNo))?.status === "absent")
+          .map(s => ({ rollNo: s.rollNo, name: s.name }));
+
+        const notMarkedStudents = roster
+          .filter(s => !latestByRollNo.has(String(s.rollNo)))
+          .map(s => ({ rollNo: s.rollNo, name: s.name }));
+
+        const markedCount = presentStudents.length + absentStudents.length;
+        const isComplete = roster.length > 0 && markedCount >= roster.length;
+
+        const isLive =
+          date === today &&
+          startMinutes !== null &&
+          endMinutes !== null &&
+          nowMinutes >= startMinutes &&
+          nowMinutes < endMinutes;
+
+        let status;
+
+        if (isLive) {
+          status = "LIVE";
+        } else if (isComplete) {
+          status = "COMPLETED";
+        } else if (markedCount > 0) {
+          status = "IN_PROCESS";
+        } else if (
+          date > today ||
+          (date === today && startMinutes !== null && nowMinutes < startMinutes)
+        ) {
+          status = "NEXT";
+        } else {
+          status = "NOT_MARKED";
+        }
+
+        return {
+          periodId,
+          label: timing.label || `${ordinal(index + 1)} Hour`,
+          subject,
+          start: timing.start || "",
+          end: timing.end || "",
+          timingConfigured: startMinutes !== null && endMinutes !== null,
+          status,
+          attendanceStatus: isComplete ? "Completed" : "In Process",
+          presentCount: presentStudents.length,
+          absentCount: absentStudents.length,
+          notMarkedCount: notMarkedStudents.length,
+          totalStudents: roster.length,
+          presentStudents,
+          absentStudents,
+          notMarkedStudents
+        };
+      })
+      .filter(Boolean);
+
+    res.json({
+      branch,
+      section,
+      date,
+      dayKey,
+      totalStudents: roster.length,
+      periods
+    });
+  } catch (err) {
+    console.error("Live attendance report error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
 // HOD/Admin: branch-wide attendance report — per-student percentage, flags low attendance (<75%)
 app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (req, res) => {
   try {
@@ -6115,12 +6523,31 @@ app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (re
 
     const report = await Attendance.aggregate([
       { $match: { branch } },
+      { $sort: { createdAt: -1 } },
       {
         $group: {
-          _id: { rollNo: "$rollNo", section: "$section" },
+          _id: {
+            rollNo: "$rollNo",
+            section: "$section",
+            subject: "$subject",
+            date: "$date",
+          periodId: { $ifNull: ["$periodId", "historical"] }
+          },
+          studentName: { $first: "$studentName" },
+          status: { $first: "$status" }
+        }
+      },
+      {
+        $group: {
+          _id: { rollNo: "$_id.rollNo", section: "$_id.section" },
           studentName: { $first: "$studentName" },
           total: { $sum: 1 },
-          present: { $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] } }
+          present: {
+            $sum: { $cond: [{ $eq: ["$status", "present"] }, 1, 0] }
+          },
+          absent: {
+            $sum: { $cond: [{ $eq: ["$status", "absent"] }, 1, 0] }
+          }
         }
       },
       {
@@ -6131,7 +6558,13 @@ app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (re
           studentName: 1,
           total: 1,
           present: 1,
-          percentage: { $round: [{ $multiply: [{ $divide: ["$present", "$total"] }, 100] }, 1] }
+          absent: 1,
+          percentage: {
+            $round: [
+              { $multiply: [{ $divide: ["$present", "$total"] }, 100] },
+              1
+            ]
+          }
         }
       },
       { $sort: { section: 1, rollNo: 1 } }
@@ -6153,7 +6586,15 @@ app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (re
       branch,
       students: report,
       sectionSummary,
-      lowAttendance: report.filter(r => r.percentage < 75)
+      lowAttendance: report.filter(r => r.percentage < 75),
+      absentRollNumbers: report
+        .filter(r => r.absent > 0)
+        .map(r => ({
+          rollNo: r.rollNo,
+          studentName: r.studentName,
+          section: r.section,
+          absent: r.absent
+        }))
     });
   } catch (err) {
     console.error("Branch attendance report error:", err);
