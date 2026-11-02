@@ -1,8 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 function AttendanceExport({ api, facultyInfo, isAdmin }) {
-  const [branch, setBranch] = useState(facultyInfo?.branch || "");
+  const branch = "CSE";
+  const [sectionOptions, setSectionOptions] = useState([]);
+  const [subjectOptions, setSubjectOptions] = useState([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
   const [section, setSection] = useState("");
   const [subject, setSubject] = useState("");
   const [startDate, setStartDate] = useState("");
@@ -12,6 +16,107 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
   const [attendanceData, setAttendanceData] = useState([]);
 
   const token = localStorage.getItem("facultyToken") || localStorage.getItem("token");
+// Load CSE sections from the existing timetable records.
+  useEffect(() => {
+    let active = true;
+
+    const loadSections = async () => {
+      setSectionsLoading(true);
+      try {
+        const res = await fetch(
+          `${api}/api/attendance/live-sections/${encodeURIComponent(branch)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || "Unable to load sections");
+
+        if (active) {
+          setSectionOptions(
+            Array.isArray(data) ? data.map(value => String(value)) : []
+          );
+        }
+      } catch (err) {
+        if (active) {
+          setSectionOptions([]);
+          setMessage("Unable to load CSE sections: " + err.message);
+        }
+      } finally {
+        if (active) setSectionsLoading(false);
+      }
+    };
+
+    loadSections();
+    return () => { active = false; };
+  }, [api, token]);
+
+  // Load subjects from the selected section timetable.
+  useEffect(() => {
+    if (!section) {
+      setSubjectOptions([]);
+      setSubject("");
+      return;
+    }
+
+    let active = true;
+
+    const loadSubjects = async () => {
+      setSubjectsLoading(true);
+      setSubjectOptions([]);
+      setSubject("");
+
+      try {
+        const res = await fetch(
+          `${api}/api/timetable/${encodeURIComponent(branch)}/${encodeURIComponent(section)}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.message || "Unable to load timetable");
+
+        const schedule = data.schedule || {};
+        const values = Object.values(schedule).flatMap(day => {
+          if (Array.isArray(day)) return day;
+          if (day && typeof day === "object") return Object.values(day);
+          return [day];
+        });
+
+        const uniqueSubjects = [];
+        const seen = new Set();
+
+        values.forEach(value => {
+          const name = typeof value === "string"
+            ? value.trim()
+            : String(value?.subject || value?.name || "").trim();
+
+          const key = name.toLowerCase();
+
+          if (
+            name &&
+            !/^(break|lunch|free|holiday|[-—]+)$/i.test(name) &&
+            !seen.has(key)
+          ) {
+            seen.add(key);
+            uniqueSubjects.push(name);
+          }
+        });
+
+        uniqueSubjects.sort((a, b) => a.localeCompare(b));
+
+        if (active) setSubjectOptions(uniqueSubjects);
+      } catch (err) {
+        if (active) {
+          setSubjectOptions([]);
+          setMessage("Unable to load timetable subjects: " + err.message);
+        }
+      } finally {
+        if (active) setSubjectsLoading(false);
+      }
+    };
+
+    loadSubjects();
+    return () => { active = false; };
+  }, [api, branch, section, token]);
 
   const fetchAttendanceData = async () => {
     if (!branch) {
@@ -191,33 +296,54 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
             <input
               type="text"
               value={branch}
-              onChange={(e) => setBranch(e.target.value)}
+              readOnly
               placeholder="e.g., CSE"
               style={inputStyle}
-              disabled={!isAdmin && facultyInfo?.branch}
+
             />
           </div>
 
           <div>
             <label style={{ fontSize: "11px", fontWeight: "700", color: "#999", display: "block", marginBottom: "4px" }}>SECTION</label>
-            <input
-              type="text"
-              value={section}
-              onChange={(e) => setSection(e.target.value)}
-              placeholder="e.g., 1 or A (optional)"
-              style={inputStyle}
-            />
+            <select
+  value={section}
+  onChange={(e) => {
+    setSection(e.target.value);
+    setSubject("");
+    setAttendanceData([]);
+    setMessage("");
+  }}
+  disabled={sectionsLoading}
+  style={{ ...inputStyle, width: "100%", background: "#fff" }}
+>
+  <option value="">
+    {sectionsLoading ? "Loading sections..." : "-- All Sections --"}
+  </option>
+  {sectionOptions.map(item => (
+    <option key={item} value={item}>Section {item}</option>
+  ))}
+</select>
           </div>
 
           <div>
             <label style={{ fontSize: "11px", fontWeight: "700", color: "#999", display: "block", marginBottom: "4px" }}>SUBJECT</label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              placeholder="e.g., DBMS (optional)"
-              style={inputStyle}
-            />
+            <select
+  value={subject}
+  onChange={(e) => setSubject(e.target.value)}
+  disabled={!section || subjectsLoading}
+  style={{ ...inputStyle, width: "100%", background: "#fff" }}
+>
+  <option value="">
+    {!section
+      ? "Select section first"
+      : subjectsLoading
+        ? "Loading subjects..."
+        : "-- All Subjects --"}
+  </option>
+  {subjectOptions.map(item => (
+    <option key={item} value={item}>{item}</option>
+  ))}
+</select>
           </div>
 
           <div>
