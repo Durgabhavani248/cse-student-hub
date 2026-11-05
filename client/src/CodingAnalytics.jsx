@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 
 export default function CodingAnalytics({ api = "" }) {
   const [data, setData] = useState(null);
@@ -101,7 +101,7 @@ export default function CodingAnalytics({ api = "" }) {
   if (loading) {
     return (
       <div style={styles.center}>
-        <div style={styles.spinner}>⏳</div>
+        <div style={styles.spinner}>â³</div>
         <h3>Loading Coding Analytics...</h3>
       </div>
     );
@@ -111,11 +111,11 @@ export default function CodingAnalytics({ api = "" }) {
     return (
       <div style={styles.page}>
         <div style={styles.errorBox}>
-          ❌ {error}
+          âŒ {error}
         </div>
 
         <button style={styles.refreshButton} onClick={loadAnalytics}>
-          🔄 Try Again
+           Try Again
         </button>
       </div>
     );
@@ -126,13 +126,13 @@ export default function CodingAnalytics({ api = "" }) {
       <div style={styles.header}>
         <div>
           <div style={styles.title}>
-            💻 Coding Analytics
+             Coding Analytics
           </div>
 
           <div style={styles.subtitle}>
             {data?.scope === "all"
-              ? "Admin • All Branches & Sections"
-              : `HOD • ${data?.branch || "Branch"}`}
+              ? "Admin â€¢ All Branches & Sections"
+              : `HOD â€¢ ${data?.branch || "Branch"}`}
           </div>
         </div>
 
@@ -140,44 +140,44 @@ export default function CodingAnalytics({ api = "" }) {
           style={styles.refreshButton}
           onClick={loadAnalytics}
         >
-          🔄 Refresh
+           Refresh
         </button>
       </div>
 
       {/* SUMMARY CARDS */}
       <div style={styles.cards}>
         <StatCard
-          icon="👨‍🎓"
+          icon=""
           title="Total Students"
           value={stats.totalStudents}
         />
 
         <StatCard
-          icon="▶️"
+          icon="â–¶"
           title="Challenge Started"
           value={stats.started}
         />
 
         <StatCard
-          icon="✅"
+          icon="âœ…"
           title="Completed"
           value={stats.completed}
         />
 
         <StatCard
-          icon="⏳"
+          icon="â³"
           title="Not Attempted"
           value={stats.notAttempted}
         />
 
         <StatCard
-          icon="⭐"
+          icon="â­"
           title="Total XP"
           value={stats.totalXP}
         />
 
         <StatCard
-          icon="🔥"
+          icon=""
           title="Active Streaks"
           value={stats.activeStreaks}
         />
@@ -186,7 +186,7 @@ export default function CodingAnalytics({ api = "" }) {
       {/* LEADERBOARD */}
       <div style={styles.section}>
         <div style={styles.sectionTitle}>
-          🏆 Coding Leaderboard
+           Coding Leaderboard
         </div>
 
         {leaderboard.length === 0 ? (
@@ -218,11 +218,11 @@ export default function CodingAnalytics({ api = "" }) {
                     <tr key={item._id || index}>
                       <td style={styles.td}>
                         {index === 0
-                          ? "🥇"
+                          ? ""
                           : index === 1
-                          ? "🥈"
+                          ? ""
                           : index === 2
-                          ? "🥉"
+                          ? ""
                           : index + 1}
                       </td>
 
@@ -245,11 +245,11 @@ export default function CodingAnalytics({ api = "" }) {
                       </td>
 
                       <td style={styles.td}>
-                        ⭐ {item.xp || 0}
+                        â­ {item.xp || 0}
                       </td>
 
                       <td style={styles.td}>
-                        🔥 {item.currentStreak || 0}
+                         {item.currentStreak || 0}
                       </td>
 
                       <td style={styles.td}>
@@ -337,7 +337,7 @@ function SectionActivity({ students, progress }) {
   return (
     <div style={styles.section}>
       <div style={styles.sectionTitle}>
-        📊 Branch & Section Activity
+         Branch & Section Activity
       </div>
 
       {sections.length === 0 ? (
@@ -352,20 +352,20 @@ function SectionActivity({ students, progress }) {
               style={styles.sectionCard}
             >
               <div style={styles.sectionName}>
-                {section.branch} • Section {section.section}
+                {section.branch} â€¢ Section {section.section}
               </div>
 
               <div style={styles.sectionStats}>
                 <span>
-                  👨‍🎓 {section.students}
+                   {section.students}
                 </span>
 
                 <span>
-                  💻 {section.active}
+                   {section.active}
                 </span>
 
                 <span>
-                  ⭐ {section.xp}
+                  â­ {section.xp}
                 </span>
               </div>
             </div>

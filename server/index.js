@@ -103,9 +103,9 @@ console.log("MONGO_URI loaded:", !!process.env.MONGO_URI);
 import { initializeApp, cert } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 
-// Firebase Admin init — service account JSON is stored as a single env var
+// Firebase Admin init Ã¢â‚¬â€ service account JSON is stored as a single env var
 // (FIREBASE_SERVICE_ACCOUNT) rather than a file, since Render doesn't support
-// uploading files. This never crashes the server even if misconfigured —
+// uploading files. This never crashes the server even if misconfigured Ã¢â‚¬â€
 // push notifications just silently no-op, everything else keeps working.
 let firebaseReady = false;
 try {
@@ -113,15 +113,15 @@ try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     initializeApp({ credential: cert(serviceAccount) });
     firebaseReady = true;
-    console.log("✅ Firebase Admin initialized");
+    console.log("Ã¢Å“â€¦ Firebase Admin initialized");
   } else {
-    console.warn("⚠️ FIREBASE_SERVICE_ACCOUNT env var not set — push notifications disabled");
+    console.warn("Ã¢Å¡Â Ã¯Â¸Â FIREBASE_SERVICE_ACCOUNT env var not set Ã¢â‚¬â€ push notifications disabled");
   }
 } catch (err) {
-  console.error("❌ Firebase Admin init failed:", err.message);
+  console.error("Ã¢ÂÅ’ Firebase Admin init failed:", err.message);
 }
 
-// Sends a push notification to all matching users' fcmTokens. Never throws —
+// Sends a push notification to all matching users' fcmTokens. Never throws Ã¢â‚¬â€
 // logs and returns silently if Firebase isn't configured or the send fails,
 // so callers can fire-and-forget this after saving content.
 async function notifyUsers(filter, title, body) {
@@ -168,7 +168,7 @@ app.use(fileUpload());
 const mongoUri = process.env.MONGO_URI;
 
 if (!mongoUri) {
-  console.error("❌ MONGO_URI is not configured.");
+  console.error("Ã¢ÂÅ’ MONGO_URI is not configured.");
   process.exit(1);
 }
 
@@ -182,7 +182,7 @@ const directMongoUri = mongoUri.replace(
 
 mongoose.connect(directMongoUri)
 
-  .then(() => console.log("✅ MongoDB Connected ✅"))
+  .then(() => console.log("Ã¢Å“â€¦ MongoDB Connected Ã¢Å“â€¦"))
 
   .catch(err => console.error("MongoDB Error:", err));
 
@@ -202,6 +202,7 @@ const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   section: { type: String, required: true },
   branch: { type: String, default: "CSE" },
+  parentMobile: { type: String, default: "" },
   password: { type: String, required: true },
   isFirstLogin: { type: Boolean, default: true },
   isCR: { type: Boolean, default: false },
@@ -220,6 +221,7 @@ const FacultySchema = new mongoose.Schema({
   branch: { type: String, required: true },
   role: { type: String, enum: ["faculty", "hod"], default: "faculty" },
   assignedSections: [{ type: String }], // ignored for hod (full branch access)
+  mentorSections: [{ type: String }],
   isFirstLogin: { type: Boolean, default: true },
   fcmToken: String,
   createdAt: { type: Date, default: Date.now },
@@ -796,6 +798,23 @@ CodingProgressSchema.index(
 const User = mongoose.model("User", UserSchema);
 const Faculty = mongoose.model("Faculty", FacultySchema);
 const Attendance = mongoose.model("Attendance", AttendanceSchema);
+
+const MentorNotificationSchema = new mongoose.Schema({
+  eventKey: { type: String, required: true, unique: true },
+  rollNo: { type: String, required: true },
+  studentName: { type: String, default: "" },
+  branch: { type: String, required: true },
+  section: { type: String, required: true },
+  subject: { type: String, required: true },
+  date: { type: String, required: true },
+  periodId: { type: String, default: "historical" },
+  facultyId: { type: String, required: true },
+  facultyName: { type: String, default: "" },
+  status: { type: String, enum: ["not-sent", "sent"], default: "not-sent" },
+  sentAt: { type: Date, default: null },
+  createdAt: { type: Date, default: Date.now }
+});
+const MentorNotification = mongoose.model("MentorNotification", MentorNotificationSchema);
 const Notice = mongoose.model("Notice", NoticeSchema);
 const Note = mongoose.model("Note", NoteSchema);
 const Assignment = mongoose.model("Assignment", AssignmentSchema);
@@ -919,7 +938,7 @@ const optionalAuth = (req, res, next) => {
       req.user = jwt.verify(token, process.env.JWT_SECRET);
     }
   } catch (err) {
-    // invalid/expired token — just treat as logged-out
+    // invalid/expired token Ã¢â‚¬â€ just treat as logged-out
   }
   next();
 };
@@ -1010,7 +1029,7 @@ app.post("/api/login", async (req, res) => {
   if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
     const token = jwt.sign({ 
       username,
-      role: "admin"  // ✅ ADD THIS
+      role: "admin"  // Ã¢Å“â€¦ ADD THIS
     }, process.env.JWT_SECRET);
     return res.json({ token });
   }
@@ -1090,7 +1109,8 @@ app.post("/api/faculty-login", async (req, res) => {
         facultyId: faculty.facultyId,
         role: faculty.role, // "faculty" or "hod"
         branch: faculty.branch,
-        assignedSections: faculty.assignedSections || []
+        assignedSections: faculty.assignedSections || [],
+        mentorSections: faculty.mentorSections || []
       },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
@@ -1106,6 +1126,7 @@ app.post("/api/faculty-login", async (req, res) => {
         branch: faculty.branch,
         role: faculty.role,
         assignedSections: faculty.assignedSections || [],
+        mentorSections: faculty.mentorSections || [],
         isFirstLogin: faculty.isFirstLogin
       }
     });
@@ -1186,6 +1207,46 @@ app.post("/api/admin/create-faculty", adminMiddleware, async (req, res) => {
   }
 });
 
+app.put("/api/admin/faculty/:facultyId/mentor-assignment", adminMiddleware, async (req, res) => {
+  try {
+    const facultyId = String(req.params.facultyId || "").trim();
+    const incomingSections = req.body.mentorSections;
+
+    if (!Array.isArray(incomingSections)) {
+      return res.status(400).json({
+        message: "mentorSections must be an array"
+      });
+    }
+
+    const mentorSections = [...new Set(
+      incomingSections
+        .map(section => String(section).trim())
+        .filter(Boolean)
+    )];
+
+    const faculty = await Faculty.findOneAndUpdate(
+      { facultyId, role: "faculty" },
+      { $set: { mentorSections } },
+      { new: true }
+    ).select("-password");
+
+    if (!faculty) {
+      return res.status(404).json({
+        message: "Faculty account not found"
+      });
+    }
+
+    res.json({
+      message: mentorSections.length
+        ? "Mentor sections assigned successfully"
+        : "Mentor assignment cleared",
+      faculty
+    });
+  } catch (err) {
+    console.error("Mentor assignment error:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
 app.get("/api/faculty", hodOrAdminMiddleware, async (req, res) => {
   try {
     const filter = req.user.role === "hod" ? { branch: req.user.branch } : {};
@@ -3172,7 +3233,7 @@ app.get(
       ].sort();
 
       let allowedBranches = branches;
-// HOD / Faculty / Student → own branch only
+// HOD / Faculty / Student Ã¢â€ â€™ own branch only
 if (
   role === "hod" ||
   role === "faculty" ||
@@ -3217,7 +3278,7 @@ if (
         ].sort();
 // Faculty can conduct exams for any section
 
-        // Student / CR → own section only
+        // Student / CR Ã¢â€ â€™ own section only
         if (role === "student") {
           sections = sections.filter(
             section =>
@@ -4532,8 +4593,8 @@ app.post(
 
 // =========================================================
 // TAB SWITCH
-// 1st → warning
-// 2nd → auto submit
+// 1st Ã¢â€ â€™ warning
+// 2nd Ã¢â€ â€™ auto submit
 // =========================================================
 
 app.post(
@@ -4840,7 +4901,7 @@ app.get(
         });
       }
 
-      // HOD → own branch
+      // HOD Ã¢â€ â€™ own branch
       if (
         role === "hod" &&
         String(req.user.branch) !==
@@ -4852,7 +4913,7 @@ app.get(
         });
       }
 
-      // Faculty → own branch + own exam
+      // Faculty Ã¢â€ â€™ own branch + own exam
       if (role === "faculty") {
         if (
           String(req.user.branch) !==
@@ -5248,7 +5309,7 @@ app.post(
 
         if (officeExtensions.includes(extension)) {
           console.log(
-            `📄 Converting ${originalName} to PDF...`
+            `Ã°Å¸â€œâ€ž Converting ${originalName} to PDF...`
           );
 
           const loProfile = path.join(
@@ -5288,7 +5349,7 @@ app.post(
           finalFormat = "pdf";
 
           console.log(
-            `✅ Converted ${originalName} to PDF`
+            `Ã¢Å“â€¦ Converted ${originalName} to PDF`
           );
         }
 
@@ -5308,13 +5369,13 @@ app.post(
                 (error, result) => {
                   if (error) {
                     console.error(
-                      "❌ Notice Cloudinary upload error:",
+                      "Ã¢ÂÅ’ Notice Cloudinary upload error:",
                       error
                     );
                     reject(error);
                   } else {
                     console.log(
-                      "✅ Notice uploaded:",
+                      "Ã¢Å“â€¦ Notice uploaded:",
                       result.secure_url
                     );
                     resolve(
@@ -5355,7 +5416,7 @@ app.post(
 
       notifyUsers(
         branch ? { branch } : {},
-        `📢 ${title}`,
+        `Ã°Å¸â€œÂ¢ ${title}`,
         description
       );
 
@@ -5363,7 +5424,7 @@ app.post(
 
     } catch (err) {
       console.error(
-        "❌ Post notice error:",
+        "Ã¢ÂÅ’ Post notice error:",
         err
       );
 
@@ -5406,7 +5467,7 @@ app.delete("/api/notices/:id", hodOrAdminMiddleware, async (req, res) => {
     await Notice.findByIdAndDelete(req.params.id);
     res.json({ message: "Deleted successfully" });
   } catch (err) {
-    console.error("❌ Delete error:", err.message);
+    console.error("Ã¢ÂÅ’ Delete error:", err.message);
     res.status(500).json({ message: err.message });
   }
 });
@@ -5532,7 +5593,7 @@ app.post("/api/notes", uploaderMiddleware, async (req, res) => {
   }
 });
 
-    notifyUsers({ branch: targetBranch, section }, `📚 New Note: ${subject}`, title);
+    notifyUsers({ branch: targetBranch, section }, `Ã°Å¸â€œÅ¡ New Note: ${subject}`, title);
 
     res.status(201).json(note);
   } catch (err) {
@@ -5628,7 +5689,7 @@ app.post("/api/assignments", uploaderMiddleware, async (req, res) => {
   }
 });
 
-    notifyUsers({ branch: targetBranch, section }, `📝 New Assignment: ${subject}`, title);
+    notifyUsers({ branch: targetBranch, section }, `Ã°Å¸â€œÂ New Assignment: ${subject}`, title);
 
     res.json(assignment);
   } catch (err) {
@@ -5698,7 +5759,7 @@ app.post("/api/papers", uploaderMiddleware, async (req, res) => {
   }
 });
 
-    notifyUsers({ branch: targetBranch }, `📄 New Question Paper: ${subject}`, title);
+    notifyUsers({ branch: targetBranch }, `Ã°Å¸â€œâ€ž New Question Paper: ${subject}`, title);
 
     res.status(201).json(paper);
   } catch (err) {
@@ -5763,7 +5824,7 @@ app.post("/api/materials", uploaderMiddleware, async (req, res) => {
   }
 });
 
-    notifyUsers({ branch: targetBranch }, `📖 New Study Material: ${subject}`, title);
+    notifyUsers({ branch: targetBranch }, `Ã°Å¸â€œâ€“ New Study Material: ${subject}`, title);
 
     res.status(201).json(material);
   } catch (err) {
@@ -5831,12 +5892,12 @@ app.get("/api/timetable/:section", verifyAnyToken, async (req, res) => {
   }
 });
 
-// Bulk timetable upload — updates ALL sections of a branch in one go.
+// Bulk timetable upload Ã¢â‚¬â€ updates ALL sections of a branch in one go.
 // Excel: Sheet 1 "Schedule" columns = section, day, period, subject (one row per period)
-//        Sheet 2 "Timings" (optional) columns = period, label, start, end, type — shared across all sections
+//        Sheet 2 "Timings" (optional) columns = period, label, start, end, type Ã¢â‚¬â€ shared across all sections
 // NOTE: writes go through the native MongoDB driver (mongoose.connection.collection)
 // instead of the Mongoose model, to sidestep a stale-schema cast issue seen in
-// production — this bypasses Mongoose casting entirely and is proven reliable.
+// production Ã¢â‚¬â€ this bypasses Mongoose casting entirely and is proven reliable.
 app.post("/api/admin/upload-timetable", hodOrAdminMiddleware, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
@@ -5907,14 +5968,14 @@ app.post("/api/admin/upload-timetable", hodOrAdminMiddleware, async (req, res) =
       );
     }
 
-    res.json({ message: `✅ Updated timetables for ${sectionsUpdated.length} sections`, sections: sectionsUpdated });
+    res.json({ message: `Ã¢Å“â€¦ Updated timetables for ${sectionsUpdated.length} sections`, sections: sectionsUpdated });
   } catch (err) {
     console.error("Bulk timetable upload error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// Create/update a single section's timetable — HOD (own branch) or Admin
+// Create/update a single section's timetable Ã¢â‚¬â€ HOD (own branch) or Admin
 app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
   try {
     const { branch, section, timings, schedule } = req.body;
@@ -5939,7 +6000,7 @@ app.post("/api/timetable", hodOrAdminMiddleware, async (req, res) => {
   }
 });
 
-// List students in a branch+section — used by faculty/HOD to build attendance rosters
+// List students in a branch+section Ã¢â‚¬â€ used by faculty/HOD to build attendance rosters
 app.get("/api/students/:branch/:section", verifyAnyToken, async (req, res) => {
   try {
     if (!["faculty", "hod", "admin"].includes(req.user.role)) {
@@ -5957,7 +6018,7 @@ app.get("/api/students/:branch/:section", verifyAnyToken, async (req, res) => {
   }
 });
 
-// Set/unset a student as CR (Class Representative) — HOD (own branch) or Admin
+// Set/unset a student as CR (Class Representative) Ã¢â‚¬â€ HOD (own branch) or Admin
 app.post("/api/admin/set-cr", hodOrAdminMiddleware, async (req, res) => {
   try {
     const { rollNo, isCR } = req.body;
@@ -5973,7 +6034,7 @@ app.post("/api/admin/set-cr", hodOrAdminMiddleware, async (req, res) => {
     }
 
     await User.updateOne({ rollNo }, { isCR });
-    res.json({ message: `${student.name} (${rollNo}) is ${isCR ? "now a CR ⭐" : "no longer a CR"}` });
+    res.json({ message: `${student.name} (${rollNo}) is ${isCR ? "now a CR Ã¢Â­Â" : "no longer a CR"}` });
   } catch (err) {
     console.error("Set CR error:", err);
     res.status(500).json({ message: err.message });
@@ -5995,8 +6056,42 @@ app.post("/api/attendance/mark", facultyMiddleware, async (req, res) => {
       return res.status(400).json({ message: "branch, section, subject, date and records[] are required" });
     }
 
-    if (!canAccess(req.user, branch, section)) {
+    const indiaDateParts = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kolkata",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit"
+}).formatToParts(new Date());
+
+const indiaDateValues = Object.fromEntries(
+  indiaDateParts.map(part => [part.type, part.value])
+);
+
+const todayInIndia = `${indiaDateValues.year}-${indiaDateValues.month}-${indiaDateValues.day}`;
+
+if (date !== todayInIndia) {
+  return res.status(400).json({
+    message: `Attendance can only be marked for today (${todayInIndia})`
+  });
+}
+if (!canAccess(req.user, branch, section)) {
       return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    // Lock this exact date + section + subject + period after faculty marking.
+    const alreadyMarked = await Attendance.findOne({
+      branch,
+      section,
+      subject,
+      date,
+      periodId: String(periodId),
+      markedBy: { $ne: "old-attendance-import" }
+    }).lean();
+
+    if (alreadyMarked) {
+      return res.status(409).json({
+        message: "Already marked for this hour. Attendance cannot be changed."
+      });
     }
 
     const ops = [];
@@ -6140,6 +6235,211 @@ app.get("/api/attendance/my", studentMiddleware, async (req, res) => {
 
 
 
+/* ================= MENTOR ATTENDANCE APIs ================= */
+
+// Faculty mentor: fetch absent students for an assigned section and date.
+function normalizeMentorSection(section, branch) {
+  const value = String(section ?? "").trim();
+  const prefix = `${String(branch ?? "").trim()}-`;
+
+  return value.toUpperCase().startsWith(prefix.toUpperCase())
+    ? value.slice(prefix.length).trim()
+    : value;
+}
+
+function canMentorAccess(user, branch, section) {
+  if (user.role !== "faculty" || user.branch !== branch) return false;
+
+  const assigned = Array.isArray(user.mentorSections)
+    ? user.mentorSections
+    : [];
+
+  const requestedSection = normalizeMentorSection(section, branch);
+
+  return assigned.some(item => {
+    const assignedSection = typeof item === "string"
+      ? item
+      : item?.section || item?.sectionName || "";
+
+    return normalizeMentorSection(assignedSection, branch) === requestedSection;
+  });
+}
+app.get("/api/mentor/section/:branch/:section", facultyMiddleware, async (req, res) => {
+  try {
+    const { branch, section } = req.params;
+    const normalizedSection = normalizeMentorSection(section, branch);
+    const date = String(req.query.date || "").trim();
+
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({ message: "Faculty mentor access only" });
+    }
+
+    if (!canMentorAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required (YYYY-MM-DD)" });
+    }
+
+    const absentRecords = await Attendance.find({
+      branch,
+      section: normalizedSection,
+      date,
+      status: "absent"
+    }).lean();
+
+    const rollNumbers = [...new Set(absentRecords.map(item => item.rollNo))];
+
+    const students = await User.find({
+      branch,
+      section: normalizedSection,
+      rollNo: { $in: rollNumbers }
+    }).select("rollNo name parentMobile").lean();
+
+    const studentByRoll = new Map(students.map(student => [student.rollNo, student]));
+
+    const history = await Attendance.find({
+      branch,
+      section: normalizedSection,
+      rollNo: { $in: rollNumbers },
+      status: "absent",
+      date: { $lt: date }
+    }).select("rollNo subject date").lean();
+
+    const priorByRoll = new Map();
+    history.forEach(item => {
+      if (!priorByRoll.has(item.rollNo)) priorByRoll.set(item.rollNo, []);
+      priorByRoll.get(item.rollNo).push({
+        subject: item.subject,
+        date: item.date
+      });
+    });
+
+    const facultyId = String(req.user.facultyId || req.user.id || req.user._id || "");
+    const eventKeys = absentRecords.map(item =>
+      [item.rollNo, item.subject, item.date, item.periodId || "historical"].join("|")
+    );
+
+    const notifications = await MentorNotification.find({
+      eventKey: { $in: eventKeys },
+      facultyId
+    }).select("eventKey status sentAt").lean();
+
+    const notificationByKey = new Map(
+      notifications.map(item => [item.eventKey, item])
+    );
+
+    const result = absentRecords.map(item => {
+      const student = studentByRoll.get(item.rollNo) || {};
+      const eventKey = [
+        item.rollNo,
+        item.subject,
+        item.date,
+        item.periodId || "historical"
+      ].join("|");
+      const notification = notificationByKey.get(eventKey);
+
+      return {
+        rollNo: item.rollNo,
+        studentName: student.name || item.studentName || "",
+        parentMobile: student.parentMobile || "",
+        branch: item.branch,
+        section: item.section,
+        subject: item.subject,
+        date: item.date,
+        periodId: item.periodId || "historical",
+        markedBy: item.markedBy,
+        hasPriorAbsence: (priorByRoll.get(item.rollNo) || []).length > 0,
+        priorAbsences: priorByRoll.get(item.rollNo) || [],
+        notificationStatus: notification?.status || "not-sent",
+        sentAt: notification?.sentAt || null
+      };
+    });
+
+    return res.json({ date, students: result });
+  } catch (error) {
+    console.error("Mentor section API error:", error);
+    return res.status(500).json({ message: "Failed to load mentor attendance" });
+  }
+});
+
+// Faculty mentor: save status after they manually send the WhatsApp message.
+app.post("/api/mentor/mark-sent", facultyMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({ message: "Faculty mentor access only" });
+    }
+
+    const { rollNo, branch, section, subject, date, periodId, studentName } = req.body;
+
+    if (!rollNo || !branch || !section || !subject || !date) {
+      return res.status(400).json({ message: "Missing attendance event details" });
+    }
+
+    if (!canMentorAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    const facultyId = String(req.user.facultyId || req.user.id || req.user._id || "");
+    const eventPeriod = String(periodId || "historical");
+    const eventKey = [rollNo, subject, date, eventPeriod].join("|");
+
+    const faculty = await Faculty.findOne({ facultyId }).select("name").lean();
+
+    const existingNotification = await MentorNotification.findOne({ eventKey });
+
+    if (
+      existingNotification &&
+      String(existingNotification.facultyId) !== String(facultyId)
+    ) {
+      return res.status(409).json({
+        message: "This attendance notification is already owned by another faculty member."
+      });
+    }
+
+    let notification;
+    try {
+      notification = await MentorNotification.findOneAndUpdate(
+        { eventKey, facultyId },
+        {
+          $set: {
+            rollNo,
+            studentName: studentName || "",
+            branch,
+            section,
+            subject,
+            date,
+            periodId: eventPeriod,
+            facultyId,
+            facultyName: faculty?.name || "",
+            status: "sent",
+            sentAt: new Date()
+          }
+        },
+        { new: true, upsert: true, setDefaultsOnInsert: true }
+      );
+    } catch (updateError) {
+      if (updateError?.code === 11000) {
+        return res.status(409).json({
+          message: "This attendance notification is already owned by another faculty member."
+        });
+      }
+      throw updateError;
+    }
+
+    return res.json({
+      message: "WhatsApp status saved",
+      status: notification.status,
+      sentAt: notification.sentAt
+    });
+  } catch (error) {
+    console.error("Mentor mark-sent API error:", error);
+    return res.status(500).json({ message: "Failed to save WhatsApp status" });
+  }
+});
+
+/* ================= END MENTOR ATTENDANCE APIs ================= */
 app.post("/api/attendance/import-old", hodOrAdminMiddleware, async (req, res) => {
   try {
     if (!req.files || !req.files.file) {
@@ -6513,7 +6813,7 @@ app.get("/api/attendance/live-report/:branch/:section/:date", hodOrAdminMiddlewa
     res.status(500).json({ message: err.message });
   }
 });
-// HOD/Admin: branch-wide attendance report — per-student percentage, flags low attendance (<75%)
+// HOD/Admin: branch-wide attendance report Ã¢â‚¬â€ per-student percentage, flags low attendance (<75%)
 app.get("/api/attendance/branch-report/:branch", hodOrAdminMiddleware, async (req, res) => {
   try {
     const { branch } = req.params;
@@ -6657,7 +6957,7 @@ app.delete("/api/attendance/delete/:branch", hodOrAdminMiddleware, async (req, r
     const result = await Attendance.deleteMany(filter);
 
     res.json({
-      message: `✅ Deleted ${result.deletedCount} attendance records from database`,
+      message: `Ã¢Å“â€¦ Deleted ${result.deletedCount} attendance records from database`,
       deletedCount: result.deletedCount
     });
   } catch (err) {
@@ -6736,6 +7036,7 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
     }
 
     let added = 0, updated = 0, skipped = 0;
+    let parentMobilesAdded = 0, parentMobilesUpdated = 0;
 
     for (const row of data) {
       const rollNo = String(row.rollNo || "").trim();
@@ -6744,8 +7045,10 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
       const newBranch = String(row.branch || "CSE").trim();
       const newSection = String(row.section || "").trim();
       const newName = String(row.name || "").trim();
+      const parentMobile = String(row.parentMobile || "").trim();
 
       const existing = await User.findOne({ rollNo });
+
       if (!existing) {
         const hashedPassword = await bcrypt.hash(process.env.DEFAULT_PASSWORD, 10);
         await User.create({
@@ -6753,17 +7056,26 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
           name: newName,
           section: newSection,
           branch: newBranch,
+          parentMobile,
           password: hashedPassword
         });
         added++;
+        if (parentMobile) parentMobilesAdded++;
       } else {
         const changes = {};
+
         if (newBranch && existing.branch !== newBranch) changes.branch = newBranch;
         if (newSection && existing.section !== newSection) changes.section = newSection;
         if (newName && existing.name !== newName) changes.name = newName;
 
+        // Do not clear saved number when Excel cell is blank.
+        if (parentMobile && existing.parentMobile !== parentMobile) {
+          changes.parentMobile = parentMobile;
+          parentMobilesUpdated++;
+        }
+
         if (Object.keys(changes).length > 0) {
-          await User.updateOne({ rollNo }, changes);
+          await User.updateOne({ rollNo }, { $set: changes });
           updated++;
         } else {
           skipped++;
@@ -6771,7 +7083,9 @@ app.post("/api/admin/upload-students", adminMiddleware, async (req, res) => {
       }
     }
 
-    res.json({ message: `✅ Added: ${added} 🔄 Updated: ${updated} ⏭️ Skipped: ${skipped}` });
+    res.json({
+      message: `Added: ${added} | Updated: ${updated} | Skipped: ${skipped} | Parent mobiles added: ${parentMobilesAdded} | Parent mobiles updated: ${parentMobilesUpdated}`
+    });
   } catch (err) {
     console.error("Upload students error:", err);
     res.status(500).json({ message: err.message });
@@ -6866,7 +7180,7 @@ app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
 
 
       // =====================================
-      // EXISTING FACULTY → UPDATE
+      // EXISTING FACULTY Ã¢â€ â€™ UPDATE
       // =====================================
 
       if (existing) {
@@ -6920,7 +7234,7 @@ app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
 
 
       // =====================================
-      // NEW FACULTY → ADD
+      // NEW FACULTY Ã¢â€ â€™ ADD
       // =====================================
 
       if (role === "hod") {
@@ -6970,7 +7284,7 @@ app.post("/api/admin/upload-faculty", adminMiddleware, async (req, res) => {
 
     res.json({
       message:
-        `✅ Added: ${added} 🔄 Updated: ${updated} ⏭️ Skipped: ${skipped}`,
+        `Ã¢Å“â€¦ Added: ${added} Ã°Å¸â€â€ž Updated: ${updated} Ã¢ÂÂ­Ã¯Â¸Â Skipped: ${skipped}`,
 
       added,
       updated,
@@ -7188,8 +7502,8 @@ app.get("/api/lms/coding/analytics", hodOrAdminMiddleware, async (req, res) => {
       });
     }
 
-    // Admin → all students
-    // HOD → only students from their branch
+    // Admin Ã¢â€ â€™ all students
+    // HOD Ã¢â€ â€™ only students from their branch
     const studentFilter = isHod
       ? { role: "student", branch: req.user.branch }
       : { role: "student" };
@@ -7258,7 +7572,17 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 
 app.listen(PORT, () => {
-  console.log(`✅ Server running on ${PORT} 🚀`);
+  console.log(`Ã¢Å“â€¦ Server running on ${PORT} Ã°Å¸Å¡â‚¬`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
   console.log(`API Health: http://localhost:${PORT}/api/health`);
 });
+
+
+
+
+
+
+
+
+
+

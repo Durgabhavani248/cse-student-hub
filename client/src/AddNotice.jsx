@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 function AddNotice({ onAdd, api, facultyInfo }) {
   const [title, setTitle] = useState("");
@@ -100,7 +100,7 @@ const [pdf, setPdf] = useState(null);
             color: "#444"
           }}
         >
-          📎 Attach File (Optional)
+           Attach File (Optional)
         </label>
 
         <input

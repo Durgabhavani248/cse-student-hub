@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
@@ -27,11 +27,11 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
   const addMaterial = async () => {
     setMessage("");
     if (!form.subject || !form.title) {
-      setMessage("❌ Subject and Title are required!");
+      setMessage("âŒ Subject and Title are required!");
       return;
     }
     if (!file) {
-      setMessage("❌ Please select a file!");
+      setMessage("âŒ Please select a file!");
       return;
     }
 
@@ -47,7 +47,7 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok || !uploadData.url) {
         setSaving(false);
-        setMessage(`❌ File upload failed: ${uploadData.message || "unknown error"}`);
+        setMessage(`âŒ File upload failed: ${uploadData.message || "unknown error"}`);
         return;
       }
 
@@ -61,17 +61,17 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
       setSaving(false);
 
       if (!saveRes.ok) {
-        setMessage(`❌ ${saveData.message || "Failed to save material"}`);
+        setMessage(`âŒ ${saveData.message || "Failed to save material"}`);
         return;
       }
 
-      setMessage("✅ Material added successfully!");
+      setMessage("âœ… Material added successfully!");
       setForm({ subject: "", title: "", branch: form.branch });
       setFile(null);
       fetchMaterials();
     } catch (err) {
       setSaving(false);
-      setMessage(`❌ Error: ${err.message}`);
+      setMessage(`âŒ Error: ${err.message}`);
     }
   };
 
@@ -90,12 +90,12 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
 
   return (
     <div>
-      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📖 Study Materials</h2>
+      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}> Study Materials</h2>
 
       {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Material</h3>
-          {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
+          {message && <p style={{ color: message.startsWith("âœ…") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
             {isAdmin && !facultyInfo && (
@@ -117,7 +117,7 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
               disabled={saving}
               style={{ padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
             >
-              {saving ? "Saving..." : "➕ Add Material"}
+              {saving ? "Saving..." : "âž• Add Material"}
             </button>
           </div>
         </div>
@@ -137,7 +137,7 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
             {m.fileUrl ? (
               <a href={m.fileUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display: "inline-block", marginTop: "10px", padding: "8px 16px", background: "#fff0ee", color: "#F15A29", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
-                📄 View File
+                 View File
               </a>
             ) : (
               <p style={{ marginTop: "10px", fontSize: "12px", color: "#bbb", fontStyle: "italic" }}>No file attached</p>
@@ -148,7 +148,7 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
                 onClick={() => deleteMaterial(m._id)}
                 style={{ display: "block", marginTop: "12px", padding: "6px 14px", background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
               >
-                🗑️ Delete
+                 Delete
               </button>
             )}
           </div>
@@ -159,3 +159,4 @@ function StudyMaterials({ canUpload, isAdmin, api, facultyInfo }) {
 }
 
 export default StudyMaterials;
+

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
@@ -27,7 +27,7 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
   const addNote = async () => {
     setMessage("");
     if (!form.section || !form.subject || !form.title) {
-      setMessage("❌ Section, Subject and Title are required!");
+      setMessage("âŒ Section, Subject and Title are required!");
       return;
     }
 
@@ -47,7 +47,7 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
         const uploadData = await uploadRes.json();
         if (!uploadRes.ok || !uploadData.url) {
           setSaving(false);
-          setMessage(`❌ File upload failed: ${uploadData.message || "unknown error"}`);
+          setMessage(`âŒ File upload failed: ${uploadData.message || "unknown error"}`);
           return;
         }
         fileUrl = uploadData.url;
@@ -64,17 +64,17 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
       setSaving(false);
 
       if (!saveRes.ok) {
-        setMessage(`❌ ${saveData.message || "Failed to save note"}`);
+        setMessage(`âŒ ${saveData.message || "Failed to save note"}`);
         return;
       }
 
-      setMessage("✅ Note added successfully!");
+      setMessage("âœ… Note added successfully!");
       setForm({ section: "", subject: "", title: "", description: "", branch: form.branch });
       setFile(null);
       fetchNotes();
     } catch (err) {
       setSaving(false);
-      setMessage(`❌ Error: ${err.message}`);
+      setMessage(`âŒ Error: ${err.message}`);
     }
   };
 
@@ -95,12 +95,12 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
 
   return (
     <div>
-      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}>📚 Notes</h2>
+      <h2 style={{ color: "#F15A29", fontSize: "24px", fontWeight: "700", marginBottom: "20px" }}> Notes</h2>
 
       {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Note</h3>
-          {message && <p style={{ color: message.startsWith("✅") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
+          {message && <p style={{ color: message.startsWith("âœ…") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
             {isAdmin && !facultyInfo && (
@@ -130,7 +130,7 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
               disabled={saving}
               style={{ padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
             >
-              {saving ? "Saving..." : "➕ Add Note"}
+              {saving ? "Saving..." : "âž• Add Note"}
             </button>
           </div>
         </div>
@@ -152,7 +152,7 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
             {note.fileUrl ? (
               <a href={note.fileUrl} target="_blank" rel="noopener noreferrer"
                 style={{ display: "inline-block", marginTop: "10px", padding: "8px 16px", background: "#fff0ee", color: "#F15A29", borderRadius: "8px", fontSize: "13px", fontWeight: "600", textDecoration: "none" }}>
-                📄 View File
+                 View File
               </a>
             ) : (
               <p style={{ marginTop: "10px", fontSize: "12px", color: "#bbb", fontStyle: "italic" }}>No file attached</p>
@@ -163,7 +163,7 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
                 onClick={() => deleteNote(note._id)}
                 style={{ display: "block", marginTop: "12px", padding: "6px 14px", background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", fontSize: "12px", cursor: "pointer", fontWeight: "600" }}
               >
-                🗑️ Delete
+                 Delete
               </button>
             )}
           </div>
@@ -174,3 +174,4 @@ function Notes({ canUpload, isAdmin, api, studentSection, facultyInfo }) {
 }
 
 export default Notes;
+

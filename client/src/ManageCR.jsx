@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 const BRANCHES = ["CSE", "ECE", "EEE", "MECH", "CIVIL"];
 
@@ -23,12 +23,12 @@ function ManageCR({ api, isAdmin, facultyInfo }) {
         setLoading(false);
         if (Array.isArray(data)) {
           setStudents(data);
-          if (data.length === 0) setMessage(`⚠️ No students found in ${branch} - Section ${section}`);
+          if (data.length === 0) setMessage(`âš  No students found in ${branch} - Section ${section}`);
         } else {
-          setMessage(`❌ ${data.message || "Failed to load students"}`);
+          setMessage(`âŒ ${data.message || "Failed to load students"}`);
         }
       })
-      .catch(() => { setLoading(false); setMessage("❌ Server error!"); });
+      .catch(() => { setLoading(false); setMessage("âŒ Server error!"); });
   };
 
   const toggleCR = (rollNo, currentIsCR) => {
@@ -41,12 +41,12 @@ function ManageCR({ api, isAdmin, facultyInfo }) {
       .then(data => {
         if (data.message?.includes(rollNo) || data.message?.includes("CR")) {
           setStudents(prev => prev.map(s => s.rollNo === rollNo ? { ...s, isCR: !currentIsCR } : s));
-          setMessage(`✅ ${data.message}`);
+          setMessage(`âœ… ${data.message}`);
         } else {
-          setMessage(`❌ ${data.message}`);
+          setMessage(`âŒ ${data.message}`);
         }
       })
-      .catch(() => setMessage("❌ Server error!"));
+      .catch(() => setMessage("âŒ Server error!"));
   };
 
   const inputStyle = { padding: "10px 14px", borderRadius: "8px", border: "1.5px solid #e0e0e0", fontSize: "14px" };
@@ -81,7 +81,7 @@ function ManageCR({ api, isAdmin, facultyInfo }) {
       </div>
 
       {message && (
-        <p style={{ color: message.startsWith("❌") ? "#F15A29" : message.startsWith("⚠️") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
+        <p style={{ color: message.startsWith("âŒ") ? "#F15A29" : message.startsWith("âš ") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
       )}
 
       {students.length > 0 && (
@@ -97,7 +97,7 @@ function ManageCR({ api, isAdmin, facultyInfo }) {
               }}
             >
               <div>
-                <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " ⭐" : ""}</div>
+                <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " â­" : ""}</div>
                 <div style={{ fontSize: "11px", color: "#999" }}>{s.rollNo}</div>
               </div>
               <button
@@ -120,3 +120,4 @@ function ManageCR({ api, isAdmin, facultyInfo }) {
 }
 
 export default ManageCR;
+

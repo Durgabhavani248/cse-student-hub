@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 function Search({ api }) {
   const [items, setItems] = useState([]);
@@ -128,15 +128,15 @@ function Search({ api }) {
   const getIcon = (type) => {
     switch (type) {
       case "Note":
-        return "📚";
+        return "";
       case "Assignment":
-        return "📝";
+        return "";
       case "Paper":
-        return "📄";
+        return "";
       case "Study Material":
-        return "📖";
+        return "";
       default:
-        return "🔍";
+        return "";
     }
   };
 
@@ -216,7 +216,7 @@ function Search({ api }) {
               margin: "0 0 12px"
             }}
           >
-            🔄
+            
           </p>
 
           <p>Loading search data...</p>
@@ -236,7 +236,7 @@ function Search({ api }) {
               margin: "0 0 12px"
             }}
           >
-            🔍
+            
           </p>
 
           <p>
@@ -259,7 +259,7 @@ function Search({ api }) {
               margin: "0 0 12px"
             }}
           >
-            📭
+            
           </p>
 
           <p>
@@ -390,7 +390,7 @@ function Search({ api }) {
                           textDecoration: "none"
                         }}
                       >
-                        View File →
+                        View File â†’
                       </a>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./Notifications.css";
 import { requestPermission, getNotificationPermissionStatus } from "./firebase";
@@ -25,11 +25,11 @@ const token =
     setPushLoading(false);
     setPushStatus(getNotificationPermissionStatus());
     if (result.ok) {
-      setPushMessage("✅ Notifications enabled! You'll get alerts for new notes, assignments, and papers.");
+      setPushMessage("âœ… Notifications enabled! You'll get alerts for new notes, assignments, and papers.");
     } else if (result.reason === "permission-not-granted") {
-      setPushMessage("❌ Permission denied. Enable notifications for this site in your browser settings, then try again.");
+      setPushMessage("âŒ Permission denied. Enable notifications for this site in your browser settings, then try again.");
     } else {
-      setPushMessage(`❌ Couldn't enable notifications (${result.reason}). Try refreshing the page.`);
+      setPushMessage(`âŒ Couldn't enable notifications (${result.reason}). Try refreshing the page.`);
     }
   };
 
@@ -82,7 +82,7 @@ const token =
             title: n.title,
             description: n.description,
             createdAt: n.createdAt,
-            icon: "📢",
+            icon: "",
             priority: "normal"
           }))
         ];
@@ -99,7 +99,7 @@ allNotifications.push(
     title: `New Assignment - ${a.subject}`,
     description: a.description,
     createdAt: a.createdAt,
-    icon: "📝",
+    icon: "",
     priority: "high"
   }))
 );
@@ -111,10 +111,10 @@ allNotifications.push(
   ...notes.map(note => ({
     id: `note-${note._id}`,
     type: "note",
-    title: "📚 New Notes Uploaded",
+    title: " New Notes Uploaded",
     description: note.subject || note.title || "New Notes Available",
     createdAt: note.createdAt,
-    icon: "📚",
+    icon: "",
     priority: "normal"
   }))
 );
@@ -128,7 +128,7 @@ allNotifications.push(
     title: `New Question Paper`,
     description: p.subject || p.title || "Question Paper Uploaded",
     createdAt: p.createdAt,
-    icon: "📄",
+    icon: "",
     priority: "normal"
   }))
 );
@@ -145,7 +145,7 @@ allNotifications.push(
     title: `New Study Material`,
     description: m.subject || m.title || "Study Material Uploaded",
     createdAt: m.createdAt,
-    icon: "📚",
+    icon: "",
     priority: "normal"
   }))
 );
@@ -206,7 +206,7 @@ allNotifications.push(
   return (
     <div className="notifications-container">
       <div className="notifications-header">
-        <h2>🔔 Notifications</h2>
+        <h2> Notifications</h2>
         <div className="notification-badge">{unreadCount}</div>
       </div>
 
@@ -222,7 +222,7 @@ allNotifications.push(
             disabled={pushLoading}
             style={{ padding: "8px 16px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
           >
-            {pushLoading ? "Enabling..." : "🔔 Enable Push Notifications"}
+            {pushLoading ? "Enabling..." : " Enable Push Notifications"}
           </button>
           {pushMessage && <p style={{ margin: "8px 0 0 0", fontSize: "12px", fontWeight: "600" }}>{pushMessage}</p>}
         </div>
@@ -275,7 +275,7 @@ allNotifications.push(
 
       {displayNotifications.length === 0 ? (
         <div className="no-notifications">
-          <p>📭 No notifications</p>
+          <p> No notifications</p>
         </div>
       ) : (
         <div className="notifications-list">
@@ -319,3 +319,4 @@ function formatDate(dateString) {
   
   return date.toLocaleDateString();
 }
+

@@ -2,10 +2,10 @@ import "./StudentLogin.css";
 
 function RoleSelect({ onSelect }) {
   const roles = [
-    { key: "student", label: "Student", icon: "🎓", desc: "View notes, timetable, attendance" },
-    { key: "faculty", label: "Faculty", icon: "🧑‍🏫", desc: "Mark attendance, upload content" },
-    { key: "hod", label: "HOD", icon: "📋", desc: "Manage branch & faculty" },
-    { key: "admin", label: "Admin", icon: "⚙️", desc: "Institute-wide management" },
+    { key: "student", label: "Student", icon: "", desc: "View notes, timetable, attendance" },
+    { key: "faculty", label: "Faculty", icon: "", desc: "Mark attendance, upload content" },
+    { key: "hod", label: "HOD", icon: "", desc: "Manage branch & faculty" },
+    { key: "admin", label: "Admin", icon: "", desc: "Institute-wide management" },
   ];
 
   return (

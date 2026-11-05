@@ -15,7 +15,16 @@ function Attendance({ api, facultyInfo }) {
       type: "class"
     }))
   );
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date] = useState(() => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+    const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  });
 
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState({}); // rollNo -> "present" | "absent"
@@ -59,7 +68,7 @@ function Attendance({ api, facultyInfo }) {
           const timing = timings[i] || {};
           return {
             id: String(i + 1),
-            label: timing.label || `Period ${i + 1}`,
+            label: (timing.label || `Period ${i + 1}`).replace(/â€“/g, "-"),
             subject: String(subjects[i] || "").trim(),
             type: String(timing.type || "class").toLowerCase()
           };
@@ -91,8 +100,12 @@ function Attendance({ api, facultyInfo }) {
 
   const loadStudents = () => {
     if (!section) { alert("Section enter cheyyi!"); return; }
+    if (existingRecords.length > 0) {
+      setMessage("Already marked for this hour. Attendance cannot be changed.");
+      return;
+    }
     setLoading(true);
-    setMessage("⏳ Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
+    setMessage("â³ Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
 
     fetch(`${api}/api/students/${facultyInfo.branch}/${section}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -108,7 +121,7 @@ function Attendance({ api, facultyInfo }) {
         setLoading(false);
 
         if (!res.ok) {
-          setMessage(`❌ Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
+          setMessage(`âŒ Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
           return;
         }
 
@@ -118,17 +131,17 @@ function Attendance({ api, facultyInfo }) {
           data.forEach(s => { initial[s.rollNo] = "present"; });
           setAttendance(initial);
           if (data.length === 0) {
-            setMessage(`⚠️ Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
+            setMessage(`âš  Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
           } else {
-            setMessage(`✅ Loaded ${data.length} students`);
+            setMessage(`âœ… Loaded ${data.length} students`);
           }
         } else {
-          setMessage(`❌ Unexpected response: ${JSON.stringify(data)}`);
+          setMessage(`âŒ Unexpected response: ${JSON.stringify(data)}`);
         }
       })
       .catch(err => {
         setLoading(false);
-        setMessage(`❌ Network/fetch error: ${err.message}`);
+        setMessage(`âŒ Network/fetch error: ${err.message}`);
       });
   };
 
@@ -154,7 +167,7 @@ function Attendance({ api, facultyInfo }) {
   useEffect(() => {
     if (students.length > 0) loadExisting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, date, periodId]);
+  }, [subject, date, periodId, section]);
 
   const toggle = (rollNo) => {
     setAttendance(prev => ({
@@ -184,9 +197,9 @@ function Attendance({ api, facultyInfo }) {
       .then(res => res.json())
       .then(data => {
         setLoading(false);
-        setMessage(data.message?.startsWith("Attendance") ? `✅ ${data.message}` : `❌ ${data.message}`);
+        setMessage(data.message?.startsWith("Attendance") ? `âœ… ${data.message}` : `âŒ ${data.message}`);
       })
-      .catch(() => { setLoading(false); setMessage("❌ Server error!"); });
+      .catch(() => { setLoading(false); setMessage("âŒ Server error!"); });
   };
 
   const inputStyle = {
@@ -230,7 +243,7 @@ function Attendance({ api, facultyInfo }) {
           >
             {periodOptions.map(p => (
               <option key={p.id} value={p.id}>
-                {p.label}{p.subject ? ` — ${p.subject}` : ""}
+                {p.label}{p.subject ? ` - ${p.subject}` : ""}
               </option>
             ))}
           </select>
@@ -242,12 +255,12 @@ function Attendance({ api, facultyInfo }) {
 
         <div>
           <label style={{ display: "block", fontSize: "11px", color: "#999", fontWeight: "700", marginBottom: "4px" }}>DATE</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} style={inputStyle} />
+          <input type="date" value={date} disabled style={inputStyle} />
         </div>
 
         <button
           onClick={loadStudents}
-          disabled={loading}
+          disabled={loading || existingRecords.length > 0}
           style={{ padding: "10px 20px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}
         >
           {loading ? "Loading..." : "Load Students"}
@@ -255,14 +268,14 @@ function Attendance({ api, facultyInfo }) {
       </div>
 
       {message && (
-        <p style={{ color: message.startsWith("❌") ? "#F15A29" : message.startsWith("⚠️") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
+        <p style={{ color: message.startsWith("âŒ") ? "#F15A29" : message.startsWith("âš ") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
       )}
 
       {students.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
             <h3 style={{ margin: 0, color: "#1a1a1a" }}>
-              {students.length} Students — <span style={{ color: "#4CAF50" }}>{presentCount} Present</span>, <span style={{ color: "#F15A29" }}>{students.length - presentCount} Absent</span>
+              {students.length} Students â€” <span style={{ color: "#4CAF50" }}>{presentCount} Present</span>, <span style={{ color: "#F15A29" }}>{students.length - presentCount} Absent</span>
             </h3>
             <div style={{ display: "flex", gap: "8px" }}>
               <button onClick={() => markAll("present")} style={{ padding: "6px 14px", background: "#e8f8ec", color: "#4CAF50", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Present</button>
@@ -277,16 +290,19 @@ function Attendance({ api, facultyInfo }) {
               return (
                 <div
                   key={s.rollNo}
-                  onClick={() => toggle(s.rollNo)}
+                  onClick={() => {
+                    if (existingRecords.length > 0) return;
+                    toggle(s.rollNo);
+                  }}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 14px", borderRadius: "8px", cursor: "pointer",
+                    padding: "10px 14px", borderRadius: "8px", cursor: existingRecords.length > 0 ? "not-allowed" : "pointer",
                     background: isPresent ? "#e8f8ec" : "#fff0ee",
                     border: `1.5px solid ${isPresent ? "#4CAF50" : "#F15A29"}`
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " ⭐" : ""}</div>
+                    <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " â­" : ""}</div>
                     <div style={{ fontSize: "11px", color: "#999" }}>{s.rollNo}</div>
                   </div>
                   <span style={{ fontSize: "11px", fontWeight: "700", color: isPresent ? "#4CAF50" : "#F15A29" }}>
@@ -299,10 +315,10 @@ function Attendance({ api, facultyInfo }) {
 
           <button
             onClick={submitAttendance}
-            disabled={loading}
+            disabled={loading || existingRecords.length > 0}
             style={{ width: "100%", padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}
           >
-            {loading ? "Saving..." : existingRecords.length > 0 ? "Update Attendance →" : "Save Attendance →"}
+            {loading ? "Saving..." : existingRecords.length > 0 ? "Already Marked - Locked" : "Save Attendance"}
           </button>
         </div>
       )}
@@ -311,3 +327,5 @@ function Attendance({ api, facultyInfo }) {
 }
 
 export default Attendance;
+
+

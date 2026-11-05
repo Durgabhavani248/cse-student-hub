@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 export default function ActivityCenter({ api }) {
   const [activities, setActivities] = useState([]);
@@ -71,7 +71,7 @@ export default function ActivityCenter({ api }) {
               color: "#F15A29"
             }}
           >
-            📋 Recent Activity
+             Recent Activity
           </h2>
 
           <p
@@ -96,7 +96,7 @@ export default function ActivityCenter({ api }) {
             fontWeight: "600"
           }}
         >
-          🔄 Refresh
+           Refresh
         </button>
       </div>
 
@@ -192,13 +192,13 @@ export default function ActivityCenter({ api }) {
                 color: "#888"
               }}
             >
-              {activity.role?.toUpperCase()} •{" "}
+              {activity.role?.toUpperCase()} â€¢{" "}
               {activity.module}
               {activity.branch
-                ? ` • ${activity.branch}`
+                ? ` â€¢ ${activity.branch}`
                 : ""}
               {activity.section
-                ? ` • Section ${activity.section}`
+                ? ` â€¢ Section ${activity.section}`
                 : ""}
             </div>
           </div>

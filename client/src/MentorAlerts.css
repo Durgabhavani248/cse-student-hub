@@ -1,0 +1,217 @@
+﻿.mentor-alerts {
+  width: min(1120px, calc(100% - 32px));
+  margin: 28px auto;
+  padding: 30px;
+  color: #172033;
+  background: #fff;
+  border: 1px solid #e8edf4;
+  border-radius: 22px;
+  box-shadow: 0 12px 35px rgba(22, 34, 55, 0.07);
+  box-sizing: border-box;
+}
+
+.mentor-alerts h2 {
+  margin: 0 0 8px;
+  color: #172033;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 750;
+  letter-spacing: -0.7px;
+}
+
+.mentor-alerts > p:first-of-type {
+  margin: 0 0 26px;
+  color: #68758a;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.mentor-alerts-filters {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 20px;
+  background: #f7f9fc;
+  border: 1px solid #e9eef5;
+  border-radius: 16px;
+}
+
+.mentor-alerts-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mentor-alerts-filters select,
+.mentor-alerts-filters input {
+  min-width: 190px;
+  min-height: 44px;
+  padding: 0 13px;
+  color: #172033;
+  background: #fff;
+  border: 1px solid #d8e0eb;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.mentor-alerts-filters select:focus,
+.mentor-alerts-filters input:focus {
+  border-color: #f15a24;
+  box-shadow: 0 0 0 3px rgba(241, 90, 36, 0.12);
+}
+
+.mentor-alerts button,
+.mentor-alerts-list a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 43px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+}
+
+.mentor-alerts-filters button {
+  color: #fff;
+  background: #f15a24;
+}
+
+.mentor-alerts-filters button:hover {
+  background: #d94b19;
+  box-shadow: 0 5px 14px rgba(241, 90, 36, 0.2);
+}
+
+.mentor-alerts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.mentor-alert-card {
+  min-width: 0;
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e6ebf2;
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgba(25, 40, 65, 0.04);
+  box-sizing: border-box;
+}
+
+.mentor-alert-card h3 {
+  margin: 0 0 10px;
+  color: #172033;
+  font-size: 17px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.mentor-alert-card p {
+  margin: 8px 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.mentor-alert-card p:nth-of-type(3) {
+  display: inline-block;
+  padding: 5px 10px;
+  color: #9a3412;
+  background: #fff7ed;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.mentor-alert-card a {
+  margin: 14px 8px 0 0;
+  color: #fff;
+  background: #168653;
+}
+
+.mentor-alert-card a:hover {
+  background: #117344;
+  box-shadow: 0 5px 14px rgba(22, 134, 83, 0.18);
+}
+
+.mentor-alert-card button {
+  margin-top: 14px;
+  color: #fff;
+  background: #f15a24;
+}
+
+.mentor-alert-card button:hover:not(:disabled) {
+  background: #d94b19;
+  box-shadow: 0 5px 14px rgba(241, 90, 36, 0.2);
+}
+
+.mentor-alert-card button:disabled {
+  color: #166534;
+  background: #dcfce7;
+  cursor: default;
+}
+
+.mentor-alerts [role="status"] {
+  margin: 14px 0;
+  padding: 12px 15px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px solid #dbeafe;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.mentor-alerts > p:not(:first-of-type) {
+  padding: 18px;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px dashed #d7e0eb;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .mentor-alerts {
+    width: calc(100% - 20px);
+    margin: 14px auto;
+    padding: 20px 15px;
+    border-radius: 16px;
+  }
+
+  .mentor-alerts-filters {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 15px;
+  }
+
+  .mentor-alerts-filters label,
+  .mentor-alerts-filters select,
+  .mentor-alerts-filters input,
+  .mentor-alerts-filters button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .mentor-alerts-list {
+    grid-template-columns: 1fr;
+  }
+
+  .mentor-alert-card {
+    padding: 18px;
+  }
+}
