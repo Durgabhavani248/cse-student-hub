@@ -1829,6 +1829,84 @@ const uploadFaculty = async () => {
                     </td>
 
                     <td style={tdStyle}>
+                      {(faculty.mentorSections || []).join(", ") || "-"}
+                    </td>
+
+                    <td style={tdStyle}>
+                      {faculty.role === "faculty" && (
+                        <button
+                          onClick={async () => {
+                            const currentSections = (
+                              faculty.mentorSections || []
+                            ).join(", ");
+
+                            const input = window.prompt(
+                              "Enter mentor sections separated by commas (example: CSE-7, CSE-8)",
+                              currentSections
+                            );
+
+                            if (input === null) return;
+
+                            const mentorSections = [
+                              ...new Set(
+                                input
+                                  .split(",")
+                                  .map(section => section.trim())
+                                  .filter(Boolean)
+                              )
+                            ];
+
+                            try {
+                              const response = await fetch(
+                                `${api}/api/admin/faculty/${encodeURIComponent(
+                                  faculty.facultyId
+                                )}/mentor-assignment`,
+                                {
+                                  method: "PUT",
+                                  headers: {
+                                    ...authHeaders,
+                                    "Content-Type": "application/json"
+                                  },
+                                  body: JSON.stringify({ mentorSections })
+                                }
+                              );
+
+                              const data = await response.json();
+
+                              if (!response.ok) {
+                                alert(data.message || "Mentor assignment failed");
+                                return;
+                              }
+
+                              setFacultyList(previous =>
+                                previous.map(item =>
+                                  item.facultyId === faculty.facultyId
+                                    ? data.faculty
+                                    : item
+                                )
+                              );
+
+                              alert(data.message);
+                            } catch (error) {
+                              console.error("Mentor assignment error:", error);
+                              alert("Unable to save mentor assignment");
+                            }
+                          }}
+                          style={{
+                            background: "#2196F3",
+                            color: "#fff",
+                            border: "none",
+                            padding: "8px 12px",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            fontWeight: "600"
+                          }}
+                        >
+                          {(faculty.mentorSections || []).length
+                            ? "Edit Mentor"
+                            : "Make Mentor"}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
