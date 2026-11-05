@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 function MyAttendance({ api }) {
   const [data, setData] = useState(null);
@@ -34,7 +34,7 @@ function MyAttendance({ api }) {
         <div style={{ background: "#fff", border: `2px solid ${pctColor}`, borderRadius: "16px", padding: "24px 32px", textAlign: "center", minWidth: "160px" }}>
           <div style={{ fontSize: "40px", fontWeight: "800", color: pctColor }}>{data.summary.percentage}%</div>
           <div style={{ color: "#999", fontSize: "12px", marginTop: "4px" }}>Overall Attendance</div>
-          {pct < 75 && <div style={{ color: "#F15A29", fontSize: "11px", marginTop: "6px", fontWeight: "600" }}>⚠️ Below 75%</div>}
+          {pct < 75 && <div style={{ color: "#F15A29", fontSize: "11px", marginTop: "6px", fontWeight: "600" }}>âš  Below 75%</div>}
         </div>
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", padding: "24px 32px", textAlign: "center", minWidth: "140px" }}>
           <div style={{ fontSize: "32px", fontWeight: "700", color: "#1a1a1a" }}>{data.summary.present}</div>
@@ -112,3 +112,4 @@ function MyAttendance({ api }) {
 }
 
 export default MyAttendance;
+

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+﻿import { useEffect, useMemo, useRef, useState } from "react";
 import CodingPractice from "./CodingPractice";
 
 const ORANGE = "#F15A29";
@@ -752,7 +752,7 @@ const [availableSections, setAvailableSections] = useState([]);
           } else if (data.warning) {
             window.setTimeout(() => {
               alert(
-                "⚠️ Warning\n\nDo not switch tabs during the exam.\n\nOne more violation will automatically submit your exam."
+                "âš  Warning\n\nDo not switch tabs during the exam.\n\nOne more violation will automatically submit your exam."
               );
             }, 200);
           }
@@ -980,7 +980,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 fontSize: "18px"
               }}
             >
-              📘 {exam.title}
+               {exam.title}
             </h3>
 
             <p
@@ -1096,7 +1096,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 <strong style={{ color: "#333" }}>
                   {section.section}
                 </strong>{" "}
-                — {formatDateTime(section.startAt)} →{" "}
+                â€” {formatDateTime(section.startAt)} â†’{" "}
                 {formatDateTime(section.endAt)}
               </div>
             ))}
@@ -1117,7 +1117,7 @@ const [availableSections, setAvailableSections] = useState([]);
               onClick={() => startExam(exam)}
               disabled={loading}
             >
-              ▶ Start Exam
+              â–¶ Start Exam
             </button>
           )}
 
@@ -1127,7 +1127,7 @@ const [availableSections, setAvailableSections] = useState([]);
               onClick={() => publishExam(exam._id)}
               disabled={loading}
             >
-              🚀 Publish
+               Publish
             </button>
           )}
 
@@ -1137,7 +1137,7 @@ const [availableSections, setAvailableSections] = useState([]);
               onClick={() => loadResults(exam)}
               disabled={loading}
             >
-              📊 View Results
+               View Results
             </button>
           )}
         </div>
@@ -1153,7 +1153,7 @@ const [availableSections, setAvailableSections] = useState([]);
     <form onSubmit={createExam}>
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 18px", color: "#222" }}>
-          ➕ Create New Exam
+          âž• Create New Exam
         </h3>
 
         <div
@@ -1278,7 +1278,7 @@ const [availableSections, setAvailableSections] = useState([]);
       <div style={{ ...cardStyle, marginTop: "16px" }}>
         <div>
           <h3 style={{ margin: 0, color: "#222" }}>
-            🕐 Section-wise Exam Timing
+             Section-wise Exam Timing
           </h3>
           <p
             style={{
@@ -1391,7 +1391,7 @@ const [availableSections, setAvailableSections] = useState([]);
 
       <div style={{ ...cardStyle, marginTop: "16px" }}>
         <h3 style={{ margin: "0 0 6px", color: "#222" }}>
-          📄 Questions & Answer Key
+           Questions & Answer Key
         </h3>
 
         <p
@@ -1567,7 +1567,7 @@ const [availableSections, setAvailableSections] = useState([]);
                   fontSize: "22px"
                 }}
               >
-                📚 {activeExam.title}
+                 {activeExam.title}
               </h2>
 
               <p
@@ -1596,7 +1596,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 fontSize: "18px"
               }}
             >
-              ⏱ {formatTimeLeft(timeLeft)}
+              â± {formatTimeLeft(timeLeft)}
             </div>
           </div>
 
@@ -1610,7 +1610,7 @@ const [availableSections, setAvailableSections] = useState([]);
               fontSize: "13px"
             }}
           >
-            ⚠️ Do not switch tabs. Your first tab switch will show a
+            âš  Do not switch tabs. Your first tab switch will show a
             warning. A second violation will automatically submit
             your exam.
           </div>
@@ -1619,7 +1619,7 @@ const [availableSections, setAvailableSections] = useState([]);
         {activeExam.instructions && (
           <div style={{ ...cardStyle, marginBottom: "14px" }}>
             <strong style={{ color: "#333" }}>
-              📌 Instructions
+               Instructions
             </strong>
 
             <p
@@ -1656,7 +1656,7 @@ const [availableSections, setAvailableSections] = useState([]);
                     marginBottom: "7px"
                   }}
                 >
-                  Question {index + 1} • {question.marks} mark
+                  Question {index + 1} â€¢ {question.marks} mark
                   {question.marks !== 1 ? "s" : ""}
                 </div>
 
@@ -1734,7 +1734,7 @@ const [availableSections, setAvailableSections] = useState([]);
             onClick={() => saveAnswers(false)}
             disabled={submitting}
           >
-            💾 Save Answers
+             Save Answers
           </button>
 
           <button
@@ -1781,7 +1781,7 @@ const [availableSections, setAvailableSections] = useState([]);
               marginBottom: "8px"
             }}
           >
-            🎉
+            
           </div>
 
           <h2
@@ -1891,7 +1891,7 @@ const [availableSections, setAvailableSections] = useState([]);
               loadExams();
             }}
           >
-            ← Back to LMS
+            â† Back to LMS
           </button>
         </div>
       </div>
@@ -1914,14 +1914,14 @@ const [availableSections, setAvailableSections] = useState([]);
               setActiveTab("exams");
             }}
           >
-            ← Back to Exams
+            â† Back to Exams
           </button>
 <button
   style={buttonStyle}
   onClick={exportResults}
   disabled={loading}
 >
-  ⬇️ Export Excel
+  â¬‡ Export Excel
 </button>
           <h2
             style={{
@@ -1929,7 +1929,7 @@ const [availableSections, setAvailableSections] = useState([]);
               margin: "16px 0 5px"
             }}
           >
-            📊 {resultsExam.title} — Results
+             {resultsExam.title} â€” Results
           </h2>
 
           <p
@@ -1938,7 +1938,7 @@ const [availableSections, setAvailableSections] = useState([]);
               margin: 0
             }}
           >
-            {resultsExam.subject} • {resultsExam.totalMarks} marks
+            {resultsExam.subject} â€¢ {resultsExam.totalMarks} marks
           </p>
         </div>
 
@@ -2121,7 +2121,7 @@ const [availableSections, setAvailableSections] = useState([]);
               margin: 0
             }}
           >
-            📚 LMS
+             LMS
           </h2>
 
           <p
@@ -2131,7 +2131,7 @@ const [availableSections, setAvailableSections] = useState([]);
               fontSize: "14px"
             }}
           >
-            Learning Management System • Exams & Results
+            Learning Management System â€¢ Exams & Results
           </p>
         </div>
 
@@ -2173,7 +2173,7 @@ const [availableSections, setAvailableSections] = useState([]);
             loadExams();
           }}
         >
-          📝 Exams
+           Exams
         </button>
 
         {isStudent && (
@@ -2192,7 +2192,7 @@ const [availableSections, setAvailableSections] = useState([]);
               clearMessages();
             }}
           >
-            📊 My Result
+             My Result
           </button>
         )}
         {isStudent && (
@@ -2217,7 +2217,7 @@ const [availableSections, setAvailableSections] = useState([]);
       clearMessages();
     }}
   >
-    💻 Coding Practice
+     Coding Practice
   </button>
 )}
       </div>
@@ -2284,7 +2284,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 padding: "35px 20px"
               }}
             >
-              <div style={{ fontSize: "40px" }}>📚</div>
+              <div style={{ fontSize: "40px" }}></div>
 
               <h3
                 style={{
@@ -2324,3 +2324,4 @@ const [availableSections, setAvailableSections] = useState([]);
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 // Admin has no facultyInfo/branch of their own, so admin picks a branch
@@ -107,13 +107,13 @@ function HodAttendanceReport({ api, facultyInfo, isAdmin }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
-        <h2 style={{ color: "#F15A29", margin: 0 }}>{data.branch} — Attendance Report</h2>
+        <h2 style={{ color: "#F15A29", margin: 0 }}>{data.branch} â€” Attendance Report</h2>
         {isAdmin && (
           <button
             onClick={() => { setData(null); setBranch(""); }}
             style={{ padding: "8px 16px", background: "#fff", color: "#F15A29", border: "1px solid #F15A29", borderRadius: "8px", fontWeight: "600", cursor: "pointer", fontSize: "13px" }}
           >
-            ← Change Branch
+            â† Change Branch
           </button>
         )}
       </div>
@@ -148,7 +148,7 @@ function HodAttendanceReport({ api, facultyInfo, isAdmin }) {
               disabled={rows.length === 0}
               style={{ padding: "8px 16px", background: rows.length === 0 ? "#ccc" : "#4CAF50", color: "#fff", border: "none", borderRadius: "6px", fontWeight: "600", fontSize: "13px", cursor: rows.length === 0 ? "not-allowed" : "pointer" }}
             >
-              📥 Download Excel
+               Download Excel
             </button>
           </div>
         </div>

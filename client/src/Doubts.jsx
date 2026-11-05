@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 
 function Doubts({ isAdmin, api }) {
   const [doubts, setDoubts] = useState([]);
@@ -82,18 +82,18 @@ function Doubts({ isAdmin, api }) {
   return (
     <div>
       <div style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: "1px solid #06d6a0", borderRadius: "16px", padding: "24px", maxWidth: "500px", marginBottom: "24px", boxShadow: "0 4px 20px #06d6a033" }}>
-        <h2 style={{ margin: "0 0 16px 0", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>❓ Ask a Doubt</h2>
+        <h2 style={{ margin: "0 0 16px 0", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>â“ Ask a Doubt</h2>
         <input placeholder="Your Name" value={name} onChange={e => setName(e.target.value)} style={inputStyle} />
         <textarea placeholder="Your Question..." value={question} onChange={e => setQuestion(e.target.value)} rows={3} style={{ ...inputStyle, resize: "vertical" }} />
         <button onClick={addDoubt} style={{ width: "100%", padding: "12px", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "bold", cursor: "pointer" }}>
-          Post Doubt 🙋
+          Post Doubt 
         </button>
       </div>
 
       <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
         {["all", "unanswered", "answered"].map(f => (
           <button key={f} onClick={() => setFilter(f)} style={{ padding: "6px 16px", borderRadius: "20px", border: "none", background: filter === f ? "linear-gradient(90deg, #06d6a0, #4cc9f0)" : "#1a1a2e", color: "#fff", cursor: "pointer", fontWeight: filter === f ? "bold" : "normal" }}>
-            {f === "all" ? "All" : f === "unanswered" ? "❓ Unanswered" : "✅ Answered"}
+            {f === "all" ? "All" : f === "unanswered" ? "â“ Unanswered" : "âœ… Answered"}
           </button>
         ))}
       </div>
@@ -103,7 +103,7 @@ function Doubts({ isAdmin, api }) {
           <div key={d._id} style={{ background: "linear-gradient(135deg, #1a1a2e, #16213e)", border: `1px solid ${d.answer ? "#06d6a0" : "#f72585"}`, borderRadius: "16px", padding: "20px", boxShadow: `0 4px 20px ${d.answer ? "#06d6a033" : "#f7258533"}` }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
               <div>
-                <p style={{ margin: "0 0 4px 0", color: "#4cc9f0", fontSize: "13px" }}>🙋 {d.name}</p>
+                <p style={{ margin: "0 0 4px 0", color: "#4cc9f0", fontSize: "13px" }}> {d.name}</p>
                 <p style={{ margin: "0 0 12px 0", color: "#fff", fontSize: "15px" }}>{d.question}</p>
               </div>
               {isAdmin && (
@@ -115,7 +115,7 @@ function Doubts({ isAdmin, api }) {
 
             {d.answer ? (
               <div style={{ background: "#06d6a022", borderRadius: "10px", padding: "12px", borderLeft: "3px solid #06d6a0" }}>
-                <p style={{ margin: 0, color: "#06d6a0", fontSize: "13px" }}>✅ Answer:</p>
+                <p style={{ margin: 0, color: "#06d6a0", fontSize: "13px" }}>âœ… Answer:</p>
                 <p style={{ margin: "4px 0 0 0", color: "#fff", fontSize: "14px" }}>{d.answer}</p>
               </div>
             ) : (
@@ -129,7 +129,7 @@ function Doubts({ isAdmin, api }) {
                     style={{ ...inputStyle, marginBottom: "8px" }}
                   />
                   <button onClick={() => addAnswer(d._id)} style={{ padding: "8px 20px", background: "linear-gradient(90deg, #06d6a0, #4cc9f0)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "bold" }}>
-                    Answer ✅
+                    Answer âœ…
                   </button>
                 </div>
               )

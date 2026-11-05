@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+﻿import React, { useEffect, useMemo, useState } from "react";
 
 const ORANGE = "#ff6b35";
 const DARK = "#1f2937";
@@ -400,7 +400,7 @@ export default function DailyChallenge({ api = "" }) {
     return (
       <div style={styles.center}>
         <div style={styles.loadingCircle}>
-          ⏳
+          â³
         </div>
 
         <h3 style={{ margin: "10px 0 0" }}>
@@ -504,7 +504,7 @@ export default function DailyChallenge({ api = "" }) {
       <div style={styles.header}>
         <div>
           <div style={styles.badge}>
-            ⚡ DAILY CHALLENGE
+            âš¡ DAILY CHALLENGE
           </div>
 
           <h1 style={styles.title}>
@@ -519,7 +519,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.timerCard}>
           <span style={styles.timerLabel}>
-            ⏱ TIME
+            â± TIME
           </span>
 
           <strong style={styles.timer}>
@@ -533,7 +533,7 @@ export default function DailyChallenge({ api = "" }) {
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            🔥
+            
           </span>
 
           <div>
@@ -549,7 +549,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            ⭐
+            â­
           </span>
 
           <div>
@@ -564,7 +564,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            🏆
+            
           </span>
 
           <div>
@@ -577,7 +577,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            🎯
+            
           </span>
 
           <div>
@@ -595,7 +595,7 @@ export default function DailyChallenge({ api = "" }) {
 
       {!completed && !started && (
         <div style={styles.streakWarning}>
-          🔥{" "}
+          {" "}
           <strong>
             Don't break your streak!
           </strong>
@@ -806,7 +806,7 @@ export default function DailyChallenge({ api = "" }) {
             >
               {starting
                 ? "Starting..."
-                : "🚀 Start Challenge"}
+                : " Start Challenge"}
             </button>
           )}
 
@@ -822,8 +822,8 @@ export default function DailyChallenge({ api = "" }) {
               }}
             >
               {submitting
-                ? "⏳ Evaluating..."
-                : "✓ Submit Challenge"}
+                ? "â³ Evaluating..."
+                : "âœ“ Submit Challenge"}
             </button>
           )}
 
@@ -840,11 +840,11 @@ export default function DailyChallenge({ api = "" }) {
             >
               <span style={styles.submitStatusIcon}>
                 {submitStage === "submitting"
-                  ? "📤"
+                  ? ""
                   : submitStage === "executing"
-                  ? "⚙️"
+                  ? "âš™"
                   : submitStage === "accepted"
-                  ? "✓"
+                  ? "âœ“"
                   : "!"}
               </span>
               <div>
@@ -873,7 +873,7 @@ export default function DailyChallenge({ api = "" }) {
           {completed && (
             <div style={styles.acceptedBox}>
               <div style={styles.acceptedIcon}>
-                ✓
+                âœ“
               </div>
 
               <div>
@@ -919,8 +919,8 @@ export default function DailyChallenge({ api = "" }) {
               >
                 {result.verdict ===
                 "Accepted"
-                  ? "🎉 Accepted"
-                  : `❌ ${result.verdict}`}
+                  ? " Accepted"
+                  : `âŒ ${result.verdict}`}
               </div>
 
               {result.error && (
@@ -979,8 +979,8 @@ export default function DailyChallenge({ api = "" }) {
                             </strong>
                             <span>
                               {test.passed
-                                ? "✓ Passed"
-                                : "✕ Failed"}
+                                ? "âœ“ Passed"
+                                : "âœ• Failed"}
                             </span>
                           </div>
 
@@ -1046,7 +1046,7 @@ export default function DailyChallenge({ api = "" }) {
                                       styles.mismatchHint
                                     }
                                   >
-                                    ⚠️ Output mismatch.
+                                    âš  Output mismatch.
                                     Check spelling,
                                     capitalization,
                                     spacing, and the
@@ -1070,7 +1070,7 @@ export default function DailyChallenge({ api = "" }) {
       {Array.isArray(result?.badges) &&
         result.badges.length > 0 && (
           <div style={styles.badgesCard}>
-            <h3>🏅 Badges</h3>
+            <h3> Badges</h3>
 
             <div style={styles.badges}>
               {result.badges.map(
@@ -1079,7 +1079,7 @@ export default function DailyChallenge({ api = "" }) {
                     key={index}
                     style={styles.badgeItem}
                   >
-                    🏆 {badge}
+                     {badge}
                   </span>
                 )
               )}

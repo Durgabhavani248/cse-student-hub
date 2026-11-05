@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 function AttendanceExport({ api, facultyInfo, isAdmin }) {
@@ -93,7 +93,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
           if (
             name &&
-            !/^(break|lunch|free|holiday|[-—]+)$/i.test(name) &&
+            !/^(break|lunch|free|holiday|[-â€”]+)$/i.test(name) &&
             !seen.has(key)
           ) {
             seen.add(key);
@@ -120,12 +120,12 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
   const fetchAttendanceData = async () => {
     if (!branch) {
-      setMessage("❌ Select branch!");
+      setMessage("âŒ Select branch!");
       return;
     }
 
     setLoading(true);
-    setMessage("⏳ Fetching attendance records...");
+    setMessage("â³ Fetching attendance records...");
 
     try {
       const params = new URLSearchParams();
@@ -135,30 +135,30 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
       if (endDate) params.append("endDate", endDate);
 
       const url = `${api}/api/attendance/export/${branch}?${params.toString()}`;
-      console.log("📤 Fetching:", url);
+      console.log(" Fetching:", url);
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       const data = await res.json();
-      console.log("📥 Response:", res.status, data);
+      console.log(" Response:", res.status, data);
 
       if (res.ok) {
         if (Array.isArray(data) && data.length > 0) {
           setAttendanceData(data);
-          setMessage(`✅ Found ${data.length} attendance records!`);
+          setMessage(`âœ… Found ${data.length} attendance records!`);
         } else {
-          setMessage("⚠️ No attendance records found for selected filters");
+          setMessage("âš  No attendance records found for selected filters");
           setAttendanceData([]);
         }
       } else {
-        setMessage("❌ " + (data.message || "Failed to fetch"));
+        setMessage("âŒ " + (data.message || "Failed to fetch"));
         setAttendanceData([]);
       }
     } catch (err) {
       console.error("Error:", err);
-      setMessage("❌ Server error: " + err.message);
+      setMessage("âŒ Server error: " + err.message);
       setAttendanceData([]);
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
   const downloadAsExcel = () => {
     if (attendanceData.length === 0) {
-      setMessage("❌ No data to download!");
+      setMessage("âŒ No data to download!");
       return;
     }
 
@@ -205,27 +205,27 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
       // Write file
       XLSX.writeFile(wb, filename);
-      setMessage(`✅ Downloaded ${attendanceData.length} records as ${filename}`);
+      setMessage(`âœ… Downloaded ${attendanceData.length} records as ${filename}`);
     } catch (err) {
       console.error("Download error:", err);
-      setMessage("❌ Download failed: " + err.message);
+      setMessage("âŒ Download failed: " + err.message);
     }
   };
 
   const deleteRecords = async () => {
     if (attendanceData.length === 0) {
-      setMessage("❌ No records to delete!");
+      setMessage("âŒ No records to delete!");
       return;
     }
 
     const confirmDelete = window.confirm(
-      `⚠️ This will PERMANENTLY delete ${attendanceData.length} attendance records from database!\n\nMake sure you have downloaded them first!\n\nContinue?`
+      `âš  This will PERMANENTLY delete ${attendanceData.length} attendance records from database!\n\nMake sure you have downloaded them first!\n\nContinue?`
     );
 
     if (!confirmDelete) return;
 
     setLoading(true);
-    setMessage("⏳ Deleting records...");
+    setMessage("â³ Deleting records...");
 
     try {
       const params = new URLSearchParams();
@@ -235,7 +235,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
       if (endDate) params.append("endDate", endDate);
 
       const url = `${api}/api/attendance/delete/${branch}?${params.toString()}`;
-      console.log("🗑️ Deleting:", url);
+      console.log(" Deleting:", url);
 
       const res = await fetch(url, {
         method: "DELETE",
@@ -243,17 +243,17 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
       });
 
       const data = await res.json();
-      console.log("📥 Response:", res.status, data);
+      console.log(" Response:", res.status, data);
 
       if (res.ok) {
-        setMessage(`✅ Deleted ${data.deletedCount || attendanceData.length} records from database!`);
+        setMessage(`âœ… Deleted ${data.deletedCount || attendanceData.length} records from database!`);
         setAttendanceData([]);
       } else {
-        setMessage("❌ " + (data.message || "Failed to delete"));
+        setMessage("âŒ " + (data.message || "Failed to delete"));
       }
     } catch (err) {
       console.error("Error:", err);
-      setMessage("❌ Server error: " + err.message);
+      setMessage("âŒ Server error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -270,15 +270,15 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
   return (
     <div>
       <h2 style={{ color: "#F15A29", marginBottom: "20px", fontSize: "20px", fontWeight: "700" }}>
-        📊 Attendance Export & Cleanup
+         Attendance Export & Cleanup
       </h2>
 
       {message && (
         <p style={{
-          color: message.includes("✅") ? "#4CAF50" : message.includes("⚠️") ? "#e0a800" : "#F15A29",
+          color: message.includes("âœ…") ? "#4CAF50" : message.includes("âš ") ? "#e0a800" : "#F15A29",
           fontWeight: "600",
           padding: "12px",
-          background: message.includes("✅") ? "#e8f5e9" : message.includes("⚠️") ? "#fff8e1" : "#ffebee",
+          background: message.includes("âœ…") ? "#e8f5e9" : message.includes("âš ") ? "#fff8e1" : "#ffebee",
           borderRadius: "8px",
           marginBottom: "20px"
         }}>
@@ -288,7 +288,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
       {/* Filters */}
       <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", marginBottom: "20px" }}>
-        <h3 style={{ margin: "0 0 16px 0", color: "#1a1a1a" }}>🔍 Filter Attendance</h3>
+        <h3 style={{ margin: "0 0 16px 0", color: "#1a1a1a" }}> Filter Attendance</h3>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
           <div>
@@ -381,7 +381,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
             fontSize: "14px"
           }}
         >
-          {loading ? "⏳ Fetching..." : "🔍 Fetch Records"}
+          {loading ? "â³ Fetching..." : " Fetch Records"}
         </button>
       </div>
 
@@ -390,7 +390,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px", marginBottom: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
             <h3 style={{ margin: 0, color: "#1a1a1a" }}>
-              📋 {attendanceData.length} Records Found
+               {attendanceData.length} Records Found
             </h3>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               <button
@@ -406,7 +406,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
                   fontSize: "14px"
                 }}
               >
-                📥 Download Excel
+                 Download Excel
               </button>
               <button
                 onClick={deleteRecords}
@@ -422,7 +422,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
                   fontSize: "14px"
                 }}
               >
-                {loading ? "🗑️ Deleting..." : "🗑️ Delete from DB"}
+                {loading ? " Deleting..." : " Delete from DB"}
               </button>
             </div>
           </div>
@@ -463,7 +463,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
           </div>
 
           <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: "8px", padding: "12px", marginTop: "16px", fontSize: "12px", color: "#666" }}>
-            ✅ <strong>Workflow:</strong> 1) Fetch records → 2) Download Excel → 3) Verify data → 4) Delete from DB → Keep database small!
+            âœ… <strong>Workflow:</strong> 1) Fetch records â†’ 2) Download Excel â†’ 3) Verify data â†’ 4) Delete from DB â†’ Keep database small!
           </div>
         </div>
       )}
@@ -478,3 +478,4 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 }
 
 export default AttendanceExport;
+

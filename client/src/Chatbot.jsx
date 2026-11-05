@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 
 function Chatbot({ api }) {
   const [messages, setMessages] = useState([
-    { role: "assistant", text: "Hi! 👋 I'm NRI Academic Hub AI Assistant. Ask me anything about your subjects! 🎓" }
+    { role: "assistant", text: "Hi!  I'm NRI Academic Hub AI Assistant. Ask me anything about your subjects! " }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -49,7 +49,7 @@ function Chatbot({ api }) {
       console.error("Chat error details:", err);
       setMessages(prev => [...prev, { 
         role: "assistant", 
-        text: "Sorry! I couldn't get a response. Please try again in a moment. 😔" 
+        text: "Sorry! I couldn't get a response. Please try again in a moment. " 
       }]);
     } finally {
       setLoading(false);
@@ -67,7 +67,7 @@ function Chatbot({ api }) {
     <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 12px rgba(0,0,0,0.08)", display: "flex", flexDirection: "column", height: "650px", maxWidth: "700px" }}>
       <div style={{ background: "linear-gradient(90deg, #F15A29, #d44a1e)", padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", flex: 1 }}>
-          <span style={{ fontSize: "24px" }}>🤖</span>
+          <span style={{ fontSize: "24px" }}></span>
           <div>
             <h3 style={{ margin: 0, color: "#fff", fontSize: "16px", fontWeight: "600" }}>NRI Academic Hub AI Assistant</h3>
             <p style={{ margin: 0, color: "rgba(255,255,255,0.8)", fontSize: "11px" }}>Ask any subject doubt</p>
@@ -97,7 +97,7 @@ function Chatbot({ api }) {
         {loading && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div style={{ padding: "12px 16px", borderRadius: "16px", background: "#fff", color: "#F15A29", fontSize: "14px", fontWeight: "600", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-              ✍️ Typing...
+              âœ Typing...
             </div>
           </div>
         )}
@@ -153,7 +153,7 @@ function Chatbot({ api }) {
             e.target.style.background = "#F15A29";
           }}
         >
-          ➤
+          âž¤
         </button>
       </div>
     </div>

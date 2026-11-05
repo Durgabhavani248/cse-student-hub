@@ -14,10 +14,11 @@ import Papers from "./Papers";
 import StudyMaterials from "./StudyMaterials";
 import Timetable from "./Timetable";
 import Attendance from "./Attendance";
+import MentorAlerts from "./MentorAlerts";
 import MyAttendance from "./MyAttendance";
 import HodAttendanceReport from "./HodAttendanceReport";
 import LiveAttendanceReport from "./LiveAttendanceReport";
-import AttendanceExport from "./AttendanceExport";  // ✅ NEW IMPORT
+import AttendanceExport from "./AttendanceExport";  // âœ… NEW IMPORT
 import OldAttendanceUpload from "./OldAttendanceUpload";
 import Chatbot from "./Chatbot";
 import Search from "./Search";
@@ -449,42 +450,42 @@ const {
         className={navBtnClass("notices")}
         onClick={() => setActivePage("notices")}
       >
-        📢 Notices
+        Notices
       </button>
 
       <button
         className={navBtnClass("notes")}
         onClick={() => setActivePage("notes")}
       >
-        📚 Notes
+        Notes
       </button>
 
       <button
         className={navBtnClass("assignments")}
         onClick={() => setActivePage("assignments")}
       >
-        📝 Assignments
+        Assignments
       </button>
 
       <button
         className={navBtnClass("papers")}
         onClick={() => setActivePage("papers")}
       >
-        📄 Papers
+        Papers
       </button>
 
       <button
         className={navBtnClass("materials")}
         onClick={() => setActivePage("materials")}
       >
-        📖 Materials
+        Materials
       </button>
 
       <button
         className={navBtnClass("timetable")}
         onClick={() => setActivePage("timetable")}
       >
-        📅 Timetable
+        Timetable
       </button>
 
 
@@ -493,7 +494,15 @@ const {
     className={navBtnClass("attendance")}
     onClick={() => setActivePage("attendance")}
   >
-    👥 Mark Attendance
+    Mark Attendance
+  </button>
+)}
+{facultyLoggedIn && facultyInfo?.role === "faculty" && (
+  <button
+    className={navBtnClass("mentor-alerts")}
+    onClick={() => setActivePage("mentor-alerts")}
+  >
+    Mentor Alerts
   </button>
 )}
 
@@ -503,7 +512,7 @@ const {
     className={navBtnClass("my-attendance")}
     onClick={() => setActivePage("my-attendance")}
   >
-    ✅ My Attendance
+    My Attendance
   </button>
 )}
 
@@ -512,7 +521,7 @@ const {
     className={navBtnClass("hod-report")}
     onClick={() => setActivePage("hod-report")}
   >
-    📊 Branch Report
+    Branch Report
   </button>
 )}
 
@@ -522,7 +531,7 @@ const {
           className={navBtnClass("attendance-export")}
           onClick={() => setActivePage("attendance-export")}
         >
-          📤 Export
+          Export
         </button>
       )}
       
@@ -531,7 +540,7 @@ const {
     className={navBtnClass("old-attendance-upload")}
     onClick={() => setActivePage("old-attendance-upload")}
   >
-    📥 Old Attendance
+    Old Attendance
   </button>
 )}
 {(isAdmin || facultyInfo?.role === "hod") && (
@@ -550,7 +559,7 @@ const {
     className={navBtnClass("manage-cr")}
     onClick={() => setActivePage("manage-cr")}
   >
-    ⭐ Manage CR
+    Manage CR
   </button>
 )}
 
@@ -558,14 +567,14 @@ const {
   className={navBtnClass("lms")}
   onClick={() => setActivePage("lms")}
 >
-  📚 LMS
+  LMS
 </button>
 {(isAdmin || facultyInfo?.role === "hod") && (
   <button
     className={navBtnClass("coding-analytics")}
     onClick={() => setActivePage("coding-analytics")}
   >
-    📊 Coding Analytics
+    Coding Analytics
   </button>
 )}
 {studentLoggedIn && (
@@ -574,14 +583,14 @@ const {
       className={navBtnClass("coding-practice")}
       onClick={() => setActivePage("coding-practice")}
     >
-      💻 Coding Practice
+      Coding Practice
     </button>
 
     <button
       className={navBtnClass("daily-challenge")}
       onClick={() => setActivePage("daily-challenge")}
     >
-      🔥 Daily Challenge
+      Daily Challenge
     </button>
   </>
 )}
@@ -591,7 +600,7 @@ const {
         className={navBtnClass("search")}
         onClick={() => setActivePage("search")}
       >
-        🔍 Search
+        Search
       </button>
 
 
@@ -599,7 +608,7 @@ const {
         className={navBtnClass("chatbot")}
         onClick={() => setActivePage("chatbot")}
       >
-        🤖 AI Assistant
+        AI Assistant
       </button>
 
 
@@ -607,7 +616,7 @@ const {
         className={navBtnClass("profile")}
         onClick={() => setActivePage("profile")}
       >
-        👤 Profile
+        Profile
       </button>
 
 
@@ -615,7 +624,7 @@ const {
         className="notification-btn"
         onClick={() => setActivePage("notifications")}
       >
-        🔔 Notifications
+        Notifications
         {unreadNotifications > 0 && (
           <span className="notification-badge">
             {unreadNotifications}
@@ -628,7 +637,7 @@ const {
     className={navBtnClass("activity-center")}
     onClick={() => setActivePage("activity-center")}
   >
-    📋 Activity Center
+    Activity Center
   </button>
 )}
 {isAdmin && (
@@ -636,7 +645,7 @@ const {
     className={navBtnClass("admin")}
     onClick={() => setActivePage("admin")}
   >
-    ⚙️ Admin
+    Admin
   </button>
 )}
     </nav>
@@ -698,7 +707,7 @@ const {
           }}
         >
           <h3 style={{ margin: "0 0 10px", color: "#4CAF50" }}>
-            🟢 Present Class
+             Present Class
           </h3>
 
           {currentClass ? (
@@ -708,7 +717,7 @@ const {
               </h2>
 
               <p style={{ margin: 0, color: "#666" }}>
-                {currentClass.start} – {currentClass.end}
+                {currentClass.start} - {currentClass.end}
               </p>
             </>
           ) : (
@@ -729,7 +738,7 @@ const {
           }}
         >
           <h3 style={{ margin: "0 0 10px", color: "#2196F3" }}>
-            🔵 Next Class
+             Next Class
           </h3>
 
           {nextClass ? (
@@ -739,7 +748,7 @@ const {
               </h2>
 
               <p style={{ margin: 0, color: "#666" }}>
-                {nextClass.start} – {nextClass.end}
+                {nextClass.start} - {nextClass.end}
               </p>
             </>
           ) : (
@@ -769,7 +778,7 @@ const {
         marginBottom: "16px"
       }}
     >
-      📢 Notices
+       Notices
     </h2>
 
     {notices.length === 0 ? (
@@ -855,7 +864,7 @@ const {
       fontWeight: "600"
     }}
   >
-    📄 View File
+     View File
   </button>
 )}
 
@@ -874,7 +883,7 @@ const {
         fontWeight: "600"
       }}
     >
-      🗑️ Delete
+       Delete
     </button>
   )}
 
@@ -941,6 +950,12 @@ const {
       api={API}
       facultyInfo={facultyInfo}
     />
+)}
+{activePage === "mentor-alerts" && facultyLoggedIn && facultyInfo?.role === "faculty" && (
+  <MentorAlerts
+    api={API}
+    facultyInfo={facultyInfo}
+  />
 )}
 
     {activePage === "my-attendance" && studentLoggedIn && (
@@ -1042,7 +1057,7 @@ const {
 
     {/* FOOTER */}
     <footer className="footer">
-      © 2026 NRI Institute of Technology | acadamic Portal
+      Â© 2026 NRI Institute of Technology | acadamic Portal
     </footer>
 
   </div>
@@ -1157,7 +1172,7 @@ const facultyFileInputRef = useRef(null);
 
     if (!response.ok) {
       setStudentMessage(
-        `❌ ${data.message || "Upload failed"}`
+        `âŒ ${data.message || "Upload failed"}`
       );
       return;
     }
@@ -1178,7 +1193,7 @@ const facultyFileInputRef = useRef(null);
 
   } catch (error) {
     console.error("Student upload error:", error);
-    setStudentMessage("❌ Server error during upload");
+    setStudentMessage("âŒ Server error during upload");
   }
 };
 
@@ -1214,7 +1229,7 @@ const uploadFaculty = async () => {
 
     if (!response.ok) {
       setFacultyMessage(
-        `❌ ${data.message || "Upload failed"}`
+        `âŒ ${data.message || "Upload failed"}`
       );
       return;
     }
@@ -1242,7 +1257,7 @@ const uploadFaculty = async () => {
 
   } catch (error) {
     console.error("Faculty upload error:", error);
-    setFacultyMessage("❌ Server error during upload");
+    setFacultyMessage("âŒ Server error during upload");
   }
 };
 
@@ -1516,7 +1531,7 @@ const uploadFaculty = async () => {
       marginTop: 0
     }}
   >
-    (branch column optional — defaults to CSE if left blank)
+    (branch column optional â€” defaults to CSE if left blank)
   </p>
 
   <input
@@ -1553,7 +1568,7 @@ const uploadFaculty = async () => {
   {studentMessage && (
     <p
       style={{
-        color: studentMessage.startsWith("❌")
+        color: studentMessage.startsWith("âŒ")
           ? "#d32f2f"
           : "#4CAF50",
         marginTop: "12px",
@@ -1657,7 +1672,7 @@ const uploadFaculty = async () => {
   {facultyMessage && (
     <p
       style={{
-        color: facultyMessage.startsWith("❌")
+        color: facultyMessage.startsWith("âŒ")
           ? "#d32f2f"
           : "#4CAF50",
         marginTop: "12px",
@@ -1688,7 +1703,7 @@ const uploadFaculty = async () => {
             color: "#1a1a1a"
           }}
         >
-          ⭐ Class Representatives
+          â­ Class Representatives
         </h3>
 
         <p style={{ color: "#777" }}>
@@ -1707,7 +1722,7 @@ const uploadFaculty = async () => {
             fontWeight: "600"
           }}
         >
-          ⭐ Manage CRs
+          â­ Manage CRs
         </button>
       </div>
 
@@ -1754,6 +1769,7 @@ const uploadFaculty = async () => {
                   <th style={thStyle}>Branch</th>
                   <th style={thStyle}>Role</th>
                   <th style={thStyle}>Sections</th>
+                  <th style={thStyle}>Mentor Sections</th>
                   <th style={thStyle}>Action</th>
                 </tr>
               </thead>
@@ -1826,3 +1842,7 @@ const uploadFaculty = async () => {
   );
 }
 export default App;
+
+
+
+
