@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function Search({ api }) {
   const [items, setItems] = useState([]);
@@ -390,7 +390,7 @@ function Search({ api }) {
                           textDecoration: "none"
                         }}
                       >
-                        View File â†’
+                        View File -&gt;
                       </a>
                     )}
                   </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 
 function AttendanceExport({ api, facultyInfo, isAdmin }) {
@@ -93,7 +93,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
           if (
             name &&
-            !/^(break|lunch|free|holiday|[-â€”]+)$/i.test(name) &&
+            !/^(break|lunch|free|holiday|[--]+)$/i.test(name) &&
             !seen.has(key)
           ) {
             seen.add(key);
@@ -120,12 +120,12 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
   const fetchAttendanceData = async () => {
     if (!branch) {
-      setMessage("âŒ Select branch!");
+      setMessage("Error: Select branch!");
       return;
     }
 
     setLoading(true);
-    setMessage("â³ Fetching attendance records...");
+    setMessage(" Fetching attendance records...");
 
     try {
       const params = new URLSearchParams();
@@ -147,18 +147,18 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
       if (res.ok) {
         if (Array.isArray(data) && data.length > 0) {
           setAttendanceData(data);
-          setMessage(`âœ… Found ${data.length} attendance records!`);
+          setMessage(`Success: Found ${data.length} attendance records!`);
         } else {
-          setMessage("âš  No attendance records found for selected filters");
+          setMessage("Warning: No attendance records found for selected filters");
           setAttendanceData([]);
         }
       } else {
-        setMessage("âŒ " + (data.message || "Failed to fetch"));
+        setMessage("Error: " + (data.message || "Failed to fetch"));
         setAttendanceData([]);
       }
     } catch (err) {
       console.error("Error:", err);
-      setMessage("âŒ Server error: " + err.message);
+      setMessage("Error: Server error: " + err.message);
       setAttendanceData([]);
     } finally {
       setLoading(false);
@@ -167,7 +167,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
   const downloadAsExcel = () => {
     if (attendanceData.length === 0) {
-      setMessage("âŒ No data to download!");
+      setMessage("Error: No data to download!");
       return;
     }
 
@@ -205,27 +205,27 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
       // Write file
       XLSX.writeFile(wb, filename);
-      setMessage(`âœ… Downloaded ${attendanceData.length} records as ${filename}`);
+      setMessage(`Success: Downloaded ${attendanceData.length} records as ${filename}`);
     } catch (err) {
       console.error("Download error:", err);
-      setMessage("âŒ Download failed: " + err.message);
+      setMessage("Error: Download failed: " + err.message);
     }
   };
 
   const deleteRecords = async () => {
     if (attendanceData.length === 0) {
-      setMessage("âŒ No records to delete!");
+      setMessage("Error: No records to delete!");
       return;
     }
 
     const confirmDelete = window.confirm(
-      `âš  This will PERMANENTLY delete ${attendanceData.length} attendance records from database!\n\nMake sure you have downloaded them first!\n\nContinue?`
+      `Warning: This will PERMANENTLY delete ${attendanceData.length} attendance records from database!\n\nMake sure you have downloaded them first!\n\nContinue?`
     );
 
     if (!confirmDelete) return;
 
     setLoading(true);
-    setMessage("â³ Deleting records...");
+    setMessage(" Deleting records...");
 
     try {
       const params = new URLSearchParams();
@@ -246,14 +246,14 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
       console.log(" Response:", res.status, data);
 
       if (res.ok) {
-        setMessage(`âœ… Deleted ${data.deletedCount || attendanceData.length} records from database!`);
+        setMessage(`Success: Deleted ${data.deletedCount || attendanceData.length} records from database!`);
         setAttendanceData([]);
       } else {
-        setMessage("âŒ " + (data.message || "Failed to delete"));
+        setMessage("Error: " + (data.message || "Failed to delete"));
       }
     } catch (err) {
       console.error("Error:", err);
-      setMessage("âŒ Server error: " + err.message);
+      setMessage("Error: Server error: " + err.message);
     } finally {
       setLoading(false);
     }
@@ -275,10 +275,10 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
 
       {message && (
         <p style={{
-          color: message.includes("âœ…") ? "#4CAF50" : message.includes("âš ") ? "#e0a800" : "#F15A29",
+          color: message.includes("Success:") ? "#4CAF50" : message.includes("Warning:") ? "#e0a800" : "#F15A29",
           fontWeight: "600",
           padding: "12px",
-          background: message.includes("âœ…") ? "#e8f5e9" : message.includes("âš ") ? "#fff8e1" : "#ffebee",
+          background: message.includes("Success:") ? "#e8f5e9" : message.includes("Warning:") ? "#fff8e1" : "#ffebee",
           borderRadius: "8px",
           marginBottom: "20px"
         }}>
@@ -381,7 +381,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
             fontSize: "14px"
           }}
         >
-          {loading ? "â³ Fetching..." : " Fetch Records"}
+          {loading ? "Fetching..." : " Fetch Records"}
         </button>
       </div>
 
@@ -463,7 +463,7 @@ function AttendanceExport({ api, facultyInfo, isAdmin }) {
           </div>
 
           <div style={{ background: "#f5f5f5", border: "1px solid #e0e0e0", borderRadius: "8px", padding: "12px", marginTop: "16px", fontSize: "12px", color: "#666" }}>
-            âœ… <strong>Workflow:</strong> 1) Fetch records â†’ 2) Download Excel â†’ 3) Verify data â†’ 4) Delete from DB â†’ Keep database small!
+            Success: <strong>Workflow:</strong> 1) Fetch records -&gt; 2) Download Excel -&gt; 3) Verify data -&gt; 4) Delete from DB -&gt; Keep database small!
           </div>
         </div>
       )}

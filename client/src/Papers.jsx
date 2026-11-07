@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
@@ -27,11 +27,11 @@ function Papers({ canUpload, isAdmin, api, facultyInfo }) {
   const addPaper = async () => {
     setMessage("");
     if (!form.subject || !form.title) {
-      setMessage("âŒ Subject and Title are required!");
+      setMessage("Error: Subject and Title are required!");
       return;
     }
     if (!file) {
-      setMessage("âŒ Please select a file!");
+      setMessage("Error: Please select a file!");
       return;
     }
 
@@ -47,7 +47,7 @@ function Papers({ canUpload, isAdmin, api, facultyInfo }) {
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok || !uploadData.url) {
         setSaving(false);
-        setMessage(`âŒ File upload failed: ${uploadData.message || "unknown error"}`);
+        setMessage(`Error: File upload failed: ${uploadData.message || "unknown error"}`);
         return;
       }
 
@@ -61,17 +61,17 @@ function Papers({ canUpload, isAdmin, api, facultyInfo }) {
       setSaving(false);
 
       if (!saveRes.ok) {
-        setMessage(`âŒ ${saveData.message || "Failed to save paper"}`);
+        setMessage(`Error: ${saveData.message || "Failed to save paper"}`);
         return;
       }
 
-      setMessage("âœ… Paper added successfully!");
+      setMessage("Success: Paper added successfully!");
       setForm({ subject: "", title: "", branch: form.branch });
       setFile(null);
       fetchPapers();
     } catch (err) {
       setSaving(false);
-      setMessage(`âŒ Error: ${err.message}`);
+      setMessage(`Error: Error: ${err.message}`);
     }
   };
 
@@ -95,7 +95,7 @@ function Papers({ canUpload, isAdmin, api, facultyInfo }) {
       {canUpload && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "24px", marginBottom: "30px" }}>
           <h3 style={{ color: "#F15A29", marginTop: 0 }}>Add New Paper</h3>
-          {message && <p style={{ color: message.startsWith("âœ…") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
+          {message && <p style={{ color: message.startsWith("Success:") ? "#4CAF50" : "#F15A29", fontWeight: "600" }}>{message}</p>}
 
           <div style={{ display: "grid", gap: "12px" }}>
             {isAdmin && !facultyInfo && (
@@ -117,7 +117,7 @@ function Papers({ canUpload, isAdmin, api, facultyInfo }) {
               disabled={saving}
               style={{ padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
             >
-              {saving ? "Saving..." : "âž• Add Paper"}
+              {saving ? "Saving..." : " Add Paper"}
             </button>
           </div>
         </div>

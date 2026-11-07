@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const DAYS = [
   "Monday",
@@ -165,9 +165,9 @@ useEffect(() => {
       .then(res => res.json())
       .then(data => {
         setBulkUploading(false);
-        setBulkMessage(data.message || (data.sections ? `âœ… Updated: ${data.sections.join(", ")}` : "âŒ Upload failed"));
+        setBulkMessage(data.message || (data.sections ? `Success: Updated: ${data.sections.join(", ")}` : "Error: Upload failed"));
       })
-      .catch(() => { setBulkUploading(false); setBulkMessage("âŒ Server error!"); });
+      .catch(() => { setBulkUploading(false); setBulkMessage("Error: Server error!"); });
   };
 
   const updateSubject = (index, value) => {
@@ -293,9 +293,9 @@ useEffect(() => {
 
         {canManage && (
           <div style={{ background: "#fff", border: "1px solid #ffd9cc", borderRadius: 12, padding: 24, maxWidth: 380 }}>
-            <h3 style={{ color: "#F15A29", marginTop: 0, marginBottom: 6 }}>âž• Add New Timetable (Excel)</h3>
+            <h3 style={{ color: "#F15A29", marginTop: 0, marginBottom: 6 }}> Add New Timetable (Excel)</h3>
             <p style={{ color: "#666", fontSize: 12, marginBottom: 14 }}>
-              Upload one Excel with <strong>all sections</strong> at once â€” every section in the file gets updated in one go, no need to edit each one manually.
+              Upload one Excel with <strong>all sections</strong> at once - every section in the file gets updated in one go, no need to edit each one manually.
               <br /><br />
               Sheet <strong>"Schedule"</strong> columns: <strong>section, day, period, subject</strong> (one row per period; day = MON/TUE/WED/THU/FRI/SAT)
               <br />
@@ -315,7 +315,7 @@ useEffect(() => {
               {bulkUploading ? "Uploading..." : "Upload & Update All Sections"}
             </button>
             {bulkMessage && (
-              <p style={{ color: bulkMessage.startsWith("âŒ") ? "#F15A29" : "#4CAF50", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
+              <p style={{ color: bulkMessage.startsWith("Error:") ? "#F15A29" : "#4CAF50", fontSize: 13, fontWeight: 600, marginTop: 10 }}>
                 {bulkMessage}
               </p>
             )}
@@ -392,7 +392,7 @@ useEffect(() => {
               fontWeight: "600",
             }}
           >
-            âœ Edit Timetable
+             Edit Timetable
           </button>
         )}
       </div>
@@ -531,7 +531,7 @@ useEffect(() => {
                       {isBreak
                         ? timing.type === "lunch"
                           ? " Lunch"
-                          : "â˜• Break"
+                          : " Break"
                         : subject}
                     </h4>
                   )}
@@ -612,7 +612,7 @@ useEffect(() => {
                 fontWeight: "600",
               }}
             >
-              âœ Edit Timetable
+               Edit Timetable
             </button>
           </div>
         )

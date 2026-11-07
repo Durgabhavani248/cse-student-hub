@@ -68,7 +68,7 @@ function Attendance({ api, facultyInfo }) {
           const timing = timings[i] || {};
           return {
             id: String(i + 1),
-            label: (timing.label || `Period ${i + 1}`).replace(/â€“/g, "-"),
+            label: (timing.label || `Period ${i + 1}`).replace(/-/g, "-"),
             subject: String(subjects[i] || "").trim(),
             type: String(timing.type || "class").toLowerCase()
           };
@@ -105,7 +105,7 @@ function Attendance({ api, facultyInfo }) {
       return;
     }
     setLoading(true);
-    setMessage("â³ Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
+    setMessage(" Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
 
     fetch(`${api}/api/students/${facultyInfo.branch}/${section}`, {
       headers: { Authorization: `Bearer ${token}` }
@@ -121,7 +121,7 @@ function Attendance({ api, facultyInfo }) {
         setLoading(false);
 
         if (!res.ok) {
-          setMessage(`âŒ Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
+          setMessage(`Error: Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
           return;
         }
 
@@ -131,17 +131,17 @@ function Attendance({ api, facultyInfo }) {
           data.forEach(s => { initial[s.rollNo] = "present"; });
           setAttendance(initial);
           if (data.length === 0) {
-            setMessage(`âš  Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
+            setMessage(`Warning: Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
           } else {
-            setMessage(`âœ… Loaded ${data.length} students`);
+            setMessage(`Success: Loaded ${data.length} students`);
           }
         } else {
-          setMessage(`âŒ Unexpected response: ${JSON.stringify(data)}`);
+          setMessage(`Error: Unexpected response: ${JSON.stringify(data)}`);
         }
       })
       .catch(err => {
         setLoading(false);
-        setMessage(`âŒ Network/fetch error: ${err.message}`);
+        setMessage(`Error: Network/fetch error: ${err.message}`);
       });
   };
 
@@ -197,9 +197,9 @@ function Attendance({ api, facultyInfo }) {
       .then(res => res.json())
       .then(data => {
         setLoading(false);
-        setMessage(data.message?.startsWith("Attendance") ? `âœ… ${data.message}` : `âŒ ${data.message}`);
+        setMessage(data.message?.startsWith("Attendance") ? `Success: ${data.message}` : `Error: ${data.message}`);
       })
-      .catch(() => { setLoading(false); setMessage("âŒ Server error!"); });
+      .catch(() => { setLoading(false); setMessage("Error: Server error!"); });
   };
 
   const inputStyle = {
@@ -268,14 +268,14 @@ function Attendance({ api, facultyInfo }) {
       </div>
 
       {message && (
-        <p style={{ color: message.startsWith("âŒ") ? "#F15A29" : message.startsWith("âš ") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
+        <p style={{ color: message.startsWith("Error:") ? "#F15A29" : message.startsWith("Warning:") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
       )}
 
       {students.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
             <h3 style={{ margin: 0, color: "#1a1a1a" }}>
-              {students.length} Students â€” <span style={{ color: "#4CAF50" }}>{presentCount} Present</span>, <span style={{ color: "#F15A29" }}>{students.length - presentCount} Absent</span>
+              {students.length} Students - <span style={{ color: "#4CAF50" }}>{presentCount} Present</span>, <span style={{ color: "#F15A29" }}>{students.length - presentCount} Absent</span>
             </h3>
             <div style={{ display: "flex", gap: "8px" }}>
               <button onClick={() => markAll("present")} style={{ padding: "6px 14px", background: "#e8f8ec", color: "#4CAF50", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Present</button>
@@ -302,7 +302,7 @@ function Attendance({ api, facultyInfo }) {
                   }}
                 >
                   <div>
-                    <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " â­" : ""}</div>
+                    <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a1a" }}>{s.name}{s.isCR ? " " : ""}</div>
                     <div style={{ fontSize: "11px", color: "#999" }}>{s.rollNo}</div>
                   </div>
                   <span style={{ fontSize: "11px", fontWeight: "700", color: isPresent ? "#4CAF50" : "#F15A29" }}>

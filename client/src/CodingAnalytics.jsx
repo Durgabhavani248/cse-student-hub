@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 export default function CodingAnalytics({ api = "" }) {
   const [data, setData] = useState(null);
@@ -101,7 +101,7 @@ export default function CodingAnalytics({ api = "" }) {
   if (loading) {
     return (
       <div style={styles.center}>
-        <div style={styles.spinner}>â³</div>
+        <div style={styles.spinner}>Loading...</div>
         <h3>Loading Coding Analytics...</h3>
       </div>
     );
@@ -111,7 +111,7 @@ export default function CodingAnalytics({ api = "" }) {
     return (
       <div style={styles.page}>
         <div style={styles.errorBox}>
-          âŒ {error}
+          Error: {error}
         </div>
 
         <button style={styles.refreshButton} onClick={loadAnalytics}>
@@ -131,8 +131,8 @@ export default function CodingAnalytics({ api = "" }) {
 
           <div style={styles.subtitle}>
             {data?.scope === "all"
-              ? "Admin â€¢ All Branches & Sections"
-              : `HOD â€¢ ${data?.branch || "Branch"}`}
+              ? "Admin  |  All Branches & Sections"
+              : `HOD  |  ${data?.branch || "Branch"}`}
           </div>
         </div>
 
@@ -153,25 +153,25 @@ export default function CodingAnalytics({ api = "" }) {
         />
 
         <StatCard
-          icon="â–¶"
+          icon=""
           title="Challenge Started"
           value={stats.started}
         />
 
         <StatCard
-          icon="âœ…"
+          icon="Success:"
           title="Completed"
           value={stats.completed}
         />
 
         <StatCard
-          icon="â³"
+          icon=""
           title="Not Attempted"
           value={stats.notAttempted}
         />
 
         <StatCard
-          icon="â­"
+          icon=""
           title="Total XP"
           value={stats.totalXP}
         />
@@ -245,7 +245,7 @@ export default function CodingAnalytics({ api = "" }) {
                       </td>
 
                       <td style={styles.td}>
-                        â­ {item.xp || 0}
+                        XP: {item.xp || 0}
                       </td>
 
                       <td style={styles.td}>
@@ -352,7 +352,7 @@ function SectionActivity({ students, progress }) {
               style={styles.sectionCard}
             >
               <div style={styles.sectionName}>
-                {section.branch} â€¢ Section {section.section}
+                {section.branch}  |  Section {section.section}
               </div>
 
               <div style={styles.sectionStats}>
@@ -365,7 +365,7 @@ function SectionActivity({ students, progress }) {
                 </span>
 
                 <span>
-                  â­ {section.xp}
+                  XP: {section.xp}
                 </span>
               </div>
             </div>
