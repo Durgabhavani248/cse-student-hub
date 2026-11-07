@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("studentToken") || localStorage.getItem("facultyToken");
@@ -27,7 +27,7 @@ function Assignments({ canUpload, isAdmin, api, facultyInfo }) {
   const addAssignment = async () => {
     setMessage("");
     if (!form.section || !form.subject || !form.title) {
-      setMessage("âŒ Section, Subject and Title are required!");
+      setMessage("Error: Section, Subject and Title are required!");
       return;
     }
 
@@ -45,7 +45,7 @@ function Assignments({ canUpload, isAdmin, api, facultyInfo }) {
         const uploadData = await uploadRes.json();
         if (!uploadRes.ok || !uploadData.url) {
           setSaving(false);
-          setMessage(`âŒ File upload failed: ${uploadData.message || "unknown error"}`);
+          setMessage(`Error: File upload failed: ${uploadData.message || "unknown error"}`);
           return;
         }
         fileUrl = uploadData.url;
@@ -61,7 +61,7 @@ function Assignments({ canUpload, isAdmin, api, facultyInfo }) {
       setSaving(false);
 
       if (!saveRes.ok) {
-        setMessage(`âŒ ${saveData.message || "Failed to save assignment"}`);
+        setMessage(`Error: ${saveData.message || "Failed to save assignment"}`);
         return;
       }
 

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 const ORANGE = "#ff6b35";
 const DARK = "#1f2937";
@@ -400,7 +400,7 @@ export default function DailyChallenge({ api = "" }) {
     return (
       <div style={styles.center}>
         <div style={styles.loadingCircle}>
-          â³
+
         </div>
 
         <h3 style={{ margin: "10px 0 0" }}>
@@ -504,7 +504,7 @@ export default function DailyChallenge({ api = "" }) {
       <div style={styles.header}>
         <div>
           <div style={styles.badge}>
-            âš¡ DAILY CHALLENGE
+             DAILY CHALLENGE
           </div>
 
           <h1 style={styles.title}>
@@ -519,7 +519,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.timerCard}>
           <span style={styles.timerLabel}>
-            â± TIME
+            Time: TIME
           </span>
 
           <strong style={styles.timer}>
@@ -533,7 +533,7 @@ export default function DailyChallenge({ api = "" }) {
       <div style={styles.statsGrid}>
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            
+
           </span>
 
           <div>
@@ -549,7 +549,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            â­
+
           </span>
 
           <div>
@@ -564,7 +564,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            
+
           </span>
 
           <div>
@@ -577,7 +577,7 @@ export default function DailyChallenge({ api = "" }) {
 
         <div style={styles.statCard}>
           <span style={styles.statIcon}>
-            
+
           </span>
 
           <div>
@@ -822,8 +822,8 @@ export default function DailyChallenge({ api = "" }) {
               }}
             >
               {submitting
-                ? "â³ Evaluating..."
-                : "âœ“ Submit Challenge"}
+                ? "Evaluating..."
+                : "Passed Submit Challenge"}
             </button>
           )}
 
@@ -842,9 +842,9 @@ export default function DailyChallenge({ api = "" }) {
                 {submitStage === "submitting"
                   ? ""
                   : submitStage === "executing"
-                  ? "âš™"
+                  ? ""
                   : submitStage === "accepted"
-                  ? "âœ“"
+                  ? "Passed"
                   : "!"}
               </span>
               <div>
@@ -873,7 +873,7 @@ export default function DailyChallenge({ api = "" }) {
           {completed && (
             <div style={styles.acceptedBox}>
               <div style={styles.acceptedIcon}>
-                âœ“
+                Passed
               </div>
 
               <div>
@@ -920,7 +920,7 @@ export default function DailyChallenge({ api = "" }) {
                 {result.verdict ===
                 "Accepted"
                   ? " Accepted"
-                  : `âŒ ${result.verdict}`}
+                  : `Error: ${result.verdict}`}
               </div>
 
               {result.error && (
@@ -979,8 +979,8 @@ export default function DailyChallenge({ api = "" }) {
                             </strong>
                             <span>
                               {test.passed
-                                ? "âœ“ Passed"
-                                : "âœ• Failed"}
+                                ? "Passed Passed"
+                                : "Failed: Failed"}
                             </span>
                           </div>
 
@@ -1046,7 +1046,7 @@ export default function DailyChallenge({ api = "" }) {
                                       styles.mismatchHint
                                     }
                                   >
-                                    âš  Output mismatch.
+                                    Warning: Output mismatch.
                                     Check spelling,
                                     capitalization,
                                     spacing, and the

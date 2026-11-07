@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./Notifications.css";
 import { requestPermission, getNotificationPermissionStatus } from "./firebase";
@@ -25,11 +25,11 @@ const token =
     setPushLoading(false);
     setPushStatus(getNotificationPermissionStatus());
     if (result.ok) {
-      setPushMessage("âœ… Notifications enabled! You'll get alerts for new notes, assignments, and papers.");
+      setPushMessage("Success: Notifications enabled! You'll get alerts for new notes, assignments, and papers.");
     } else if (result.reason === "permission-not-granted") {
-      setPushMessage("âŒ Permission denied. Enable notifications for this site in your browser settings, then try again.");
+      setPushMessage("Error: Permission denied. Enable notifications for this site in your browser settings, then try again.");
     } else {
-      setPushMessage(`âŒ Couldn't enable notifications (${result.reason}). Try refreshing the page.`);
+      setPushMessage(`Error: Couldn't enable notifications (${result.reason}). Try refreshing the page.`);
     }
   };
 

@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./MentorAlerts.css";
 
 export default function MentorAlerts({ api, facultyInfo }) {
@@ -157,6 +157,47 @@ const sortedRecords = useMemo(
     }
   }
 
+  async function markPermission(record) {
+    try {
+      setMessage("");
+
+      const response = await fetch(`${api}/api/mentor/mark-permission`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          rollNo: record.rollNo,
+          studentName: record.studentName,
+          branch: record.branch,
+          section: record.section,
+          date: record.date
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Could not save permission status");
+      }
+
+      setRecords((current) =>
+        current.map((item) =>
+          item.rollNo === record.rollNo &&
+          item.branch === record.branch &&
+          item.section === record.section &&
+          item.date === record.date
+            ? { ...item, permissionTaken: true }
+            : item
+        )
+      );
+
+      setMessage("Permission status saved.");
+    } catch (error) {
+      setMessage(error.message || "Failed to save permission status");
+    }
+  }
   return (
     <section className="mentor-alerts">
       <h2>Mentor Parent Alerts</h2>
@@ -203,8 +244,9 @@ const sortedRecords = useMemo(
                   record.periodId || "historical",
                   index
                 ].join("|");
-                const whatsappUrl = getWhatsAppUrl(record);
                 const isSent = record.notificationStatus === "sent";
+                const isPermissionTaken = record.permissionTaken === true;
+                const whatsappUrl = isPermissionTaken ? "" : getWhatsAppUrl(record);
 
                 return (
                   <article className="mentor-alert-card" key={key}>
@@ -220,9 +262,11 @@ const sortedRecords = useMemo(
                         Previous absences: {record.priorAbsences?.length || 0}
                       </p>
                     )}
-                    <p>Status: {isSent ? "Sent" : "Not sent"}</p>
+                    <p>Status: {isPermissionTaken ? "Permission Taken" : isSent ? "Sent" : "Not sent"}</p>
 
-                    {whatsappUrl ? (
+                    {isPermissionTaken ? (
+                      <p>Permission already taken. Parent message is not required.</p>
+                    ) : whatsappUrl ? (
                       <a
                         href={whatsappUrl}
                         target="_blank"
@@ -234,13 +278,23 @@ const sortedRecords = useMemo(
                       <p>Parent mobile number is missing.</p>
                     )}
 
-                    <button
-                      type="button"
-                      disabled={isSent}
-                      onClick={() => markSent(record)}
-                    >
-                      {isSent ? "Marked Sent" : "Mark Sent"}
-                    </button>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                      <button
+                        type="button"
+                        disabled={isSent || isPermissionTaken}
+                        onClick={() => markSent(record)}
+                      >
+                        {isSent ? "Marked Sent" : isPermissionTaken ? "Permission Taken" : "Mark Sent"}
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={isSent || isPermissionTaken}
+                        onClick={() => markPermission(record)}
+                      >
+                        {isPermissionTaken ? "Permission Taken" : "Permission"}
+                      </button>
+                    </div>
                   </article>
                 );
               })}

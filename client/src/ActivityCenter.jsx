@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function ActivityCenter({ api }) {
   const [activities, setActivities] = useState([]);
@@ -192,13 +192,13 @@ export default function ActivityCenter({ api }) {
                 color: "#888"
               }}
             >
-              {activity.role?.toUpperCase()} â€¢{" "}
+              {activity.role?.toUpperCase()}  | {" "}
               {activity.module}
               {activity.branch
-                ? ` â€¢ ${activity.branch}`
+                ? `  |  ${activity.branch}`
                 : ""}
               {activity.section
-                ? ` â€¢ Section ${activity.section}`
+                ? `  |  Section ${activity.section}`
                 : ""}
             </div>
           </div>

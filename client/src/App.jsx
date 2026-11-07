@@ -18,7 +18,7 @@ import MentorAlerts from "./MentorAlerts";
 import MyAttendance from "./MyAttendance";
 import HodAttendanceReport from "./HodAttendanceReport";
 import LiveAttendanceReport from "./LiveAttendanceReport";
-import AttendanceExport from "./AttendanceExport";  // âœ… NEW IMPORT
+import AttendanceExport from "./AttendanceExport";  // Success: NEW IMPORT
 import OldAttendanceUpload from "./OldAttendanceUpload";
 import Chatbot from "./Chatbot";
 import Search from "./Search";
@@ -1057,7 +1057,7 @@ const {
 
     {/* FOOTER */}
     <footer className="footer">
-      Â© 2026 NRI Institute of Technology | acadamic Portal
+      Copyright 2026 NRI Institute of Technology | acadamic Portal
     </footer>
 
   </div>
@@ -1078,6 +1078,15 @@ const tdStyle = {
 };
 function AdminPanel({ api, onOpenManageCR }) {
   const [stats, setStats] = useState(null);
+  const [mentorReport, setMentorReport] = useState(null);
+  const [mentorReportMessage, setMentorReportMessage] = useState("");
+  const [mentorReportDate, setMentorReportDate] = useState(() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  });
 
   const [studentFile, setStudentFile] = useState(null);
   const [facultyFile, setFacultyFile] = useState(null);
@@ -1135,6 +1144,32 @@ const facultyFileInputRef = useRef(null);
     }
   };
 
+  const fetchMentorReport = async () => {
+    try {
+      setMentorReportMessage("");
+
+      const response = await fetch(
+        `${api}/api/admin/mentor-report?date=${encodeURIComponent(mentorReportDate)}`,
+        { headers: authHeaders }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to load mentor report");
+      }
+
+      setMentorReport(data);
+    } catch (error) {
+      setMentorReportMessage(error.message || "Could not load mentor report");
+      setMentorReport(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchMentorReport();
+  }, [mentorReportDate]);
+
   useEffect(() => {
     fetchAdminData();
   }, []);
@@ -1172,7 +1207,7 @@ const facultyFileInputRef = useRef(null);
 
     if (!response.ok) {
       setStudentMessage(
-        `âŒ ${data.message || "Upload failed"}`
+        `Error: ${data.message || "Upload failed"}`
       );
       return;
     }
@@ -1193,7 +1228,7 @@ const facultyFileInputRef = useRef(null);
 
   } catch (error) {
     console.error("Student upload error:", error);
-    setStudentMessage("âŒ Server error during upload");
+    setStudentMessage("Error: Server error during upload");
   }
 };
 
@@ -1229,7 +1264,7 @@ const uploadFaculty = async () => {
 
     if (!response.ok) {
       setFacultyMessage(
-        `âŒ ${data.message || "Upload failed"}`
+        `Error: ${data.message || "Upload failed"}`
       );
       return;
     }
@@ -1257,7 +1292,7 @@ const uploadFaculty = async () => {
 
   } catch (error) {
     console.error("Faculty upload error:", error);
-    setFacultyMessage("âŒ Server error during upload");
+    setFacultyMessage("Error: Server error during upload");
   }
 };
 
@@ -1403,6 +1438,168 @@ const uploadFaculty = async () => {
             )}
           </div>
 
+          {/* ================= MENTOR ATTENDANCE REPORT ================= */}
+
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid #e0e0e0",
+              borderRadius: "12px",
+              padding: "22px",
+              marginBottom: "24px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: "12px",
+                marginBottom: "18px"
+              }}
+            >
+              <h3 style={{ margin: 0, color: "#1a1a1a" }}>
+                Mentor Attendance Report
+              </h3>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <input
+                  type="date"
+                  value={mentorReportDate}
+                  onChange={(event) => setMentorReportDate(event.target.value)}
+                  style={{
+                    padding: "9px 10px",
+                    border: "1px solid #ddd",
+                    borderRadius: "7px",
+                    fontSize: "14px"
+                  }}
+                />
+
+                <button
+                  type="button"
+                  onClick={fetchMentorReport}
+                  style={{
+                    padding: "9px 15px",
+                    border: "none",
+                    borderRadius: "7px",
+                    background: "#F15A29",
+                    color: "#fff",
+                    cursor: "pointer",
+                    fontWeight: "600"
+                  }}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            {mentorReportMessage && (
+              <p style={{ color: "#c62828", fontSize: "14px" }}>
+                {mentorReportMessage}
+              </p>
+            )}
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+                marginBottom: "20px"
+              }}
+            >
+              {statCard("Total Absent", mentorReport?.summary?.totalAbsent ?? 0, "#F15A29")}
+              {statCard("Permission Taken", mentorReport?.summary?.permissionTaken ?? 0, "#2196F3")}
+              {statCard("Messages Sent", mentorReport?.summary?.messagesSent ?? 0, "#4CAF50")}
+              {statCard("Messages Pending", mentorReport?.summary?.messagesPending ?? 0, "#9C27B0")}
+            </div>
+
+            <h4 style={{ margin: "0 0 12px", color: "#333" }}>
+              Mentor-wise Details
+            </h4>
+
+            {!mentorReport ? (
+              <p style={{ color: "#777", fontSize: "14px" }}>
+                Loading mentor report...
+              </p>
+            ) : mentorReport.mentors?.length ? (
+              mentorReport.mentors.map((mentor, mentorIndex) => (
+                <div
+                  key={`${mentor.facultyId}-${mentor.branch}-${mentor.section}-${mentorIndex}`}
+                  style={{
+                    border: "1px solid #e6e6e6",
+                    borderRadius: "9px",
+                    padding: "14px",
+                    marginBottom: "12px"
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                      marginBottom: "10px"
+                    }}
+                  >
+                    <div>
+                      <strong style={{ color: "#222" }}>{mentor.facultyName}</strong>
+                      <p style={{ margin: "4px 0 0", color: "#666", fontSize: "13px" }}>
+                        {mentor.branch} - Section {mentor.section}
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", fontSize: "12px" }}>
+                      <span>Absent: <strong>{mentor.totalAbsent}</strong></span>
+                      <span>Permission: <strong>{mentor.permissionTaken}</strong></span>
+                      <span>Sent: <strong>{mentor.messagesSent}</strong></span>
+                      <span>Pending: <strong>{mentor.messagesPending}</strong></span>
+                    </div>
+                  </div>
+
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "480px" }}>
+                      <thead>
+                        <tr style={{ background: "#f7f7f7", textAlign: "left" }}>
+                          <th style={thStyle}>Roll Number</th>
+                          <th style={thStyle}>Student Name</th>
+                          <th style={thStyle}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(mentor.students || []).map((student, studentIndex) => (
+                          <tr key={`${student.rollNo}-${studentIndex}`} style={{ borderTop: "1px solid #eee" }}>
+                            <td style={tdStyle}>{student.rollNo}</td>
+                            <td style={tdStyle}>{student.studentName || "-"}</td>
+                            <td
+                              style={{
+                                ...tdStyle,
+                                color:
+                                  student.status === "Message Sent"
+                                    ? "#2e7d32"
+                                    : student.status === "Permission Taken"
+                                      ? "#1565c0"
+                                      : "#c62828",
+                                fontWeight: "600"
+                              }}
+                            >
+                              {student.status}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p style={{ color: "#777", fontSize: "14px" }}>
+                No absent student records found for this date.
+              </p>
+            )}
+          </div>
           {/* ================= BRANCH + SECTION ================= */}
 
           <div
@@ -1531,7 +1728,7 @@ const uploadFaculty = async () => {
       marginTop: 0
     }}
   >
-    (branch column optional â€” defaults to CSE if left blank)
+    (branch column optional - defaults to CSE if left blank)
   </p>
 
   <input
@@ -1568,7 +1765,7 @@ const uploadFaculty = async () => {
   {studentMessage && (
     <p
       style={{
-        color: studentMessage.startsWith("âŒ")
+        color: studentMessage.startsWith("Error:")
           ? "#d32f2f"
           : "#4CAF50",
         marginTop: "12px",
@@ -1672,7 +1869,7 @@ const uploadFaculty = async () => {
   {facultyMessage && (
     <p
       style={{
-        color: facultyMessage.startsWith("âŒ")
+        color: facultyMessage.startsWith("Error:")
           ? "#d32f2f"
           : "#4CAF50",
         marginTop: "12px",
@@ -1703,7 +1900,7 @@ const uploadFaculty = async () => {
             color: "#1a1a1a"
           }}
         >
-          â­ Class Representatives
+          Class Representatives
         </h3>
 
         <p style={{ color: "#777" }}>
@@ -1722,7 +1919,7 @@ const uploadFaculty = async () => {
             fontWeight: "600"
           }}
         >
-          â­ Manage CRs
+          Manage CRs
         </button>
       </div>
 

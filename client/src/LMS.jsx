@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import CodingPractice from "./CodingPractice";
 
 const ORANGE = "#F15A29";
@@ -752,7 +752,7 @@ const [availableSections, setAvailableSections] = useState([]);
           } else if (data.warning) {
             window.setTimeout(() => {
               alert(
-                "âš  Warning\n\nDo not switch tabs during the exam.\n\nOne more violation will automatically submit your exam."
+                "Warning: Warning\n\nDo not switch tabs during the exam.\n\nOne more violation will automatically submit your exam."
               );
             }, 200);
           }
@@ -1096,7 +1096,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 <strong style={{ color: "#333" }}>
                   {section.section}
                 </strong>{" "}
-                â€” {formatDateTime(section.startAt)} â†’{" "}
+                - {formatDateTime(section.startAt)} -&gt;{" "}
                 {formatDateTime(section.endAt)}
               </div>
             ))}
@@ -1117,7 +1117,7 @@ const [availableSections, setAvailableSections] = useState([]);
               onClick={() => startExam(exam)}
               disabled={loading}
             >
-              â–¶ Start Exam
+               Start Exam
             </button>
           )}
 
@@ -1153,7 +1153,7 @@ const [availableSections, setAvailableSections] = useState([]);
     <form onSubmit={createExam}>
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 18px", color: "#222" }}>
-          âž• Create New Exam
+           Create New Exam
         </h3>
 
         <div
@@ -1596,7 +1596,7 @@ const [availableSections, setAvailableSections] = useState([]);
                 fontSize: "18px"
               }}
             >
-              â± {formatTimeLeft(timeLeft)}
+              Time: {formatTimeLeft(timeLeft)}
             </div>
           </div>
 
@@ -1610,7 +1610,7 @@ const [availableSections, setAvailableSections] = useState([]);
               fontSize: "13px"
             }}
           >
-            âš  Do not switch tabs. Your first tab switch will show a
+            Warning: Do not switch tabs. Your first tab switch will show a
             warning. A second violation will automatically submit
             your exam.
           </div>
@@ -1656,7 +1656,7 @@ const [availableSections, setAvailableSections] = useState([]);
                     marginBottom: "7px"
                   }}
                 >
-                  Question {index + 1} â€¢ {question.marks} mark
+                  Question {index + 1}  |  {question.marks} mark
                   {question.marks !== 1 ? "s" : ""}
                 </div>
 
@@ -1891,7 +1891,7 @@ const [availableSections, setAvailableSections] = useState([]);
               loadExams();
             }}
           >
-            â† Back to LMS
+             Back to LMS
           </button>
         </div>
       </div>
@@ -1914,14 +1914,14 @@ const [availableSections, setAvailableSections] = useState([]);
               setActiveTab("exams");
             }}
           >
-            â† Back to Exams
+             Back to Exams
           </button>
 <button
   style={buttonStyle}
   onClick={exportResults}
   disabled={loading}
 >
-  â¬‡ Export Excel
+   Export Excel
 </button>
           <h2
             style={{
@@ -1929,7 +1929,7 @@ const [availableSections, setAvailableSections] = useState([]);
               margin: "16px 0 5px"
             }}
           >
-             {resultsExam.title} â€” Results
+             {resultsExam.title} - Results
           </h2>
 
           <p
@@ -1938,7 +1938,7 @@ const [availableSections, setAvailableSections] = useState([]);
               margin: 0
             }}
           >
-            {resultsExam.subject} â€¢ {resultsExam.totalMarks} marks
+            {resultsExam.subject}  |  {resultsExam.totalMarks} marks
           </p>
         </div>
 
@@ -2131,7 +2131,7 @@ const [availableSections, setAvailableSections] = useState([]);
               fontSize: "14px"
             }}
           >
-            Learning Management System â€¢ Exams & Results
+            Learning Management System  |  Exams & Results
           </p>
         </div>
 

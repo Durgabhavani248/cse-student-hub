@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 
 function Chatbot({ api }) {
   const [messages, setMessages] = useState([
@@ -97,7 +97,7 @@ function Chatbot({ api }) {
         {loading && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div style={{ padding: "12px 16px", borderRadius: "16px", background: "#fff", color: "#F15A29", fontSize: "14px", fontWeight: "600", boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-              âœ Typing...
+               Typing...
             </div>
           </div>
         )}
@@ -153,7 +153,7 @@ function Chatbot({ api }) {
             e.target.style.background = "#F15A29";
           }}
         >
-          âž¤
+          Send
         </button>
       </div>
     </div>

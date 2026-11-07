@@ -815,6 +815,19 @@ const MentorNotificationSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 const MentorNotification = mongoose.model("MentorNotification", MentorNotificationSchema);
+
+const MentorPermissionSchema = new mongoose.Schema({
+  eventKey: { type: String, required: true, unique: true },
+  rollNo: { type: String, required: true },
+  studentName: { type: String, default: "" },
+  branch: { type: String, required: true },
+  section: { type: String, required: true },
+  date: { type: String, required: true },
+  facultyId: { type: String, required: true },
+  facultyName: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now }
+});
+const MentorPermission = mongoose.model("MentorPermission", MentorPermissionSchema);
 const Notice = mongoose.model("Notice", NoticeSchema);
 const Note = mongoose.model("Note", NoteSchema);
 const Assignment = mongoose.model("Assignment", AssignmentSchema);
@@ -6330,6 +6343,17 @@ app.get("/api/mentor/section/:branch/:section", facultyMiddleware, async (req, r
       notifications.map(item => [item.eventKey, item])
     );
 
+    const permissions = await MentorPermission.find({
+      branch,
+      section: normalizedSection,
+      date,
+      rollNo: { $in: rollNumbers },
+      facultyId
+    }).select("rollNo").lean();
+
+    const permissionRolls = new Set(
+      permissions.map(item => item.rollNo)
+    );
     const result = absentRecords.map(item => {
       const student = studentByRoll.get(item.rollNo) || {};
       const eventKey = [
@@ -6339,6 +6363,7 @@ app.get("/api/mentor/section/:branch/:section", facultyMiddleware, async (req, r
         item.periodId || "historical"
       ].join("|");
       const notification = notificationByKey.get(eventKey);
+    const permissionTaken = permissionRolls.has(item.rollNo);
 
       return {
         rollNo: item.rollNo,
@@ -6353,6 +6378,7 @@ app.get("/api/mentor/section/:branch/:section", facultyMiddleware, async (req, r
         hasPriorAbsence: (priorByRoll.get(item.rollNo) || []).length > 0,
         priorAbsences: priorByRoll.get(item.rollNo) || [],
         notificationStatus: notification?.status || "not-sent",
+       permissionTaken,
         sentAt: notification?.sentAt || null
       };
     });
@@ -6439,6 +6465,233 @@ app.post("/api/mentor/mark-sent", facultyMiddleware, async (req, res) => {
   }
 });
 
+// Faculty mentor: record that parent notification is not required because permission was already obtained.
+app.post("/api/mentor/mark-permission", facultyMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== "faculty") {
+      return res.status(403).json({ message: "Faculty mentor access only" });
+    }
+
+    const { rollNo, studentName, branch, section, date } = req.body;
+
+    if (!rollNo || !branch || !section || !date) {
+      return res.status(400).json({ message: "Missing student attendance details" });
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(date))) {
+      return res.status(400).json({ message: "Invalid date format" });
+    }
+
+    if (!canMentorAccess(req.user, branch, section)) {
+      return res.status(403).json({ message: "You are not assigned to this section" });
+    }
+
+    const normalizedSection = normalizeMentorSection(section, branch);
+    const facultyId = String(req.user.facultyId || req.user.id || req.user._id || "");
+
+    const absentRecord = await Attendance.findOne({
+      rollNo,
+      branch,
+      section: normalizedSection,
+      date,
+      status: "absent"
+    }).lean();
+
+    if (!absentRecord) {
+      return res.status(404).json({ message: "Absent attendance record not found" });
+    }
+
+    const alreadySent = await MentorNotification.findOne({
+      rollNo,
+      branch,
+      section: normalizedSection,
+      date,
+      status: "sent"
+    }).lean();
+
+    if (alreadySent) {
+      return res.status(409).json({
+        message: "A parent message is already marked sent for this student and date."
+      });
+    }
+
+    const faculty = await Faculty.findOne({ facultyId }).select("name").lean();
+    const eventKey = [branch, normalizedSection, rollNo, date].join("|");
+
+    const existingPermission = await MentorPermission.findOne({ eventKey }).lean();
+    if (existingPermission && String(existingPermission.facultyId) !== facultyId) {
+      return res.status(409).json({
+        message: "Permission is already recorded by another mentor."
+      });
+    }
+
+    const permission = await MentorPermission.findOneAndUpdate(
+      { eventKey },
+      {
+        $set: {
+          rollNo,
+          studentName: studentName || absentRecord.studentName || "",
+          branch,
+          section: normalizedSection,
+          date,
+          facultyId,
+          facultyName: faculty?.name || ""
+        }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    return res.json({
+      message: "Permission status saved",
+      permissionTaken: true,
+      createdAt: permission.createdAt
+    });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ message: "Permission is already recorded." });
+    }
+    console.error("Mentor permission API error:", error);
+    return res.status(500).json({ message: "Failed to save permission status" });
+  }
+});
+
+// Admin: date-wise unique absent students and mentor-wise parent alert report.
+app.get("/api/admin/mentor-report", adminMiddleware, async (req, res) => {
+  try {
+    const date = String(req.query.date || "").trim();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ message: "A valid date (YYYY-MM-DD) is required" });
+    }
+
+    const absentRecords = await Attendance.find({
+      date,
+      status: "absent"
+    }).lean();
+
+    const uniqueStudents = new Map();
+    absentRecords.forEach(item => {
+      const key = [item.branch, item.section, item.rollNo].join("|");
+      if (!uniqueStudents.has(key)) uniqueStudents.set(key, item);
+    });
+
+    const absentStudents = [...uniqueStudents.values()];
+    const rollNumbers = [...new Set(absentStudents.map(item => item.rollNo))];
+
+    const [permissions, sentNotifications, facultyList, users] = await Promise.all([
+      MentorPermission.find({ date }).lean(),
+      MentorNotification.find({ date, status: "sent" }).lean(),
+      Faculty.find({ role: "faculty" }).select("facultyId name branch mentorSections").lean(),
+      User.find({ rollNo: { $in: rollNumbers } }).select("rollNo name branch section").lean()
+    ]);
+
+    const permissionByStudent = new Map(
+      permissions.map(item => [
+        [item.branch, item.section, item.rollNo].join("|"),
+        item
+      ])
+    );
+
+    const sentByStudent = new Map();
+    sentNotifications.forEach(item => {
+      const key = [item.branch, item.section, item.rollNo].join("|");
+      if (!sentByStudent.has(key)) sentByStudent.set(key, item);
+    });
+
+    const facultyById = new Map(facultyList.map(item => [String(item.facultyId), item]));
+
+    const userByStudent = new Map(
+      users.map(item => [
+        [item.branch, item.section, item.rollNo].join("|"),
+        item
+      ])
+    );
+
+    const mentorGroups = new Map();
+    let permissionTaken = 0;
+    let messagesSent = 0;
+    let messagesPending = 0;
+
+    absentStudents.forEach(item => {
+      const studentKey = [item.branch, item.section, item.rollNo].join("|");
+      const permission = permissionByStudent.get(studentKey);
+      const sent = sentByStudent.get(studentKey);
+
+      const assignedMentor = facultyList.find(faculty => {
+        if (faculty.branch !== item.branch) return false;
+
+        return (faculty.mentorSections || []).some(section =>
+          normalizeMentorSection(section, item.branch) ===
+          normalizeMentorSection(item.section, item.branch)
+        );
+      });
+
+      const actorId = permission?.facultyId || sent?.facultyId ||
+        assignedMentor?.facultyId || item.markedBy || "";
+
+      const mentor = facultyById.get(String(actorId)) || assignedMentor;
+      const status = sent ? "Message Sent" : permission ? "Permission Taken" : "Pending";
+
+      if (sent) messagesSent++;
+      else if (permission) permissionTaken++;
+      else messagesPending++;
+
+      const groupKey = [
+        mentor?.facultyId || actorId || "unassigned",
+        item.branch,
+        item.section
+      ].join("|");
+
+      if (!mentorGroups.has(groupKey)) {
+        mentorGroups.set(groupKey, {
+          facultyId: mentor?.facultyId || actorId || "",
+          facultyName: mentor?.name || "Unassigned",
+          branch: item.branch,
+          section: item.section,
+          totalAbsent: 0,
+          permissionTaken: 0,
+          messagesSent: 0,
+          messagesPending: 0,
+          students: []
+        });
+      }
+
+      const group = mentorGroups.get(groupKey);
+      group.totalAbsent++;
+
+      if (status === "Message Sent") group.messagesSent++;
+      else if (status === "Permission Taken") group.permissionTaken++;
+      else group.messagesPending++;
+
+      const user = userByStudent.get(studentKey) || {};
+      group.students.push({
+        rollNo: item.rollNo,
+        studentName: user.name || item.studentName || "",
+        branch: item.branch,
+        section: item.section,
+        status
+      });
+    });
+
+    const mentors = [...mentorGroups.values()].sort((a, b) =>
+      a.facultyName.localeCompare(b.facultyName)
+    );
+
+    return res.json({
+      date,
+      summary: {
+        totalAbsent: absentStudents.length,
+        permissionTaken,
+        messagesSent,
+        messagesPending
+      },
+      mentors
+    });
+  } catch (error) {
+    console.error("Admin mentor report error:", error);
+    return res.status(500).json({ message: "Failed to load mentor report" });
+  }
+});
 /* ================= END MENTOR ATTENDANCE APIs ================= */
 app.post("/api/attendance/import-old", hodOrAdminMiddleware, async (req, res) => {
   try {
