@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+﻿import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
@@ -26,7 +26,7 @@ async function getMessagingInstance() {
   if (messagingInstance) return messagingInstance;
   const supported = await isSupported().catch(() => false);
   if (!supported) {
-    console.warn("⚠️ Firebase Messaging is not supported in this browser");
+    console.warn("âš ï¸ Firebase Messaging is not supported in this browser");
     return null;
   }
   const app = initializeApp(firebaseConfig);
@@ -34,40 +34,40 @@ async function getMessagingInstance() {
   return messagingInstance;
 }
 
-// Call this from a real user click (a button), not automatically on page load —
+// Call this from a real user click (a button), not automatically on page load â€”
 // most browsers silently ignore Notification.requestPermission() unless it's
 // triggered directly by a user gesture like a click.
 export const requestPermission = async (api, rollNo, name) => {
-  console.log("🔔 [notifications] Starting setup...");
+  console.log("ðŸ”” [notifications] Starting setup...");
 
   if (!("serviceWorker" in navigator)) {
-    console.warn("🔔 [notifications] Service Workers not supported in this browser");
+    console.warn("ðŸ”” [notifications] Service Workers not supported in this browser");
     return { ok: false, reason: "no-service-worker" };
   }
   if (typeof Notification === "undefined") {
-    console.warn("🔔 [notifications] Notification API not supported in this browser");
+    console.warn("ðŸ”” [notifications] Notification API not supported in this browser");
     return { ok: false, reason: "no-notification-api" };
   }
 
   try {
-    const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    console.log("🔔 [notifications] Service Worker registered:", registration.scope);
+    const registration = await navigator.serviceWorker.register("/sw.js");
+    console.log("ðŸ”” [notifications] Service Worker registered:", registration.scope);
   } catch (err) {
-    console.error("🔔 [notifications] Service Worker registration FAILED:", err);
+    console.error("ðŸ”” [notifications] Service Worker registration FAILED:", err);
     return { ok: false, reason: "sw-registration-failed", error: err.message };
   }
 
   let permission;
   try {
     permission = await Notification.requestPermission();
-    console.log("🔔 [notifications] Permission result:", permission);
+    console.log("ðŸ”” [notifications] Permission result:", permission);
   } catch (err) {
-    console.error("🔔 [notifications] requestPermission() threw:", err);
+    console.error("ðŸ”” [notifications] requestPermission() threw:", err);
     return { ok: false, reason: "permission-request-failed", error: err.message };
   }
 
   if (permission !== "granted") {
-    console.warn("🔔 [notifications] Permission not granted:", permission);
+    console.warn("ðŸ”” [notifications] Permission not granted:", permission);
     return { ok: false, reason: "permission-not-granted", permission };
   }
 
@@ -78,15 +78,15 @@ export const requestPermission = async (api, rollNo, name) => {
 
   let token;
   try {
-    token = await getToken(messaging, { vapidKey: VAPID_KEY });
-    console.log("🔔 [notifications] FCM token obtained:", token ? token.slice(0, 20) + "..." : token);
+    token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: await navigator.serviceWorker.ready });
+    console.log("ðŸ”” [notifications] FCM token obtained:", token ? token.slice(0, 20) + "..." : token);
   } catch (err) {
-    console.error("🔔 [notifications] getToken() FAILED:", err);
+    console.error("ðŸ”” [notifications] getToken() FAILED:", err);
     return { ok: false, reason: "get-token-failed", error: err.message };
   }
 
   if (!token) {
-    console.warn("🔔 [notifications] getToken() returned empty token");
+    console.warn("ðŸ”” [notifications] getToken() returned empty token");
     return { ok: false, reason: "empty-token" };
   }
 
@@ -98,18 +98,18 @@ export const requestPermission = async (api, rollNo, name) => {
     });
     const data = await response.json();
     if (!response.ok) {
-      console.error("🔔 [notifications] Backend rejected token save:", data);
+      console.error("ðŸ”” [notifications] Backend rejected token save:", data);
       return { ok: false, reason: "backend-save-failed", error: data.message };
     }
-    console.log("🔔 [notifications] Token saved to backend ✅", data);
+    console.log("ðŸ”” [notifications] Token saved to backend âœ…", data);
   } catch (err) {
-    console.error("🔔 [notifications] Network error saving token:", err);
+    console.error("ðŸ”” [notifications] Network error saving token:", err);
     return { ok: false, reason: "network-error", error: err.message };
   }
 
-  // Foreground messages (app open and visible) — show as a native notification too
+  // Foreground messages (app open and visible) â€” show as a native notification too
   onMessage(messaging, (payload) => {
-    console.log("🔔 [notifications] Foreground message received:", payload);
+    console.log("ðŸ”” [notifications] Foreground message received:", payload);
     navigator.serviceWorker.ready.then((registration) => {
       registration.showNotification(payload.notification?.title || "NRI Hub", {
         body: payload.notification?.body || "",
@@ -121,6 +121,7 @@ export const requestPermission = async (api, rollNo, name) => {
     });
   });
 
-  console.log("🔔 [notifications] Setup complete ✅");
+  console.log("ðŸ”” [notifications] Setup complete âœ…");
   return { ok: true, token };
 };
+
