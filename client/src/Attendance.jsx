@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState, useRef } from "react";
+import { cacheData, readCachedData, getLocalPeriodAttendance, makeAttendancePeriodKey, getAllAttendanceQueue, updateAttendanceStatus, markAttendanceSynced, savePendingAttendance } from "./offlineAttendance.js";
 
 function Attendance({ api, facultyInfo }) {
   const isHod = facultyInfo?.role === "hod";
@@ -31,6 +32,9 @@ function Attendance({ api, facultyInfo }) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [existingRecords, setExistingRecords] = useState([]);
+  const [localPeriodRecord, setLocalPeriodRecord] = useState(null);
+  const [syncStatus, setSyncStatus] = useState("");
+  const syncInProgressRef = useRef(false);
 
   const token = localStorage.getItem("facultyToken");
 // Load timetable periods for the selected date and section.
@@ -98,77 +102,312 @@ function Attendance({ api, facultyInfo }) {
     };
   }, [section, date, api, facultyInfo?.branch, token]);
 
-  const loadStudents = () => {
+  const loadStudents = async () => {
     if (!section) { alert("Section enter cheyyi!"); return; }
     if (existingRecords.length > 0) {
       setMessage("Already marked for this hour. Attendance cannot be changed.");
       return;
     }
+
     setLoading(true);
-    setMessage(" Requesting: " + `${api}/api/students/${facultyInfo.branch}/${section}`);
+    const cacheKey = `students:${facultyInfo.branch}:${section}`;
 
-    fetch(`${api}/api/students/${facultyInfo.branch}/${section}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(async res => {
-        const status = res.status;
-        let data;
-        try {
-          data = await res.json();
-        } catch {
-          data = null;
-        }
-        setLoading(false);
+    const applyStudents = (data, offline = false) => {
+      setStudents(data);
+      const initial = {};
+      data.forEach(s => { initial[s.rollNo] = "present"; });
+      setAttendance(initial);
 
-        if (!res.ok) {
-          setMessage(`Error: Status ${status}: ${data?.message || "Unknown error (response was not JSON)"}`);
-          return;
-        }
+      if (offline) {
+        setMessage(`Offline: Loaded ${data.length} cached students.`);
+      } else if (data.length === 0) {
+        setMessage(`Warning: Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
+      } else {
+        setMessage(`Success: Loaded ${data.length} students. Offline cache updated.`);
+      }
+    };
 
-        if (Array.isArray(data)) {
-          setStudents(data);
-          const initial = {};
-          data.forEach(s => { initial[s.rollNo] = "present"; });
-          setAttendance(initial);
-          if (data.length === 0) {
-            setMessage(`Warning: Status 200 OK, but 0 students found in ${facultyInfo.branch} - Section ${section}.`);
-          } else {
-            setMessage(`Success: Loaded ${data.length} students`);
-          }
+    try {
+      if (!navigator.onLine) {
+        const cached = await readCachedData(cacheKey);
+        if (Array.isArray(cached)) {
+          applyStudents(cached, true);
         } else {
-          setMessage(`Error: Unexpected response: ${JSON.stringify(data)}`);
+          setMessage("Offline: No cached students found. Connect to internet and load students once.");
         }
-      })
-      .catch(err => {
-        setLoading(false);
-        setMessage(`Error: Network/fetch error: ${err.message}`);
+        return;
+      }
+
+      const res = await fetch(`${api}/api/students/${facultyInfo.branch}/${section}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-  };
 
-  const loadExisting = () => {
-    if (!section || !subject || !date) return;
-    fetch(`${api}/api/attendance/section/${facultyInfo.branch}/${section}?subject=${encodeURIComponent(subject)}&date=${date}&periodId=${encodeURIComponent(periodId)}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setExistingRecords(data);
-          if (data.length > 0) {
-            const marked = {};
-            data.forEach(r => { marked[r.rollNo] = r.status; });
-            setAttendance(prev => ({ ...prev, ...marked }));
-          }
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        setMessage(`Error: Status ${res.status}: ${data?.message || "Unable to load students."}`);
+        return;
+      }
+
+      if (Array.isArray(data)) {
+        await cacheData(cacheKey, data);
+        applyStudents(data);
+      } else {
+        setMessage(`Error: Unexpected response: ${JSON.stringify(data)}`);
+      }
+    } catch (err) {
+      try {
+        const cached = await readCachedData(cacheKey);
+        if (Array.isArray(cached)) {
+          applyStudents(cached, true);
+        } else {
+          setMessage(`Error: Network unavailable and no cached students found. ${err.message}`);
         }
-      })
-      .catch(() => {});
+      } catch {
+        setMessage(`Error: Could not load students or access offline cache. ${err.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const loadExisting = async () => {
+    if (!section || !subject || !date) return;
+
+    const batch = {
+      branch: facultyInfo.branch,
+      section,
+      subject,
+      date,
+      periodId
+    };
+
+    try {
+      const periodKey = makeAttendancePeriodKey(batch);
+      const localRecord = await getLocalPeriodAttendance(periodKey);
+      setLocalPeriodRecord(localRecord || null);
+
+      if (localRecord?.records) {
+        const localMarked = {};
+        localRecord.records.forEach(r => {
+          localMarked[r.rollNo] = r.status;
+        });
+        setAttendance(prev => ({ ...prev, ...localMarked }));
+        setSyncStatus(localRecord.status || "pending");
+      } else {
+        setSyncStatus("");
+      }
+
+      if (!navigator.onLine) {
+        setExistingRecords([]);
+        return;
+      }
+
+      const res = await fetch(
+        `${api}/api/attendance/section/${facultyInfo.branch}/${section}?subject=${encodeURIComponent(subject)}&date=${date}&periodId=${encodeURIComponent(periodId)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = await res.json();
+
+      if (res.ok && Array.isArray(data)) {
+        setExistingRecords(data);
+
+        if (data.length > 0) {
+          const marked = {};
+          data.forEach(r => { marked[r.rollNo] = r.status; });
+          setAttendance(prev => ({ ...prev, ...marked }));
+        }
+      }
+    } catch (error) {
+      console.warn("Could not refresh attendance records:", error);
+    }
+  };
   useEffect(() => {
     if (students.length > 0) loadExisting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject, date, periodId, section]);
+  }, [subject, date, periodId, section, students.length]);
 
+  const syncPendingAttendance = async () => {
+    if (!navigator.onLine || !token || syncInProgressRef.current) return;
+
+    syncInProgressRef.current = true;
+
+    const selectedPeriodKey = makeAttendancePeriodKey({
+      branch: facultyInfo.branch,
+      section,
+      subject,
+      date,
+      periodId
+    });
+
+    try {
+      const queue = await getAllAttendanceQueue();
+      const pendingItems = queue.filter(item =>
+        item.status === "pending" || item.status === "syncing"
+      );
+
+      for (const item of pendingItems) {
+        const itemPeriodKey = makeAttendancePeriodKey(item);
+        const isSelected = itemPeriodKey === selectedPeriodKey;
+
+        await updateAttendanceStatus(item.syncId, "syncing");
+
+        if (isSelected) {
+          setSyncStatus("syncing");
+          setLocalPeriodRecord(prev =>
+            prev?.syncId === item.syncId ? { ...prev, status: "syncing" } : prev
+          );
+        }
+
+        try {
+          const res = await fetch(`${api}/api/attendance/mark`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              branch: item.branch,
+              section: item.section,
+              subject: item.subject,
+              date: item.date,
+              periodId: String(item.periodId),
+              records: item.records
+            })
+          });
+
+          const data = await res.json().catch(() => null);
+
+          if (res.ok && data?.message?.startsWith("Attendance")) {
+            await markAttendanceSynced(item.syncId, data.message);
+
+            if (isSelected) {
+              setSyncStatus("synced");
+              setLocalPeriodRecord(prev =>
+                prev?.syncId === item.syncId
+                  ? { ...prev, status: "synced", serverMessage: data.message }
+                  : prev
+              );
+              setMessage(`Synced: ${data.message}`);
+            }
+            continue;
+          }
+
+          if (res.status === 409) {
+            const verifyUrl = `${api}/api/attendance/section/${encodeURIComponent(item.branch)}/${encodeURIComponent(item.section)}?subject=${encodeURIComponent(item.subject)}&date=${encodeURIComponent(item.date)}&periodId=${encodeURIComponent(item.periodId)}`;
+
+            const verifyRes = await fetch(verifyUrl, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const serverRecords = await verifyRes.json().catch(() => null);
+
+            const matches = verifyRes.ok &&
+              Array.isArray(serverRecords) &&
+              item.records.every(record =>
+                serverRecords.some(serverRecord =>
+                  String(serverRecord.rollNo) === String(record.rollNo) &&
+                  serverRecord.status === record.status
+                )
+              );
+
+            if (matches) {
+              await markAttendanceSynced(item.syncId, "Matching attendance already exists on server.");
+
+              if (isSelected) {
+                setSyncStatus("synced");
+                setLocalPeriodRecord(prev =>
+                  prev?.syncId === item.syncId
+                    ? { ...prev, status: "synced", serverMessage: "Matching attendance already exists on server." }
+                    : prev
+                );
+                setMessage("Synced: Matching attendance already exists on the server.");
+              }
+            } else {
+              const reason = data?.message || "Server already has different attendance for this period.";
+              await updateAttendanceStatus(item.syncId, "needs-attention", { lastError: reason });
+
+              if (isSelected) {
+                setSyncStatus("needs-attention");
+                setLocalPeriodRecord(prev =>
+                  prev?.syncId === item.syncId
+                    ? { ...prev, status: "needs-attention", lastError: reason }
+                    : prev
+                );
+                setMessage(`Needs attention: ${reason}`);
+              }
+            }
+            continue;
+          }
+
+          const reason = data?.message || `Server returned status ${res.status}.`;
+
+          if (res.status === 401) {
+            const loginReason = "Faculty session expired. Log in again online to sync this attendance.";
+            await updateAttendanceStatus(item.syncId, "pending", { lastError: loginReason });
+
+            if (isSelected) {
+              setSyncStatus("pending");
+              setLocalPeriodRecord(prev =>
+                prev?.syncId === item.syncId
+                  ? { ...prev, status: "pending", lastError: loginReason }
+                  : prev
+              );
+              setMessage(loginReason);
+            }
+            break;
+          }
+          if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+            await updateAttendanceStatus(item.syncId, "needs-attention", { lastError: reason });
+
+            if (isSelected) {
+              setSyncStatus("needs-attention");
+              setLocalPeriodRecord(prev =>
+                prev?.syncId === item.syncId
+                  ? { ...prev, status: "needs-attention", lastError: reason }
+                  : prev
+              );
+              setMessage(`Needs attention: ${reason}`);
+            }
+          } else {
+            await updateAttendanceStatus(item.syncId, "pending", { lastError: reason });
+            if (isSelected) {
+              setSyncStatus("pending");
+              setMessage("Sync pending: Server temporarily unavailable. It will retry when online.");
+            }
+            break;
+          }
+        } catch (error) {
+          await updateAttendanceStatus(item.syncId, "pending", { lastError: error.message });
+
+          if (isSelected) {
+            setSyncStatus("pending");
+            setLocalPeriodRecord(prev =>
+              prev?.syncId === item.syncId
+                ? { ...prev, status: "pending", lastError: error.message }
+                : prev
+            );
+            setMessage("Sync pending: Network error. Attendance remains saved on this device.");
+          }
+          break;
+        }
+      }
+    } catch (error) {
+      console.warn("Offline attendance sync could not run:", error);
+    } finally {
+      syncInProgressRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    syncPendingAttendance();
+    window.addEventListener("online", syncPendingAttendance);
+
+    return () => {
+      window.removeEventListener("online", syncPendingAttendance);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [api, token, facultyInfo?.branch, section, subject, date, periodId]);
   const toggle = (rollNo) => {
     setAttendance(prev => ({
       ...prev,
@@ -182,26 +421,80 @@ function Attendance({ api, facultyInfo }) {
     setAttendance(updated);
   };
 
-  const submitAttendance = () => {
+  const submitAttendance = async () => {
     if (!subject || !date) { alert("Subject and date required!"); return; }
     if (students.length === 0) { alert("Load students first!"); return; }
+    if (existingRecords.length > 0 || localPeriodRecord) {
+      setMessage("Attendance for this period is already saved and locked.");
+      return;
+    }
 
-    const records = students.map(s => ({ rollNo: s.rollNo, status: attendance[s.rollNo] || "present" }));
+    const batch = {
+      branch: facultyInfo.branch,
+      section,
+      subject,
+      date,
+      periodId: String(periodId),
+      records: students.map(s => ({
+        rollNo: s.rollNo,
+        status: attendance[s.rollNo] || "present"
+      }))
+    };
+
+    const saveOffline = async () => {
+      const saved = await savePendingAttendance(batch);
+      setLocalPeriodRecord(saved);
+      setSyncStatus(saved.status);
+      setMessage(`Offline: Attendance saved locally for ${saved.records.length} students. Pending sync.`);
+    };
 
     setLoading(true);
-    fetch(`${api}/api/attendance/mark`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ branch: facultyInfo.branch, section, subject, date, periodId, records })
-    })
-      .then(res => res.json())
-      .then(data => {
-        setLoading(false);
-        setMessage(data.message?.startsWith("Attendance") ? `Success: ${data.message}` : `Error: ${data.message}`);
-      })
-      .catch(() => { setLoading(false); setMessage("Error: Server error!"); });
-  };
 
+    try {
+      if (!navigator.onLine) {
+        await saveOffline();
+        return;
+      }
+
+      const res = await fetch(`${api}/api/attendance/mark`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(batch)
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.ok && data?.message?.startsWith("Attendance")) {
+        setExistingRecords(batch.records);
+        setLocalPeriodRecord(null);
+        setSyncStatus("");
+        setMessage(`Success: ${data.message}`);
+      } else {
+        setMessage(`Error: ${data?.message || `Server returned status ${res.status}.`}`);
+      }
+    } catch (error) {
+      try {
+        await saveOffline();
+      } catch (saveError) {
+        const existingLocal = await getLocalPeriodAttendance(
+          makeAttendancePeriodKey(batch)
+        ).catch(() => null);
+
+        if (existingLocal) {
+          setLocalPeriodRecord(existingLocal);
+          setSyncStatus(existingLocal.status);
+          setMessage(`Already saved locally. Status: ${existingLocal.status}.`);
+        } else {
+          setMessage(`Error: Could not save attendance offline. ${saveError.message || error.message}`);
+        }
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
   const inputStyle = {
     padding: "10px 14px",
     borderRadius: "8px",
@@ -260,7 +553,7 @@ function Attendance({ api, facultyInfo }) {
 
         <button
           onClick={loadStudents}
-          disabled={loading || existingRecords.length > 0}
+          disabled={loading || existingRecords.length > 0 || !!localPeriodRecord}
           style={{ padding: "10px 20px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "8px", fontWeight: "600", cursor: "pointer" }}
         >
           {loading ? "Loading..." : "Load Students"}
@@ -268,9 +561,19 @@ function Attendance({ api, facultyInfo }) {
       </div>
 
       {message && (
-        <p style={{ color: message.startsWith("Error:") ? "#F15A29" : message.startsWith("Warning:") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
+        <p style={{ color: message.startsWith("Error:") ? "#F15A29" : message.startsWith("Warning:Â") ? "#e0a800" : "#4CAF50", fontWeight: "600", marginBottom: "16px" }}>{message}</p>
       )}
 
+      {localPeriodRecord && (
+        <div role="status" style={{ padding: "10px 14px", borderRadius: "8px", background: "#f5f5f5", marginBottom: "14px", fontSize: "13px", color: "#333" }}>
+          <strong>Offline Attendance: </strong>
+          {syncStatus === "pending" ? "Pending - saved on this device; waiting for internet."
+            : syncStatus === "syncing" ? "Syncing attendance to server..."
+            : syncStatus === "synced" ? "Synced to server successfully."
+            : syncStatus === "needs-attention" ? `Needs attention: ${localPeriodRecord.lastError || "Server rejected this attendance."}`
+            : "Saved locally."}
+        </div>
+      )}
       {students.length > 0 && (
         <div style={{ background: "#fff", border: "1px solid #e0e0e0", borderRadius: "12px", padding: "20px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
@@ -278,8 +581,8 @@ function Attendance({ api, facultyInfo }) {
               {students.length} Students - <span style={{ color: "#4CAF50" }}>{presentCount} Present</span>, <span style={{ color: "#F15A29" }}>{students.length - presentCount} Absent</span>
             </h3>
             <div style={{ display: "flex", gap: "8px" }}>
-              <button onClick={() => markAll("present")} style={{ padding: "6px 14px", background: "#e8f8ec", color: "#4CAF50", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Present</button>
-              <button onClick={() => markAll("absent")} style={{ padding: "6px 14px", background: "#fff0ee", color: "#F15A29", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Absent</button>
+              <button disabled={existingRecords.length > 0 || !!localPeriodRecord} onClick={() => markAll("present")} style={{ padding: "6px 14px", background: "#e8f8ec", color: "#4CAF50", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Present</button>
+              <button disabled={existingRecords.length > 0 || !!localPeriodRecord} onClick={() => markAll("absent")} style={{ padding: "6px 14px", background: "#fff0ee", color: "#F15A29", border: "none", borderRadius: "6px", fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>Mark All Absent</button>
             </div>
           </div>
 
@@ -291,12 +594,12 @@ function Attendance({ api, facultyInfo }) {
                 <div
                   key={s.rollNo}
                   onClick={() => {
-                    if (existingRecords.length > 0) return;
+                    if (existingRecords.length > 0 || localPeriodRecord) return;
                     toggle(s.rollNo);
                   }}
                   style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 14px", borderRadius: "8px", cursor: existingRecords.length > 0 ? "not-allowed" : "pointer",
+                    padding: "10px 14px", borderRadius: "8px", cursor: existingRecords.length > 0 || localPeriodRecord ? "not-allowed" : "pointer",
                     background: isPresent ? "#e8f8ec" : "#fff0ee",
                     border: `1.5px solid ${isPresent ? "#4CAF50" : "#F15A29"}`
                   }}
@@ -315,10 +618,10 @@ function Attendance({ api, facultyInfo }) {
 
           <button
             onClick={submitAttendance}
-            disabled={loading || existingRecords.length > 0}
+            disabled={loading || existingRecords.length > 0 || !!localPeriodRecord}
             style={{ width: "100%", padding: "14px", background: "#F15A29", color: "#fff", border: "none", borderRadius: "10px", fontSize: "16px", fontWeight: "600", cursor: "pointer" }}
           >
-            {loading ? "Saving..." : existingRecords.length > 0 ? "Already Marked - Locked" : "Save Attendance"}
+            {loading ? "Saving..." : localPeriodRecord ? (syncStatus === "synced" ? "Attendance Synced - Locked" : syncStatus === "needs-attention" ? "Needs Attention - Locked" : "Attendance Saved - Locked") : existingRecords.length > 0 ? "Already Marked - Locked" : "Save Attendance"}
           </button>
         </div>
       )}
@@ -327,5 +630,14 @@ function Attendance({ api, facultyInfo }) {
 }
 
 export default Attendance;
+
+
+
+
+
+
+
+
+
 
 

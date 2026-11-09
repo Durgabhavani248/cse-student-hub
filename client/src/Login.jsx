@@ -6,7 +6,7 @@ function Login({ onLogin, onBack }) {
   const [error, setError] = useState("");
   const API = ["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://localhost:3001"
-    : "https://13-54-196-18.sslip.io";
+    : (import.meta.env.VITE_API_URL || "https://cse-student-hub.onrender.com");
 
   const handleLogin = () => {
     fetch(`${API}/api/login`, {
