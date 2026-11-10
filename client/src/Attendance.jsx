@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { cacheData, readCachedData, getLocalPeriodAttendance, makeAttendancePeriodKey, getAllAttendanceQueue, updateAttendanceStatus, markAttendanceSynced, savePendingAttendance } from "./offlineAttendance.js";
 
 function Attendance({ api, facultyInfo }) {
@@ -37,11 +37,12 @@ function Attendance({ api, facultyInfo }) {
   const syncInProgressRef = useRef(false);
 
   const token = localStorage.getItem("facultyToken");
-// Load timetable periods for the selected date and section.
+// Load timetable periods from online API or offline IndexedDB cache.
   useEffect(() => {
     if (!section || !facultyInfo?.branch) return;
 
     let active = true;
+    const cacheKey = `timetable:${facultyInfo.branch}:${section}`;
 
     const fallbackPeriods = Array.from({ length: 10 }, (_, i) => ({
       id: String(i + 1),
@@ -51,19 +52,35 @@ function Attendance({ api, facultyInfo }) {
     }));
 
     const loadPeriods = async () => {
+      let timetable = null;
+
       try {
         const res = await fetch(
           `${api}/api/timetable/${encodeURIComponent(facultyInfo.branch)}/${encodeURIComponent(section)}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
         if (!res.ok) throw new Error("Timetable unavailable");
 
-        const timetable = await res.json();
+        timetable = await res.json();
+        try {
+          await cacheData(cacheKey, timetable);
+        } catch (error) {
+          console.warn("Timetable cache update failed:", error);
+        }
+      } catch {
+        try {
+          timetable = await readCachedData(cacheKey);
+        } catch (error) {
+          console.warn("Timetable cache read failed:", error);
+        }
+      }
+
+      if (!active) return;
+
+      if (timetable) {
         const dayKey = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"][
           new Date(`${date}T00:00:00`).getDay()
         ];
-
         const subjects = timetable.schedule?.[dayKey] || [];
         const timings = timetable.timings || [];
         const count = Math.max(subjects.length, timings.length);
@@ -72,7 +89,7 @@ function Attendance({ api, facultyInfo }) {
           const timing = timings[i] || {};
           return {
             id: String(i + 1),
-            label: (timing.label || `Period ${i + 1}`).replace(/-/g, "-"),
+            label: timing.label || `Period ${i + 1}`,
             subject: String(subjects[i] || "").trim(),
             type: String(timing.type || "class").toLowerCase()
           };
@@ -82,17 +99,17 @@ function Attendance({ api, facultyInfo }) {
           p.type !== "lunch"
         );
 
-        const next = options.length ? options : fallbackPeriods;
-
-        if (active) {
-          setPeriodOptions(next);
+        if (options.length) {
+          setPeriodOptions(options);
           setPeriodId(current =>
-            next.some(p => p.id === current) ? current : next[0].id
+            options.some(p => p.id === current) ? current : options[0].id
           );
+          return;
         }
-      } catch {
-        if (active) setPeriodOptions(fallbackPeriods);
       }
+
+      setPeriodOptions(fallbackPeriods);
+      setPeriodId("1");
     };
 
     loadPeriods();
