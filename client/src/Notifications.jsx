@@ -3,7 +3,7 @@ import axios from "axios";
 import "./Notifications.css";
 import { requestPermission, getNotificationPermissionStatus } from "./firebase";
 
-const API = import.meta.env.VITE_API_URL || "https://cse-student-hub.onrender.com";
+const API = import.meta.env.VITE_API_URL || "https://13-211-140-172.sslip.io";
 
 export default function Notifications({ studentInfo }) {
   const [notifications, setNotifications] = useState([]);

@@ -33,7 +33,7 @@ import "./App.css";
 
 const API = ["localhost", "127.0.0.1"].includes(window.location.hostname)
   ? "http://localhost:3001"
-  : (import.meta.env.VITE_API_URL || "https://cse-student-hub.onrender.com");
+  : (import.meta.env.VITE_API_URL || "https://13-211-140-172.sslip.io");
 
 function App() {
   const adminToken = localStorage.getItem("token");

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CodingPractice from "./CodingPractice";
 
 const ORANGE = "#F15A29";
-const API = import.meta.env.VITE_API_URL || "https://cse-student-hub.onrender.com";
+const API = import.meta.env.VITE_API_URL || "https://13-211-140-172.sslip.io";
 
 function getToken(isAdmin, facultyInfo, studentInfo) {
   if (isAdmin) return localStorage.getItem("token");
